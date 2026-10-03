@@ -261,7 +261,7 @@ const CIELS = {
   chantier: [[120, 190, 245], [215, 238, 255]], ville: [[110, 175, 240], [205, 232, 255]],
   campagne: [[100, 185, 250], [220, 245, 255]], dinosaures: [[250, 170, 120], [255, 230, 170]],
   plage: [[80, 190, 245], [210, 245, 255]], neige: [[160, 190, 225], [235, 242, 252]],
-  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
+  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], pms: [[100, 175, 240], [210, 235, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
 };
 const SOLS = {
   chantier: [[185, 140, 90], [160, 115, 70]], ville: [[110, 110, 120], [90, 90, 100]],
@@ -270,6 +270,7 @@ const SOLS = {
   ecole: [[130, 200, 100], [190, 195, 210]],
   vacances: [[135, 200, 100], [230, 215, 185]],
   jardin: [[120, 195, 90], [145, 210, 105]],
+  pms: [[130, 195, 100], [175, 178, 190]],
 };
 
 function soleil(ctx, x, y, t) {
@@ -432,6 +433,23 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     }
     trait(ctx, [0, horizon - 38], [W, horizon - 38], 4, [190, 150, 105]);
   }
+  else if (nom === "pms") { // la société PMS
+    const x = boucle(600, scroll, 0.3, W, 300);
+    rrect(ctx, x - 260, horizon - 200, 330, 200, 0, [225, 230, 240], 3); // bureaux
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) rrect(ctx, x - 240 + c * 78, horizon - 185 + r * 55, 58, 38, 3, VITRE, 2);
+    rrect(ctx, x + 70, horizon - 150, 230, 150, 0, [200, 205, 215], 3); // atelier
+    poly(ctx, [[x + 60, horizon - 150], [x + 310, horizon - 150], [x + 185, horizon - 200]], [150, 160, 180], 3);
+    rrect(ctx, x + 120, horizon - 105, 130, 105, 4, [170, 175, 185], 3);
+    for (let k = 1; k < 5; k++) trait(ctx, [x + 120, horizon - 105 + k * 21], [x + 250, horizon - 105 + k * 21], 2, [140, 145, 155]);
+    rrect(ctx, x - 200, horizon - 262, 210, 58, 12, [255, 255, 255], 4, [60, 90, 170]); // l'enseigne
+    [["P", [230, 70, 70]], ["M", [60, 130, 230]], ["S", [60, 170, 90]]].forEach(([l, c], k) => ecrireCentre(ctx, l, x - 155 + k * 62, horizon - 232, 46, c));
+    for (let k = 0; k < 4; k++) { // des fenêtres et des portes rangées contre le mur
+      const fx = x + 330 + k * 34;
+      rrect(ctx, fx, horizon - 70 + (k % 2) * 6, 28, 64, 3, k === 3 ? [150, 95, 60] : [250, 250, 250], 2);
+      if (k !== 3) rrect(ctx, fx + 5, horizon - 64 + (k % 2) * 6, 18, 52, 2, VITRE);
+    }
+    for (let k = 0; k < 2; k++) arbre(ctx, boucle(k * 700 + 80, scroll, 0.4, W), horizon + 5, 0.9);
+  }
   const [herbe, route] = SOLS[nom];
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
@@ -577,6 +595,7 @@ const STYLES = {
   enfant1: { L: 38, T: 40, R: 24, W: 32, peau: PEAU[1], cheveux: [60, 35, 20], coiffure: "couettes", yeux: [80, 50, 30], haut: [250, 130, 180], bas: [120, 70, 160], robe: true, cils: true },
   enfant2: { L: 41, T: 42, R: 24, W: 34, peau: PEAU[2], cheveux: [30, 25, 25], coiffure: "court", yeux: [60, 40, 30], haut: [90, 190, 110], bas: [60, 60, 80] },
   papi: { L: 90, T: 76, R: 24, W: 56, peau: PEAU[0], cheveux: [225, 225, 230], coiffure: "papi", yeux: [90, 120, 160], haut: [110, 180, 140], bas: [200, 180, 140], lunettes: true, moustache: true },
+  mamie: { L: 86, T: 68, R: 23, W: 44, peau: PEAU[0], cheveux: [215, 215, 222], coiffure: "chignon", yeux: [110, 140, 90], haut: [170, 140, 220], bas: null, robe: true, cils: true, lunettes: true },
   enfant3: { L: 37, T: 40, R: 24, W: 32, peau: PEAU[0], cheveux: [210, 100, 40], coiffure: "court", yeux: [70, 120, 200], haut: [255, 160, 50], bas: [70, 110, 170] },
 };
 
@@ -608,6 +627,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     for (const sx of [-1, 1]) pen.ellipse(st.cheveux, sx * R * 0.75 - R * 0.35, ty - R * 0.55, sx * R * 0.75 + R * 0.35, ty + R * 0.15);
     pen.ellipse(st.cheveux, -R * 0.25, ty - R * 1.08, R * 0.3, ty - R * 0.82);
   } else pen.poly(st.cheveux, [[-R * 1.02, ty - R * 0.05], [-R * 0.85, ty - R * 0.8], [-R * 0.2, ty - R * 1.12], [R * 0.6, ty - R], [R * 1.02, ty - R * 0.35], [R * 0.9, ty - R * 0.45], [R * 0.3, ty - R * 0.62], [-R * 0.2, ty - R * 0.45], [-R * 0.6, ty - R * 0.5], [-R * 0.8, ty]]);
+  if (st.coiffure === "chignon") pen.circle(st.cheveux, R * 0.1, ty - R * 1.15, R * 0.42, true);
   if (st.coiffure === "couettes") for (const sx of [-1, 1]) { pen.circle(st.cheveux, sx * R * 1.15, ty - R * 0.2, R * 0.38, true); pen.circle([250, 90, 120], sx * R * 0.98, ty - R * 0.35, R * 0.13); }
   if (st.couronne) {
     const y0 = ty - R * 0.95;
@@ -644,7 +664,7 @@ const AMIS_DESSIN = {
   stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g + Math.sin(marche) * 2, 0.95 * s, undefined, t, f),
 };
 for (const k of Object.keys(STYLES)) AMIS_DESSIN[k] = (ctx, x, g, s, t, f, marche, mange, humeur) => personne(ctx, x, g, s, t, f, marche, mange, humeur, k);
-const LARGEUR_OMBRE = { dino: 0.8, stego: 0.6, papa: 0.45, maman: 0.45, papi: 0.45 };
+const LARGEUR_OMBRE = { dino: 0.8, stego: 0.6, papa: 0.45, maman: 0.45, papi: 0.45, mamie: 0.45 };
 
 function boucheAmi(kind, x, g, f = 1, s = 1) {
   if (kind === "dino") return [x + f * 112 * 0.62 * s, g - 207 * 0.62 * s];
@@ -731,6 +751,50 @@ function cailloux(ctx, x, G) {
 function ailes(ctx, x, g, t) { // petites ailes magiques pour le vol du tractopelle
   const b = Math.sin(t * 14) * 18;
   for (const s of [-1, 1]) poly(ctx, [[x - 10, g - 110], [x - 70 - 10 * s, g - 160 - b], [x - 110, g - 130 - b * 0.5], [x - 60, g - 100]], [255, 255, 255], 3, [170, 200, 240]);
+}
+// ------------------------------------------------------------ portes & fenêtres, cadeau, vélo
+const OUVERTURES = [[-62, -150, "f"], [62, -150, "f"], [-62, -70, "f"], [58, -58, "p"]]; // fenêtres puis la porte
+function fenetrePiece(ctx, x, y, type) { // centre (x, y)
+  if (type === "p") { rrect(ctx, x - 24, y - 42, 48, 84, 6, [150, 95, 60], 3); rond(ctx, x + 14, y + 4, 4, [250, 210, 80]); return; }
+  rrect(ctx, x - 30, y - 26, 60, 52, 4, [250, 250, 250], 3);
+  rrect(ctx, x - 24, y - 20, 48, 40, 2, VITRE);
+  trait(ctx, [x, y - 20], [x, y + 20], 3, [250, 250, 250]);
+  trait(ctx, [x - 24, y], [x + 24, y], 3, [250, 250, 250]);
+}
+function maisonAOuvrir(ctx, cx, G, poses, total, t) { // maison en construction : les trous se remplissent
+  rrect(ctx, cx - 120, G - 200, 240, 200, 0, [240, 215, 180], 3);
+  poly(ctx, [[cx - 140, G - 200], [cx + 140, G - 200], [cx, G - 280]], [200, 85, 70], 3);
+  const n = Math.min(total, OUVERTURES.length);
+  OUVERTURES.slice(0, n).forEach(([dx, dy, type], k) => {
+    if (k < poses) fenetrePiece(ctx, cx + dx, G + dy, type);
+    else if (type === "p") rrect(ctx, cx + dx - 24, G + dy - 42, 48, 84, 4, [70, 55, 50]);
+    else rrect(ctx, cx + dx - 30, G + dy - 26, 60, 52, 4, [70, 55, 50]);
+  });
+  if (poses >= n) etoile(ctx, cx, G - 300 + 6 * Math.sin(t * 4), 18, [255, 225, 60], t);
+}
+function cadeau(ctx, cx, G, ouvert, t) {
+  if (ouvert < 1) {
+    const sau = Math.abs(Math.sin(t * 5)) * 6 * (1 - ouvert), lev = ouvert * 120;
+    rrect(ctx, cx - 70, G - 110 - sau, 140, 110, 6, [230, 70, 90], 3);
+    rrect(ctx, cx - 12, G - 110 - sau, 24, 110, 0, [255, 220, 80]);
+    rrect(ctx, cx - 80, G - 136 - sau - lev, 160, 30, 6, [230, 70, 90], 3); // couvercle
+    rrect(ctx, cx - 12, G - 136 - sau - lev, 24, 30, 0, [255, 220, 80]);
+    for (const s of [-1, 1]) ovale(ctx, cx + s * 30 - 26, G - 160 - sau - lev, 52, 28, [255, 220, 80], 3);
+  }
+  if (ouvert > 0.3) velo(ctx, cx, G, 1, t, 0);
+}
+function velo(ctx, x, g, s, t, rot) { // le vélo jaune
+  const P = (dx, dy) => [x + dx * s, g + dy * s];
+  for (const cx of [-48, 48]) {
+    rond(ctx, ...P(cx, -30), 30 * s, null, 6 * s, [50, 50, 58]);
+    for (let k = 0; k < 3; k++) { const a = rot + (k * PI) / 3; trait(ctx, P(cx - 26 * Math.cos(a), -30 - 26 * Math.sin(a)), P(cx + 26 * Math.cos(a), -30 + 26 * Math.sin(a)), 2 * s, [180, 180, 190]); }
+  }
+  const J = [250, 200, 40];
+  for (const [a, b] of [[[-48, -30], [-5, -30]], [[-5, -30], [30, -78]], [[-20, -82], [30, -78]], [[-48, -30], [-20, -82]], [[30, -78], [48, -30]], [[-5, -30], [-20, -82]]]) trait(ctx, P(...a), P(...b), 7 * s, J, "round");
+  trait(ctx, P(30, -78), P(36, -100), 5 * s, [80, 80, 90], "round");
+  trait(ctx, P(26, -100), P(48, -102), 6 * s, [80, 80, 90], "round");
+  rrect(ctx, ...P(-36, -92), 32 * s, 10 * s, 5 * s, [60, 60, 70]);
+  rond(ctx, ...P(-5, -30), 7 * s, [90, 90, 100]);
 }
 function coeur(ctx, x, y, r, col) {
   rond(ctx, x - r * 0.5, y - r * 0.2, r * 0.55, col);

@@ -132,10 +132,10 @@ class Scene {
     if (d.decor !== m.decor) m.scroll = 0;
     m.decor = d.decor; m.nuit = this.act === "dormir";
     for (const v of [hero, ...m.copains]) v.outil = v.dx = v.dy = 0;
-    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler"].includes(this.act);
+    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo"].includes(this.act);
     this.n = aFaire ? d.clics : 0;
-    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420 }[this.act];
-    this.altitude = 0;
+    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420 }[this.act];
+    this.altitude = 0; this.ouvert = 0; this.veloX = 440; this.pedale = 0;
     this.cacheHeros = !!d.cache_heros;
     let kindActeur = d.vehicule;
     if (this.act === "feu" && hero.kind !== "pompier" && !kindActeur) kindActeur = "pompier";
@@ -146,7 +146,7 @@ class Scene {
       hero.cible = 150;
     } else hero.cible = poste;
     if (this.cacheHeros) hero.cible = -320; // la scène est pour les personnages
-    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770, piscine: 610, cueillir: 640, chateau: 680, route: 560 }[this.act] || 0;
+    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770, piscine: 610, cueillir: 640, chateau: 680, route: 560, fenetres: 760, cadeau: 640 }[this.act] || 0;
     this.niveau = 0; this.etages = 0;
     if (this.act === "cueillir") { // le camion benne vient se garer pour recevoir les mûres
       const col = hero.col === COULEURS.orange ? COULEURS.bleu : COULEURS.orange;
@@ -183,6 +183,7 @@ class Scene {
     if (!this.cacheHeros) l.push(this.m.hero);
     return l.length ? l : this.m.amis.filter((a) => a.kind !== "papi" && !a.part);
   }
+  cyclistes() { return this.m.amis.filter((a) => (a.kind === "arthur" || a.kind === "mamie") && !a.part); }
   souffleurs() {
     const dinos = this.m.amis.filter((a) => ["dino", "stego", "trex"].includes(a.kind) && !a.part);
     return dinos.length ? dinos : this.m.amis.filter((a) => !a.part);
@@ -201,6 +202,9 @@ class Scene {
     if (this.act === "chateau") return [this.cx - 100 + (200 * (Math.min(this.fait, this.n - 1) + 0.5)) / Math.max(1, this.n), G - 40];
     if (this.act === "route") return [this.cx + Math.min(this.fait, this.n - 1) * 80 + 40, G - 10];
     if (this.act === "voler") return [m.hero.x + 190, G + m.hero.dy - 50]; // à côté, pour ne pas cacher les passagers
+    if (this.act === "fenetres") { const o = OUVERTURES[Math.min(this.fait, OUVERTURES.length - 1)]; return [this.cx + o[0], G + o[1]]; }
+    if (this.act === "cadeau") return [this.cx, G - 80];
+    if (this.act === "velo") return [this.veloX + 190, G + this.altitude - 50];
     if (this.act === "manger") return this.fait < this.n ? [this.posRepas(this.fait)[0], G - 45] : [m.hero.x, G - 110];
     if (this.act === "trou") return [this.cx, G + 10];
     if (this.act === "feu") return [this.cx, G - 160];
@@ -226,7 +230,9 @@ class Scene {
     else if (this.act === "cueillir") joue("pop");
     else if (this.act === "chateau") joue("terre");
     else if (this.act === "route") joue("pop");
-    else if (this.act === "voler") { joue("fusee"); joue("magie"); }
+    else if (this.act === "voler" || this.act === "velo") { joue("fusee"); joue("magie"); }
+    else if (this.act === "cadeau") { this.dureeEtape = 1.4; joue("magie"); }
+    else if (this.act === "fenetres") joue("pop");
     else if (this.act === "spectacle") {
       const artistes = (this.cacheHeros ? [] : [m.hero]).concat(m.copains);
       this.artiste = artistes.length ? artistes[this.fait % artistes.length] : null;
@@ -320,6 +326,19 @@ class Scene {
       }
       if (p >= 0.75 && !this.evt2) { this.evt2 = true; this.etages++; m.eclat(this.cx + (this.etages - 0.5) * 80, G, 8, null, 180); }
     }
+    if (this.act === "fenetres") {
+      v.outil = Math.sin(PI * q);
+      if (p >= 0.5 && !this.evt && this.fait < OUVERTURES.length) {
+        this.evt = true;
+        const [x0, y0] = this.pointOutil(), [dx, dy, type] = OUVERTURES[this.fait];
+        this.vol = { x0, y0, x1: this.cx + dx, y1: G + dy - 19, u: 0, fenetre: type, k: this.fait, haut: 90 };
+      }
+    }
+    if (this.act === "cadeau") {
+      this.ouvert = Math.min(1, p * 1.5);
+      if (p >= 0.4 && !this.evt) { this.evt = true; joue("bravo"); m.eclat(this.cx, G - 90, 40, null, 380); }
+    }
+    if (this.act === "velo") this.boost = -70 * Math.sin(PI * q);
     if (this.act === "voler") { // un clic = un grand coup d'ailes vers le haut
       this.boost = -70 * Math.sin(PI * q);
       if (Math.random() < 0.5) m.eclat(m.hero.x - 120, G + m.hero.dy - 90, 2, [[255, 240, 150], [255, 255, 255]], 120, "etoile", 0.8, 0);
@@ -347,7 +366,7 @@ class Scene {
   termine() {
     const m = this.m;
     if (this.act === "calin") for (const a of m.amis) if (a.humeur === "peur") a.humeur = "joie"; // les câlins, ça rassure
-    if (["trou", "feu", "deblayer", "construire", "cueillir", "chateau", "route"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
+    if (["trou", "feu", "deblayer", "construire", "cueillir", "chateau", "route", "fenetres"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
     if (this.inter) { joue("bravo"); m.eclat(VW / 2, 200, 40, null, 420); this.app.voix.dire(rendu(choix(BRAVOS), this.valeurs)); }
   }
   maj(dt) {
@@ -359,6 +378,13 @@ class Scene {
     for (const c of m.copains) avance(c, dt, 300);
     const defile = this.act === "rouler" && Math.abs(m.hero.x - m.hero.cible) < 6;
     if (defile) { m.scroll += 150 * dt; for (const v of [m.hero, ...m.copains]) v.rot += (150 * dt) / 30; }
+    if (this.act === "velo") { // Arthur et Mamie s'envolent sur le vélo jaune
+      this.altitude += (-180 - this.altitude) * Math.min(1, dt * 1.2);
+      if (this.p === null) this.boost = 0;
+      this.pedale += dt * 8;
+      m.scroll += 240 * dt * Math.min(1, -this.altitude / 150);
+      if (Math.random() < dt * 12) m.eclat(this.veloX - 90, G + this.altitude - 40, 1, [[255, 240, 150], [255, 255, 255]], 60, "etoile", 0.9, 0);
+    }
     if (this.act === "voler") { // tout le monde est monté sur le véhicule, qui s'envole
       this.altitude += (-190 - this.altitude) * Math.min(1, dt * 1.2);
       if (this.p === null) this.boost = 0;
@@ -377,6 +403,7 @@ class Scene {
     m.amis = m.amis.filter((a) => !(a.part && Math.abs(a.cible - a.x) < 5));
     if (this.act === "piscine") for (const a of m.amis) if (Math.abs(a.cible - a.x) <= 4) a.f = a.x < this.cx ? 1 : -1; // tout le monde regarde la piscine
     if (this.act === "voler") m.amis.forEach((a) => { a.x = a.cible = m.hero.x; a.f = 1; }); // passagers
+    if (this.act === "velo") for (const a of this.cyclistes()) { a.x = a.cible = this.veloX; a.f = 1; }
     if (this.act === "bulles" && Math.random() < dt * 3) { const s = this.souffleurs(); if (s.length) this.souffle(choix(s), 1, 0.6); }
 
     if (this.p !== null) {
@@ -408,7 +435,7 @@ class Scene {
     const m = this.m, fete = this.act === "fete";
     dessineDecor(ctx, VW, VH, m.decor, m.scroll, m.t, m.nuit, G);
     for (const [x, y] of this.etoiles) etoile(ctx, x, y, 16 + 3 * Math.sin(m.t * 4 + x), [255, 240, 150], m.t * 0.5);
-    m.copains.forEach((c, i) => {
+    if (this.act !== "velo") m.copains.forEach((c, i) => {
       const dy = fete ? -Math.abs(Math.sin(m.t * 5 + i)) * 14 : 0;
       dessineVehicule(ctx, c.kind, c.col, c.x, G - 32 + dy + c.dy, m.t + i, c.outil, c.rot, 0.72, c.f, m.nuit);
     });
@@ -419,6 +446,8 @@ class Scene {
     else if (this.act === "piscine") piscineFond(ctx, this.cx, G, m.t);
     else if (this.act === "chateau") bacASable(ctx, this.cx, G, this.etages, this.n, m.t);
     else if (this.act === "route") { cailloux(ctx, 250, G); routePavee(ctx, this.cx, G, this.etages); }
+    else if (this.act === "fenetres") maisonAOuvrir(ctx, this.cx, G, this.etages, this.n, m.t);
+    else if (this.act === "cadeau") cadeau(ctx, this.cx, G, this.ouvert, m.t);
     else if (this.act === "cueillir") {
       buisson(ctx, this.cx, G, 1 - this.niveau);
       dessineVehicule(ctx, "benne", this.benne.col, this.benne.x, G, m.t + 2, 0, this.benne.rot, 1, -1);
@@ -426,6 +455,7 @@ class Scene {
     }
     for (const a of m.amis) {
       if (this.act === "voler") break; // ils sont sur le véhicule (dessinés plus bas)
+      if (this.act === "velo" && this.cyclistes().includes(a)) continue; // sur le vélo (dessinés plus bas)
       const dansLEau = this.act === "piscine" && a.kind === "papi" ? 44 : 0; // Papi est dans la piscine
       dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, 1, a.humeur);
     }
@@ -440,9 +470,18 @@ class Scene {
         m.amis.forEach((a, i) => dessineAmi(ctx, a.kind, v.x + 2 + i * 32, G + dy - 108, m.t, 1, 0, 0, 0.62, "joie"));
     }
     if (this.act === "piscine") piscineDevant(ctx, this.cx, G, m.t);
+    if (this.act === "velo") { // le vélo jaune qui vole, avec Arthur devant et Mamie derrière
+      const g = G + this.altitude + 8 * Math.sin(m.t * 2) + (this.boost || 0), x = this.veloX;
+      ailes(ctx, x + 40, g + 30, m.t);
+      const cyc = this.cyclistes(), mamie = cyc.find((a) => a.kind === "mamie"), arthur = cyc.find((a) => a.kind === "arthur");
+      if (mamie) dessineAmi(ctx, "mamie", x - 34, g - 44, m.t, 1, 0, 0, 0.62, "joie");
+      if (arthur) dessineAmi(ctx, "arthur", x + 14, g - 44, m.t, 1, 0, 0, 0.85, "joie");
+      velo(ctx, x, g, 1, m.t, this.pedale);
+    }
     if (this.vol) {
-      const u = this.vol.u;
-      piece(ctx, lerp(this.vol.x0, this.vol.x1, u), lerp(this.vol.y0, this.vol.y1, u) - this.vol.haut * Math.sin(PI * u), this.vol.toit, this.vol.k);
+      const u = this.vol.u, x = lerp(this.vol.x0, this.vol.x1, u), y = lerp(this.vol.y0, this.vol.y1, u) - this.vol.haut * Math.sin(PI * u);
+      if (this.vol.fenetre) fenetrePiece(ctx, x, y + 19, this.vol.fenetre);
+      else piece(ctx, x, y, this.vol.toit, this.vol.k);
     }
     m.dessineParticules(ctx);
     if (fete && this.t > 0.5) ecrit(ctx, rendu("Bravo {prenom} !", this.valeurs), 64, [255, 230, 80], [VW / 2, 70 + 6 * Math.sin(m.t * 3)], [200, 60, 80]);
