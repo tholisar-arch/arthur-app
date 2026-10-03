@@ -1,0 +1,27 @@
+{
+  "titre": "La piscine de Papi",
+  "heros": "tractopelle",
+  "couleur": "jaune",
+  "decor": "campagne",
+  "scenes": [
+    {"texte": "Aujourd'hui, {prenom} part à la maison de vacances avec Papi et {nom}, {heros}. En route !",
+     "action": "rouler", "decor": "campagne", "amis": ["arthur", "papi"],
+     "positions": {"arthur": 620, "papi": 760}},
+    {"texte": "À la maison de vacances, il y a une grande piscine ! Papi est dans l'eau. Une fois c'est le tour de {prenom}, une fois c'est le tour de {nom} : ils sautent, et Papi les attrape !",
+     "action": "piscine", "decor": "vacances", "interactif": true, "clics": 4, "amis": [],
+     "consigne": "Clique pour sauter dans la piscine !",
+     "humeur": {"arthur": "joie", "papi": "joie"}, "positions": {"arthur": 380, "papi": 690}},
+    {"texte": "Plouf ! Splash ! Quelles grosses éclaboussures ! Ils s'amusent tellement, tout le monde est heureux.",
+     "action": "piscine", "clics": 2, "amis": [],
+     "humeur": {"arthur": "joie", "papi": "joie"}, "positions": {"arthur": 380, "papi": 690}},
+    {"texte": "Ensuite, ils sortent de la piscine et font des bulles tous ensemble. C'est génial !",
+     "action": "bulles", "interactif": true, "clics": 4, "amis": [],
+     "humeur": {"arthur": "joie"}, "positions": {"arthur": 230, "papi": 760}},
+    {"texte": "Puis Papi les emmène ramasser des mûres. {nom} appelle son ami le camion benne, et tous ensemble, ils remplissent la benne de mûres !",
+     "action": "cueillir", "decor": "campagne", "interactif": true, "clics": 5, "amis": [],
+     "humeur": {"arthur": "joie"}, "positions": {"papi": 120, "arthur": 250}},
+    {"texte": "Miam, que de mûres ! Merci Papi, quelle journée géniale !",
+     "action": "fete", "interactif": true, "clics": 3, "amis": [],
+     "positions": {"papi": 120, "arthur": 250}}
+  ]
+}

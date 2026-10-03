@@ -35,7 +35,7 @@ Toujours mettre `decor` sur la 1re scène si le texte cite un autre lieu.
 ```
 - `heros` : tractopelle | benne | toupie | pompier | bulldozer | grue (l'enfant peut changer avant de lancer)
 - `couleur` : jaune | orange | rouge | bleu | vert | violet | rose
-- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole
+- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison de vacances)
 
 Champs d'une scène : `texte` (lu à voix haute), `action`, `decor`, `interactif`,
 `clics` (1–10), `consigne`, `copains` (engins qui arrivent), `vehicule` (un autre
@@ -47,6 +47,7 @@ des personnages soient ajoutés par mots-clés (papa, maman, chat…).
 
 Personnages (`amis`) : `trex` (Rexou), `chat` (Moustache), `dino` (long cou), `stego`,
 `arthur` (blond foncé, yeux verts, tee-shirt tractopelle), `papa`, `maman` (couronne),
+`papi` (cheveux blancs, lunettes, moustache),
 `enfant1` / `enfant2` / `enfant3` (copains de classe).
 
 | action | ce qu'on voit | un clic = |
@@ -62,6 +63,8 @@ Personnages (`amis`) : `trex` (Rexou), `chat` (Moustache), `dino` (long cou), `s
 | `spectacle` | les engins font un show (avec `"copains": ["benne"]`) | un engin saute |
 | `bulles` | les dinos soufflent des bulles | une volée de bulles |
 | `calin` | cœurs entre les personnages (la peur devient joie) | des cœurs |
+| `piscine` | piscine ; Papi (s'il est là) est dans l'eau, Arthur et le véhicule sautent à tour de rôle | un plouf |
+| `cueillir` | buisson de mûres + camion benne qui se garde à droite | des mûres vont dans la benne |
 | `fete` | confettis, « Bravo Arthur ! » | un feu d'artifice |
 | `dormir` | la nuit, le héros dort | une étoile |
 

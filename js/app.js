@@ -132,9 +132,9 @@ class Scene {
     if (d.decor !== m.decor) m.scroll = 0;
     m.decor = d.decor; m.nuit = this.act === "dormir";
     for (const v of [hero, ...m.copains]) v.outil = v.dx = v.dy = 0;
-    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin"].includes(this.act);
+    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir"].includes(this.act);
     this.n = aFaire ? d.clics : 0;
-    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480 }[this.act];
+    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430 }[this.act];
     this.cacheHeros = !!d.cache_heros;
     let kindActeur = d.vehicule;
     if (this.act === "feu" && hero.kind !== "pompier" && !kindActeur) kindActeur = "pompier";
@@ -145,8 +145,12 @@ class Scene {
       hero.cible = 150;
     } else hero.cible = poste;
     if (this.cacheHeros) hero.cible = -320; // la scène est pour les personnages
-    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770 }[this.act] || 0;
+    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770, piscine: 610, cueillir: 640 }[this.act] || 0;
     this.niveau = 0; this.etages = 0;
+    if (this.act === "cueillir") { // le camion benne vient se garer pour recevoir les mûres
+      const col = hero.col === COULEURS.orange ? COULEURS.bleu : COULEURS.orange;
+      this.benne = nouveauVehicule("benne", col, VW + 260, 850, -1);
+    }
     if (this.act === "copains") {
       const presents = new Set(m.copains.map((c) => c.kind));
       this.aVenir = d.copains.filter((k) => !presents.has(k));
@@ -173,6 +177,11 @@ class Scene {
     if (v === this.m.hero) return [v.x + 150, "engin"];
     return [v.x + (v.kind === "trex" ? 105 : 75) * v.f, v.kind];
   }
+  sauteurs() { // à la piscine : une fois Arthur, une fois le véhicule
+    const l = this.m.amis.filter((a) => a.kind === "arthur" && !a.part);
+    if (!this.cacheHeros) l.push(this.m.hero);
+    return l.length ? l : this.m.amis.filter((a) => a.kind !== "papi" && !a.part);
+  }
   souffleurs() {
     const dinos = this.m.amis.filter((a) => ["dino", "stego", "trex"].includes(a.kind) && !a.part);
     return dinos.length ? dinos : this.m.amis.filter((a) => !a.part);
@@ -186,6 +195,8 @@ class Scene {
       return [VW / 2, G - 150];
     }
     if (this.act === "spectacle") return this.cacheHeros ? [VW / 2, G - 150] : [m.hero.x, G - 120];
+    if (this.act === "piscine") { const s = this.sauteurs(); return s.length ? [s[this.fait % s.length].x, G - 150] : [this.cx, G - 40]; }
+    if (this.act === "cueillir") return [this.cx, G - 70];
     if (this.act === "manger") return this.fait < this.n ? [this.posRepas(this.fait)[0], G - 45] : [m.hero.x, G - 110];
     if (this.act === "trou") return [this.cx, G + 10];
     if (this.act === "feu") return [this.cx, G - 160];
@@ -207,6 +218,8 @@ class Scene {
     this.dureeEtape = { feu: 1.3, copains: 0.9, fete: 0.6, dormir: 0.6, rouler: 0.7, parler: 0.7 }[this.act] || 1.1;
     const m = this.m;
     if (this.act === "feu") joue("splash");
+    else if (this.act === "piscine") { const s = this.sauteurs(); this.sauteur = s.length ? s[this.fait % s.length] : null; this.dureeEtape = 1.7; this.evt2 = false; joue("pop"); }
+    else if (this.act === "cueillir") joue("pop");
     else if (this.act === "spectacle") {
       const artistes = (this.cacheHeros ? [] : [m.hero]).concat(m.copains);
       this.artiste = artistes.length ? artistes[this.fait % artistes.length] : null;
@@ -256,7 +269,33 @@ class Scene {
       if (qui === m.hero) qui.outil = Math.abs(Math.sin(PI * p * 2)) * 0.45; else qui.mange = Math.abs(Math.sin(PI * p * 3));
       if (Math.random() < dt * 25) { const [x, k] = this.posRepas(i); m.jet(x, G - 20, x + rnd(-40, 40), G - 30, { chat: [150, 90, 50], trex: [80, 190, 80] }[k] || [150, 150, 160], 2, [3, 6], [0.4, 0.6], 20); }
     }
-    if (["trou", "feu", "deblayer"].includes(this.act)) this.niveauCible = (this.fait + (p >= 0.5 ? 1 : 0)) / n;
+    if (this.act === "piscine" && this.sauteur) {
+      const s = this.sauteur, cible = this.cx - 40 - s.x;
+      let dx, dy;
+      if (p < 0.45) { const k = p / 0.45; dx = cible * k; dy = -150 * Math.sin(PI * k); }
+      else if (p < 0.8) { dx = cible; dy = 40; }
+      else { const k = (p - 0.8) / 0.2; dx = cible * (1 - k); dy = 40 * (1 - k) - 70 * Math.sin(PI * k); }
+      s.dx = dx; s.dy = dy;
+      if (p >= 0.45 && !this.evt) { // plouf !
+        this.evt = true; joue("splash"); joue("boum");
+        m.eclat(this.cx - 40, G + 5, 40, [[120, 200, 250], [200, 235, 255], [80, 170, 240]], 420, "rond", 0.9, 900);
+      }
+      if (p >= 0.6 && !this.evt2) { // Papi l'attrape
+        this.evt2 = true;
+        const papi = m.amis.find((a) => a.kind === "papi");
+        m.eclat(papi ? papi.x : this.cx, G - 120, 8, [[255, 100, 140], [255, 150, 180]], 160, "coeur", 1.2, -50);
+      }
+    }
+    if (this.act === "cueillir") {
+      v.outil = Math.sin(PI * q);
+      m.amis.forEach((a, i) => { a.dy = -Math.abs(Math.sin(PI * q * 2 + i)) * 14; });
+      if (p >= 0.5 && !this.evt) {
+        this.evt = true;
+        m.jet(this.cx, G - 70, this.benne.x + 32, G - 135, [80, 30, 90], 16, [5, 8], [0.6, 0.8], 30);
+        joue("croque");
+      }
+    }
+    if (["trou", "feu", "deblayer", "cueillir"].includes(this.act)) this.niveauCible = (this.fait + (p >= 0.5 ? 1 : 0)) / n;
   }
   finEtape() {
     if (this.act === "manger" && this.fait < this.n) {
@@ -268,6 +307,8 @@ class Scene {
     this.fait++;
     const v = this.faiseur(); v.outil = v.dx = v.dy = 0;
     for (const c of this.m.copains) c.dy = c.outil = 0;
+    for (const a of this.m.amis) a.dx = 0;
+    if (this.sauteur) { this.sauteur.dx = this.sauteur.dy = 0; }
     if (this.fait >= this.n) this.termine(); else if (this.attente) this.debutEtape();
   }
   souffle(a, n, force) {
@@ -277,7 +318,7 @@ class Scene {
   termine() {
     const m = this.m;
     if (this.act === "calin") for (const a of m.amis) if (a.humeur === "peur") a.humeur = "joie"; // les câlins, ça rassure
-    if (["trou", "feu", "deblayer", "construire"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
+    if (["trou", "feu", "deblayer", "construire", "cueillir"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
     if (this.inter) { joue("bravo"); m.eclat(VW / 2, 200, 40, null, 420); this.app.voix.dire(rendu(choix(BRAVOS), this.valeurs)); }
   }
   maj(dt) {
@@ -285,6 +326,7 @@ class Scene {
     this.t += dt; m.t += dt;
     avance(m.hero, dt);
     if (this.acteur) avance(this.acteur, dt);
+    if (this.benne) avance(this.benne, dt, 300);
     for (const c of m.copains) avance(c, dt, 300);
     const defile = this.act === "rouler" && Math.abs(m.hero.x - m.hero.cible) < 6;
     if (defile) { m.scroll += 150 * dt; for (const v of [m.hero, ...m.copains]) v.rot += (150 * dt) / 30; }
@@ -297,6 +339,7 @@ class Scene {
       a.dy = this.act === "fete" ? -Math.abs(Math.sin(m.t * 5 + i + 2)) * 16 : 0;
     });
     m.amis = m.amis.filter((a) => !(a.part && Math.abs(a.cible - a.x) < 5));
+    if (this.act === "piscine") for (const a of m.amis) if (Math.abs(a.cible - a.x) <= 4) a.f = a.x < this.cx ? 1 : -1; // tout le monde regarde la piscine
     if (this.act === "bulles" && Math.random() < dt * 3) { const s = this.souffleurs(); if (s.length) this.souffle(choix(s), 1, 0.6); }
 
     if (this.p !== null) {
@@ -336,7 +379,16 @@ class Scene {
     else if (this.act === "feu") maisonFeu(ctx, this.cx, G, 1 - this.niveau, m.t, this.fait >= this.n);
     else if (this.act === "deblayer") tas(ctx, this.cx, G, 1 - this.niveau);
     else if (this.act === "construire") construction(ctx, this.cx, G, this.etages, Math.max(2, this.n), m.t);
-    for (const a of m.amis) dessineAmi(ctx, a.kind, a.x, G + a.dy, m.t, a.f, a.marche, a.mange, 1, a.humeur);
+    else if (this.act === "piscine") piscineFond(ctx, this.cx, G, m.t);
+    else if (this.act === "cueillir") {
+      buisson(ctx, this.cx, G, 1 - this.niveau);
+      dessineVehicule(ctx, "benne", this.benne.col, this.benne.x, G, m.t + 2, 0, this.benne.rot, 1, -1);
+      muresDansBenne(ctx, this.benne.x, G, -1, this.niveau);
+    }
+    for (const a of m.amis) {
+      const dansLEau = this.act === "piscine" && a.kind === "papi" ? 44 : 0; // Papi est dans la piscine
+      dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, 1, a.humeur);
+    }
     if (this.act === "manger") for (let i = 0; i < this.n; i++) { const [x, k] = this.posRepas(i); nourriture(ctx, k, x, G, this.qte[i]); }
     for (const v of [m.hero].concat(this.acteur ? [this.acteur] : [])) {
       const roule = Math.abs(v.x - v.cible) > 6 || this.act === "rouler";
@@ -344,6 +396,7 @@ class Scene {
       if (fete) dy -= Math.abs(Math.sin(m.t * 5)) * 18;
       dessineVehicule(ctx, v.kind, v.col, v.x + v.dx, G + dy, m.t, v.outil, v.rot, 1, 1, this.act === "dormir");
     }
+    if (this.act === "piscine") piscineDevant(ctx, this.cx, G, m.t);
     if (this.vol) {
       const u = this.vol.u;
       piece(ctx, lerp(this.vol.x0, this.vol.x1, u), lerp(this.vol.y0, this.vol.y1, u) - this.vol.haut * Math.sin(PI * u), this.vol.toit, this.vol.k);

@@ -16,8 +16,8 @@ INDEX = os.path.join(DOSSIER, "index.json")
 
 
 def empreinte(chemin):
-    with open(chemin, "rb") as f:
-        return hashlib.sha1(f.read()).hexdigest()[:12]
+    with open(chemin, "rb") as f:  # fins de ligne ignorées (Windows / iPad)
+        return hashlib.sha1(f.read().replace(b"\r\n", b"\n")).hexdigest()[:12]
 
 
 def main():
