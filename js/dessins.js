@@ -261,7 +261,7 @@ const CIELS = {
   chantier: [[120, 190, 245], [215, 238, 255]], ville: [[110, 175, 240], [205, 232, 255]],
   campagne: [[100, 185, 250], [220, 245, 255]], dinosaures: [[250, 170, 120], [255, 230, 170]],
   plage: [[80, 190, 245], [210, 245, 255]], neige: [[160, 190, 225], [235, 242, 252]],
-  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
+  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
 };
 const SOLS = {
   chantier: [[185, 140, 90], [160, 115, 70]], ville: [[110, 110, 120], [90, 90, 100]],
@@ -269,6 +269,7 @@ const SOLS = {
   plage: [[240, 215, 150], [225, 195, 130]], neige: [[245, 248, 255], [215, 225, 240]],
   ecole: [[130, 200, 100], [190, 195, 210]],
   vacances: [[135, 200, 100], [230, 215, 185]],
+  jardin: [[120, 195, 90], [145, 210, 105]],
 };
 
 function soleil(ctx, x, y, t) {
@@ -417,6 +418,20 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     rrect(ctx, x - 200, horizon - 12, 400, 12, 0, [200, 120, 90]); // bacs de fleurs
     for (let k = 0; k < 9; k++) rond(ctx, x - 185 + k * 46, horizon - 14, 8, [[255, 90, 140], [255, 210, 60], [190, 120, 240]][k % 3]);
   }
+  else if (nom === "jardin") {
+    const x = boucle(470, scroll, 0.3, W, 300); // la maison de la famille
+    rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [250, 225, 190], 3);
+    poly(ctx, [[x - 175, horizon - 190], [x + 175, horizon - 190], [x, horizon - 280]], [180, 80, 70], 3);
+    for (const wx of [-110, 55]) rrect(ctx, x + wx, horizon - 160, 55, 50, 4, VITRE, 3);
+    rrect(ctx, x - 30, horizon - 90, 60, 90, 8, [130, 80, 55], 3);
+    rond(ctx, x + 18, horizon - 45, 4, [250, 210, 80]);
+    for (let k = 0; k < 3; k++) arbre(ctx, boucle(k * 420 + 120, scroll, 0.4, W), horizon + 5, 1, [80, 170, 80]);
+    for (let k = 0; k < 40; k++) { // la palissade du jardin
+      const px = boucle(k * 26, scroll, 0.5, W, 30);
+      poly(ctx, [[px, horizon], [px, horizon - 50], [px + 9, horizon - 60], [px + 18, horizon - 50], [px + 18, horizon]], [235, 205, 160], 2, [170, 130, 90]);
+    }
+    trait(ctx, [0, horizon - 38], [W, horizon - 38], 4, [190, 150, 105]);
+  }
   const [herbe, route] = SOLS[nom];
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
@@ -436,7 +451,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     const x = boucle(k * 230 + 60, scroll, 1.25, W, 120), y = H - 8;
     if (nom === "chantier") { poly(ctx, [[x - 16, y], [x + 16, y], [x, y - 44]], [255, 130, 30]); rrect(ctx, x - 8, y - 26, 16, 7, 0, [255, 255, 255]); }
     else if (nom === "ecole") { trait(ctx, [x, y], [x, y - 40], 2, [90, 90, 100]); ovale(ctx, x - 14, y - 72, 28, 34, [[255, 90, 120], [90, 170, 250], [255, 210, 60]][k % 3]); }
-    else if (nom === "campagne") {
+    else if (nom === "campagne" || nom === "jardin") {
       for (const dx of [-12, 0, 12]) { trait(ctx, [x + dx, y], [x + dx, y - 22], 3, [60, 140, 60]); rond(ctx, x + dx, y - 24, 7, [[255, 90, 120], [255, 220, 60], [180, 120, 255]][mod(k + dx, 3)]); }
     } else if (nom === "ville") { rrect(ctx, x - 3, y - 70, 6, 70, 0, [80, 80, 90]); rond(ctx, x, y - 74, 10, [255, 240, 150]); }
     else if (nom === "dinosaures") { ovale(ctx, x - 13, y - 34, 26, 34, [250, 245, 230]); rond(ctx, x - 4, y - 20, 4, [150, 210, 150]); }
@@ -683,6 +698,39 @@ function muresDansBenne(ctx, x, G, f, rempli) { // mûres sur la benne d'un cami
   if (rempli <= 0.02) return;
   const bx = x - f * 32, by = G - 128, r = hasard(33), n = Math.round(30 * rempli);
   for (let k = 0; k < n; k++) rond(ctx, bx + r.uniform(-55, 55), by - r.uniform(0, 24 * rempli), 7, [80, 30, 90], 1, [50, 15, 60]);
+}
+// ------------------------------------------------------------ jardin : bac à sable, route, vol
+function bacASable(ctx, cx, G, chateaux, total, t) {
+  rrect(ctx, cx - 165, G - 18, 330, 62, 10, [180, 120, 70], 3);
+  rrect(ctx, cx - 150, G - 10, 300, 46, 8, [245, 215, 140]);
+  const n = Math.max(1, total);
+  for (let k = 0; k < Math.min(chateaux, n); k++) { // un château par clic
+    const x = cx - 100 + (200 * (k + 0.5)) / n, y = G + 8;
+    const h = 46 + (k % 2) * 14;
+    rrect(ctx, x - 26, y - h, 52, h, 3, [235, 195, 120], 2, [190, 145, 80]);
+    for (const dx of [-26, -9, 8]) rrect(ctx, x + dx, y - h - 10, 14, 12, 2, [235, 195, 120], 2, [190, 145, 80]);
+    rrect(ctx, x - 8, y - 22, 16, 22, 8, [200, 155, 90]);
+    trait(ctx, [x, y - h - 10], [x, y - h - 36], 2, [120, 90, 60]);
+    poly(ctx, [[x, y - h - 36], [x + 18, y - h - 30 + 3 * Math.sin(t * 4 + k)], [x, y - h - 24]], [[230, 70, 80], [70, 140, 230], [250, 200, 50]][k % 3]);
+  }
+  trait(ctx, [cx + 120, G + 12], [cx + 150, G - 35], 4, [230, 80, 80]); // la pelle
+  ovale(ctx, cx + 140, G - 50, 22, 18, [230, 80, 80], 2);
+}
+function routePavee(ctx, x0, G, morceaux) { // route construite pierre après pierre
+  for (let k = 0; k < morceaux; k++) {
+    const x = x0 + k * 80;
+    rrect(ctx, x, G - 6, 78, 34, 4, [150, 150, 158], 2, [100, 100, 110]);
+    for (const [dx, dy] of [[12, 4], [40, 10], [62, 3], [25, 20], [55, 22]]) rond(ctx, x + dx, G - 6 + dy, 5, [175, 175, 182]);
+    rrect(ctx, x + 22, G + 8, 34, 5, 0, [250, 250, 250]);
+  }
+}
+function cailloux(ctx, x, G) {
+  const r = hasard(41);
+  for (let k = 0; k < 9; k++) rond(ctx, x + r.uniform(-60, 60), G + 10 - r.uniform(0, 25), r.int(8, 15), [140, 140, 150], 2);
+}
+function ailes(ctx, x, g, t) { // petites ailes magiques pour le vol du tractopelle
+  const b = Math.sin(t * 14) * 18;
+  for (const s of [-1, 1]) poly(ctx, [[x - 10, g - 110], [x - 70 - 10 * s, g - 160 - b], [x - 110, g - 130 - b * 0.5], [x - 60, g - 100]], [255, 255, 255], 3, [170, 200, 240]);
 }
 function coeur(ctx, x, y, r, col) {
   rond(ctx, x - r * 0.5, y - r * 0.2, r * 0.55, col);

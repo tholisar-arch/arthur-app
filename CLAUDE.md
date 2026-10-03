@@ -35,7 +35,7 @@ Toujours mettre `decor` sur la 1re scène si le texte cite un autre lieu.
 ```
 - `heros` : tractopelle | benne | toupie | pompier | bulldozer | grue (l'enfant peut changer avant de lancer)
 - `couleur` : jaune | orange | rouge | bleu | vert | violet | rose
-- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison de vacances)
+- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison de vacances) | jardin (maison de la famille)
 
 Champs d'une scène : `texte` (lu à voix haute), `action`, `decor`, `interactif`,
 `clics` (1–10), `consigne`, `copains` (engins qui arrivent), `vehicule` (un autre
@@ -64,7 +64,10 @@ Personnages (`amis`) : `trex` (Rexou), `chat` (Moustache), `dino` (long cou), `s
 | `bulles` | les dinos soufflent des bulles | une volée de bulles |
 | `calin` | cœurs entre les personnages (la peur devient joie) | des cœurs |
 | `piscine` | piscine ; Papi (s'il est là) est dans l'eau, Arthur et le véhicule sautent à tour de rôle | un plouf |
-| `cueillir` | buisson de mûres + camion benne qui se garde à droite | des mûres vont dans la benne |
+| `cueillir` | buisson de mûres + camion benne qui se gare à droite | des mûres vont dans la benne |
+| `chateau` | bac à sable dans le jardin | un château de sable |
+| `route` | route pavée posée pierre par pierre | une pierre |
+| `voler` | le véhicule s'envole avec des ailes, les personnages debout dessus | un coup d'ailes |
 | `fete` | confettis, « Bravo Arthur ! » | un feu d'artifice |
 | `dormir` | la nuit, le héros dort | une étoile |
 

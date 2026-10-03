@@ -2,7 +2,7 @@
 "use strict";
 
 const VEHICULES = ["tractopelle", "benne", "toupie", "pompier", "bulldozer", "grue"];
-const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "fete", "dormir"];
+const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fete", "dormir"];
 const AMIS = ["trex", "chat", "dino", "stego", "arthur", "papa", "maman", "papi", "enfant1", "enfant2", "enfant3"];
 const INFOS_VEHICULE = {
   tractopelle: ["le tractopelle", "Tracto", "m"], benne: ["le camion benne", "Benny", "m"],
@@ -10,7 +10,7 @@ const INFOS_VEHICULE = {
   bulldozer: ["le bulldozer", "Bouldo", "m"], grue: ["la grue", "Grutty", "f"],
 };
 const COULEUR_FEMININ = { bleu: "bleue", vert: "verte", violet: "violette" };
-const CLICS_DEFAUT = { piscine: 4, cueillir: 5,manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3 };
+const CLICS_DEFAUT = { piscine: 4, cueillir: 5, chateau: 3, route: 5, voler: 3, manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3 };
 const CONSIGNES = {
   trou: "Clique pour remplir le trou !", feu: "Clique pour arroser le feu !", deblayer: "Clique pour pousser le sable !",
   construire: "Clique pour construire la maison !", copains: "Clique pour appeler les copains !",
@@ -18,6 +18,8 @@ const CONSIGNES = {
   bulles: "Clique pour souffler des bulles !", calin: "Clique pour faire un gros câlin !",
   fete: "Clique pour lancer les feux d'artifice !", dormir: "Clique pour allumer les étoiles !",
   piscine: "Clique pour sauter dans la piscine !", cueillir: "Clique pour ramasser les mûres !",
+  chateau: "Clique pour faire un château de sable !", route: "Clique pour poser les pierres !",
+  voler: "Clique pour voler plus haut !",
   rouler: "Clique pour klaxonner !", parler: "Clique pour klaxonner !",
 };
 const ALIAS_VEHICULE = [
@@ -29,13 +31,13 @@ const ALIAS_ACTION = {
   deblayer: "deblayer", pousser: "deblayer", sable: "deblayer", remplir: "trou", trou: "trou", feu: "feu",
   incendie: "feu", arroser: "feu", construire: "construire", batir: "construire", copains: "copains", amis: "copains",
   manger: "manger", miam: "manger", repas: "manger", spectacle: "spectacle", show: "spectacle", bulles: "bulles",
-  calin: "calin", bisous: "calin", piscine: "piscine", plouf: "piscine", cueillir: "cueillir", ramasser: "cueillir", fete: "fete", fin: "fete", dormir: "dormir", nuit: "dormir",
-  rouler: "rouler", route: "rouler", parler: "parler", attendre: "parler",
+  calin: "calin", bisous: "calin", piscine: "piscine", plouf: "piscine", cueillir: "cueillir", ramasser: "cueillir", chateau: "chateau", "bac a sable": "chateau", voler: "voler", envol: "voler", fete: "fete", fin: "fete", dormir: "dormir", nuit: "dormir",
+  rouler: "rouler", route: "route", paver: "route", parler: "parler", attendre: "parler",
 };
 const ALIAS_DECOR = {
   chantier: "chantier", ville: "ville", campagne: "campagne", foret: "campagne", ferme: "campagne",
   dinosaures: "dinosaures", dinosaure: "dinosaures", dinos: "dinosaures", plage: "plage", mer: "plage",
-  neige: "neige", montagne: "neige", ecole: "ecole", cour: "ecole", recre: "ecole", vacances: "vacances", piscine: "vacances",
+  neige: "neige", montagne: "neige", ecole: "ecole", cour: "ecole", recre: "ecole", vacances: "vacances", piscine: "vacances", jardin: "jardin",
 };
 
 const sansAccent = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -68,6 +70,9 @@ function devineAction(texte, premiere, derniere) {
   if (a("artifice|\\bfete\\b|hourra|bravo|\\bgagne", n)) return "fete";
   if (a("\\bfeu\\b|flamme|incendie|brul", n)) return "feu";
   if (a("\\btrous?\\b", n)) return "trou";
+  if (a("chateaux? de sable|bac a sable", n)) return "chateau";
+  if (a("s.envol|\\bvol(e|er|ent)\\b", n)) return "voler";
+  if (a("\\broute\\b", n) && a("constru|pierre|pave", n)) return "route";
   if (a("deblay|\\bsable\\b|montagne|rocher|caillou|pierre|bloque|pousse|eboulement", n)) return "deblayer";
   if (a("constru|\\bbati|\\bpont\\b|brique|\\btour\\b", n)) return "construire";
   if (a("\\b(mange|mangent|manger|miam|repas|croque)", n)) return "manger";
@@ -84,7 +89,7 @@ function devineAction(texte, premiere, derniere) {
 }
 function devineDecor(texte) {
   const n = sansAccent(texte);
-  for (const [motif, d] of [["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["dinosaure|dino\\b|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
+  for (const [motif, d] of [["\\bjardin", "jardin"], ["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["dinosaure|dino\\b|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
     ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["foret|campagne|ferme|champ|prairie", "campagne"], ["chantier", "chantier"]])
     if (a(motif, n)) return d;
   return null;
