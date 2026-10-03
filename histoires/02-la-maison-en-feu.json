@@ -1,0 +1,12 @@
+{
+  "titre": "Pimpon et la maison qui fume",
+  "heros": "pompier",
+  "couleur": "rouge",
+  "decor": "ville",
+  "scenes": [
+    {"texte": "{nom}, {heros}, se balade dans la ville. Pin-pon, pin-pon !", "action": "rouler"},
+    {"texte": "Oh ! Il y a du feu sur la maison de madame Lapin. Personne n'est blessé, mais il faut vite arroser !", "action": "feu", "interactif": true, "clics": 4, "consigne": "Clique pour envoyer de l'eau !"},
+    {"texte": "Le feu est éteint ! Madame Lapin dit : merci {nom} !", "action": "parler"},
+    {"texte": "Tout le monde est content. Bravo !", "action": "fete"}
+  ]
+}

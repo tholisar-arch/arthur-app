@@ -1,0 +1,12 @@
+{
+  "titre": "La maison des bébés dinosaures",
+  "heros": "grue",
+  "couleur": "violet",
+  "decor": "dinosaures",
+  "scenes": [
+    {"texte": "{nom}, {heros}, arrive au pays des dinosaures. Bonjour les dinos !", "action": "rouler"},
+    {"texte": "Les bébés dinosaures n'ont pas de maison. {nom} appelle les copains du chantier.", "action": "copains", "copains": ["bulldozer", "benne"]},
+    {"texte": "On construit une jolie maison, brique par brique.", "action": "construire", "interactif": true, "clics": 5},
+    {"texte": "La maison est finie ! Les bébés dinosaures sont tout contents. On fait la fête !", "action": "fete", "interactif": true, "clics": 5}
+  ]
+}

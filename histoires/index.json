@@ -1,0 +1,39 @@
+{
+ "histoires": [
+  {
+   "fichier": "01-le-grand-trou.json",
+   "date": "2026-10-02T15:49:34+00:00",
+   "empreinte": "8cef65808757"
+  },
+  {
+   "fichier": "02-la-maison-en-feu.json",
+   "date": "2026-10-02T15:49:34+00:00",
+   "empreinte": "091b5eaad32b"
+  },
+  {
+   "fichier": "03-la-montagne-de-sable.json",
+   "date": "2026-10-02T15:49:34+00:00",
+   "empreinte": "da117ecb2cdf"
+  },
+  {
+   "fichier": "04-le-chantier-des-dinosaures.json",
+   "date": "2026-10-02T15:49:34+00:00",
+   "empreinte": "72df1cb9f6f1"
+  },
+  {
+   "fichier": "05-exemple-histoire-texte.txt",
+   "date": "2026-10-02T15:49:34+00:00",
+   "empreinte": "62e5436213bb"
+  },
+  {
+   "fichier": "06-tracto-rexou-et-moustache.json",
+   "date": "2026-10-02T15:57:14+00:00",
+   "empreinte": "16b1afa3b0fd"
+  },
+  {
+   "fichier": "07-arthur-a-l-ecole.json",
+   "date": "2026-10-03T12:06:11+00:00",
+   "empreinte": "97c8d3f91a10"
+  }
+ ]
+}

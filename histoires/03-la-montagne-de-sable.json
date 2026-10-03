@@ -1,0 +1,13 @@
+{
+  "titre": "La montagne de sable",
+  "heros": "tractopelle",
+  "couleur": "orange",
+  "decor": "campagne",
+  "scenes": [
+    {"texte": "{nom} se promène à la campagne. Il fait beau, les oiseaux chantent.", "action": "rouler"},
+    {"texte": "Oh là là ! Une grosse montagne de sable est tombée sur le chemin de la ferme.", "action": "parler"},
+    {"texte": "{nom} pousse le sable pour dégager le chemin.", "action": "deblayer", "interactif": true, "clics": 4},
+    {"texte": "Le chemin est libre ! Le fermier peut rentrer chez lui.", "action": "rouler"},
+    {"texte": "Le soir arrive. {nom} est fatigué, il fait un gros dodo. Bonne nuit {nom} !", "action": "dormir", "interactif": true, "clics": 3}
+  ]
+}

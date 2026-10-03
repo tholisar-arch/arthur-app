@@ -1,0 +1,16 @@
+{
+  "name": "Les aventures de Tracto",
+  "short_name": "Tracto",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffeeba",
+  "theme_color": "#ffeeba",
+  "icons": [
+    {
+      "src": "icone.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}

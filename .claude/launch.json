@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "arthur-app",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["outils/serveur_local.py"],
+      "port": 8765
+    }
+  ]
+}

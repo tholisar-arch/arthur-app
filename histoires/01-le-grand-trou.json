@@ -1,0 +1,13 @@
+{
+  "titre": "Le grand trou",
+  "heros": "tractopelle",
+  "couleur": "jaune",
+  "decor": "chantier",
+  "scenes": [
+    {"texte": "Ce matin, {nom}, {heros}, part au chantier. Vroum, vroum !", "action": "rouler"},
+    {"texte": "Oh ! Un énorme trou bloque la route. Les voitures ne peuvent plus passer. {nom} appelle ses copains !", "action": "copains", "copains": ["benne", "toupie"], "interactif": true},
+    {"texte": "Tous ensemble, ils remplissent le trou avec de la terre.", "action": "trou", "interactif": true, "clics": 4},
+    {"texte": "Le trou est rempli ! Les voitures peuvent passer. Merci les copains !", "action": "rouler"},
+    {"texte": "Quelle belle journée de travail. Hourra !", "action": "fete", "interactif": true, "clics": 4}
+  ]
+}

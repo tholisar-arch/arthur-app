@@ -1,0 +1,614 @@
+// Les aventures de Tracto — version web (iPad / navigateur). Portage de main.py.
+"use strict";
+
+const W = 1280, H_ = 720, VX = 150, VY = 72, VW = 980, VH = 510, G = 450;
+const FOND = [255, 238, 186];
+const SLOTS_COPAINS = [140, 840, 290, 690, 520];
+const BRAVOS = ["Bravo {prenom} !", "Super, {prenom} !", "Génial, tu as réussi !", "Trop fort, {prenom} !"];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const choix = (l) => l[Math.floor(Math.random() * l.length)];
+const borne = (v, a, b) => Math.max(a, Math.min(b, v));
+const dans = (r, p) => p[0] >= r[0] && p[0] <= r[0] + r[2] && p[1] >= r[1] && p[1] <= r[1] + r[3];
+
+function police(taille) { return `700 ${taille}px Fredoka, "Comic Sans MS", sans-serif`; }
+function ecrit(ctx, txt, taille, col, pos, contour = null, gauche = false) {
+  ctx.font = police(taille);
+  ctx.textAlign = gauche ? "left" : "center";
+  ctx.textBaseline = gauche ? "top" : "middle";
+  if (contour) { ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.strokeStyle = css(contour); ctx.strokeText(txt, pos[0], pos[1]); }
+  ctx.fillStyle = css(col);
+  ctx.fillText(txt, pos[0], pos[1]);
+}
+function coupe(ctx, txt, taille, largeur) {
+  ctx.font = police(taille);
+  const lignes = [];
+  let cour = "";
+  for (const mot of txt.split(/\s+/).filter(Boolean)) {
+    const essai = (cour + " " + mot).trim();
+    if (ctx.measureText(essai).width <= largeur || !cour) cour = essai;
+    else { lignes.push(cour); cour = mot; }
+  }
+  if (cour) lignes.push(cour);
+  return lignes;
+}
+
+class Bouton {
+  constructor(r, texte, col, taille = 30) { Object.assign(this, { r, texte, col, taille }); }
+  dessine(ctx, t = 0, pulse = false) {
+    let [x, y, w, h] = this.r;
+    if (pulse) { const k = 0.04 * Math.sin(t * 5); x -= (w * k) / 2; y -= (h * k) / 2; w *= 1 + k; h *= 1 + k; }
+    rrect(ctx, x, y + 6, w, h, 22, fonce(this.col, 0.6));
+    rrect(ctx, x, y, w, h, 22, this.col, 4);
+    ecrit(ctx, this.texte, this.taille, [255, 255, 255], [x + w / 2, y + h / 2], fonce(this.col, 0.5));
+  }
+  touche(p) { return dans(this.r, p); }
+}
+
+// ================================================================= monde & scènes
+const nouveauVehicule = (kind, col, x, cible, f = 1) => ({ kind, col, x, cible, rot: 0, outil: 0, dx: 0, dy: 0, f });
+function avance(v, dt, vitesse = 260) {
+  const ecart = v.cible - v.x, pas = borne(ecart, -vitesse * dt, vitesse * dt);
+  v.x += pas; v.rot += pas / 30;
+}
+
+class Monde { // ce qui reste d'une scène à l'autre
+  constructor(heros, couleur, decor) {
+    this.hero = nouveauVehicule(heros, COULEURS[couleur], -260, 330);
+    this.copains = []; this.amis = []; this.decor = decor;
+    this.scroll = 0; this.nuit = false; this.parts = []; this.t = 0;
+  }
+  ajouteCopain(kind) {
+    if (this.copains.some((c) => c.kind === kind) && this.copains.length >= 5) return null;
+    let col = COULEUR_DEFAUT[kind] || "orange";
+    if (COULEURS[col] === this.hero.col) col = Object.keys(COULEURS).find((c) => COULEURS[c] !== this.hero.col && c !== col);
+    const slot = SLOTS_COPAINS[this.copains.length % SLOTS_COPAINS.length], gauche = slot < VW / 2;
+    const c = nouveauVehicule(kind, COULEURS[col], gauche ? -220 : VW + 220, slot, gauche ? 1 : -1);
+    this.copains.push(c);
+    return c;
+  }
+  ajouteAmi(kind) {
+    const deja = this.amis.find((a) => a.kind === kind);
+    if (deja) { delete deja.part; return null; } // il revient
+    const a = { kind, x: VW + 150, cible: VW - 150, f: -1, marche: 0, mange: 0, dy: 0, humeur: null };
+    this.amis.push(a);
+    joue({ trex: "rugir", chat: "miaou" }[kind] || "pop");
+    return a;
+  }
+  jet(x0, y0, x1, y1, col, n = 20, r = [5, 9], duree = [0.55, 0.8], etale = 25, type = "rond") {
+    for (let i = 0; i < n; i++) {
+      const T = rnd(...duree), tx = x1 + rnd(-etale, etale), ty = y1 + rnd(-etale / 2, etale / 2);
+      this.parts.push({ x: x0, y: y0, vx: (tx - x0) / T, vy: (ty - y0) / T - 0.5 * 900 * T, g: 900, vie: T, max: T, col, r: rnd(...r), type, a: rnd(0, 6), va: rnd(-6, 6) });
+    }
+  }
+  eclat(x, y, n = 30, cols = null, vit = 320, type = "etoile", vie = 1, g = 200) {
+    cols = cols || [[255, 220, 60], [255, 120, 160], [120, 200, 255], [140, 230, 120], [255, 160, 60]];
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, 2 * PI), v = rnd(vit * 0.3, vit);
+      this.parts.push({ x, y, vx: v * Math.cos(a), vy: v * Math.sin(a), g, vie: vie * rnd(0.6, 1), max: vie, col: choix(cols), r: rnd(5, 11), type, a, va: rnd(-5, 5) });
+    }
+  }
+  majParticules(dt) {
+    const explosions = [];
+    for (const p of this.parts) {
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.a += p.va * dt; p.vie -= dt;
+      if (p.type === "fusee" && p.vie <= 0) explosions.push([p.x, p.y]);
+    }
+    this.parts = this.parts.filter((p) => p.vie > 0);
+    for (const [x, y] of explosions) {
+      joue("boum");
+      this.eclat(x, y, 45, choix([[[255, 90, 90], [255, 200, 80]], [[120, 200, 255], [200, 140, 255]], [[140, 240, 120], [255, 255, 160]]]), 280, "rond", 1.3, 120);
+    }
+  }
+  dessineParticules(ctx) {
+    for (const p of this.parts) {
+      const k = Math.max(0, p.vie / p.max);
+      if (p.type === "rond") rond(ctx, p.x, p.y, Math.max(1, p.r * (0.4 + 0.6 * k)), p.col);
+      else if (p.type === "etoile") etoile(ctx, p.x, p.y, p.r * (0.5 + 0.5 * k) + 2, p.col, p.a);
+      else if (p.type === "confetti") { const h = 6 * Math.abs(Math.cos(p.a)) + 2; rrect(ctx, p.x - 5, p.y - h / 2, 10, h, 0, p.col); }
+      else if (p.type === "fusee") { rond(ctx, p.x, p.y, 5, [255, 240, 200]); trait(ctx, [p.x, p.y], [p.x - p.vx * 0.05, p.y - p.vy * 0.05], 3, [255, 180, 80]); }
+      else if (p.type === "bulle") bulle(ctx, p.x + 6 * Math.sin(p.a), p.y, p.r);
+      else if (p.type === "coeur") coeur(ctx, p.x, p.y, p.r * (0.6 + 0.4 * k) + 4, p.col);
+      else if (p.type === "note" || p.type === "zzz") {
+        ctx.globalAlpha = Math.min(1, k * 2);
+        ecrit(ctx, p.type === "zzz" ? "Z" : "♪", 18 + p.r * 2, p.col, [p.x, p.y]);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+}
+
+const estimeDuree = (texte) => texte.length / 11 + 1;
+
+class Scene {
+  constructor(app, monde, d, valeurs) {
+    Object.assign(this, { app, m: monde, d, valeurs });
+    this.act = d.action; this.inter = d.interactif;
+    this.texte = rendu(d.texte, valeurs);
+    this.consigne = this.inter ? rendu(d.consigne, valeurs) : "";
+    this.t = 0; this.fait = 0; this.p = null; this.attente = false; this.evt = false; this.fini_t = null;
+    this.duree = estimeDuree(this.texte + " " + this.consigne);
+    this.acteur = null; this.vol = null; this.etoiles = []; this.artiste = null; this.niveauCible = null;
+    const m = monde, hero = m.hero;
+    if (d.decor !== m.decor) m.scroll = 0;
+    m.decor = d.decor; m.nuit = this.act === "dormir";
+    for (const v of [hero, ...m.copains]) v.outil = v.dx = v.dy = 0;
+    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin"].includes(this.act);
+    this.n = aFaire ? d.clics : 0;
+    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480 }[this.act];
+    this.cacheHeros = !!d.cache_heros;
+    let kindActeur = d.vehicule;
+    if (this.act === "feu" && hero.kind !== "pompier" && !kindActeur) kindActeur = "pompier";
+    if (kindActeur && kindActeur !== hero.kind) {
+      let col = COULEURS[COULEUR_DEFAUT[kindActeur]];
+      if (col === hero.col) col = COULEURS.orange;
+      this.acteur = nouveauVehicule(kindActeur, col, -260, poste);
+      hero.cible = 150;
+    } else hero.cible = poste;
+    if (this.cacheHeros) hero.cible = -320; // la scène est pour les personnages
+    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770 }[this.act] || 0;
+    this.niveau = 0; this.etages = 0;
+    if (this.act === "copains") {
+      const presents = new Set(m.copains.map((c) => c.kind));
+      this.aVenir = d.copains.filter((k) => !presents.has(k));
+      if (!d.copains.length) this.aVenir = ["benne", "toupie", "bulldozer", "grue", "pompier"].filter((k) => k !== hero.kind && !presents.has(k)).slice(0, 2);
+      if (this.aVenir.length) this.n = this.aVenir.length; else if (!this.inter) this.n = 0;
+    } else for (const k of d.copains) if (!m.copains.some((c) => c.kind === k)) m.ajouteCopain(k);
+    const nouveaux = d.amis.map((k) => m.ajouteAmi(k)).filter(Boolean);
+    for (const a of m.amis) if (d.partent.includes(a.kind)) { a.part = true; a.cible = a.x < VW / 2 ? -200 : VW + 200; }
+    const ecarts = this.act === "manger" ? [-280, 300, -430, 440] : [-250, 250, -420, 420];
+    m.amis.filter((a) => !a.part).forEach((a, i) => {
+      a.cible = borne(d.positions[a.kind] ?? poste + ecarts[i % 4], 70, VW - 70);
+      if (nouveaux.includes(a) && a.cible < VW / 2) a.x = -150; // arrive par le côté où il va se placer
+    });
+    for (const a of m.amis) { a.mange = a.dy = 0; a.humeur = d.humeur[a.kind] || null; }
+    if (this.act === "manger") { this.mangeurs = [hero, ...m.amis]; this.n = this.mangeurs.length; this.qte = this.mangeurs.map(() => 1); }
+    this.espacement = Math.max(1.3, (this.duree - 2) / Math.max(1, this.n));
+    this.prochainAuto = 1.4;
+    app.voix.dire((this.texte + " " + this.consigne).trim());
+  }
+  faiseur() { return this.acteur || this.m.hero; }
+  pret() { if (this.cacheHeros && !this.acteur) return true; const f = this.faiseur(); return Math.abs(f.x - f.cible) < 6; }
+  posRepas(i) {
+    const v = this.mangeurs[i];
+    if (v === this.m.hero) return [v.x + 150, "engin"];
+    return [v.x + (v.kind === "trex" ? 105 : 75) * v.f, v.kind];
+  }
+  souffleurs() {
+    const dinos = this.m.amis.filter((a) => ["dino", "stego", "trex"].includes(a.kind) && !a.part);
+    return dinos.length ? dinos : this.m.amis.filter((a) => !a.part);
+  }
+  cible() {
+    const m = this.m;
+    if (this.act === "bulles" && this.souffleurs().length) { const s = this.souffleurs(), a = s[this.fait % s.length]; return boucheAmi(a.kind, a.x, G, a.f); }
+    if (this.act === "calin") {
+      const gens = m.amis.filter((a) => a.kind === "arthur").concat(m.amis);
+      if (gens.length) { const [x, y] = boucheAmi(gens[0].kind, gens[0].x, G, gens[0].f); return [x, y - 40]; }
+      return [VW / 2, G - 150];
+    }
+    if (this.act === "spectacle") return this.cacheHeros ? [VW / 2, G - 150] : [m.hero.x, G - 120];
+    if (this.act === "manger") return this.fait < this.n ? [this.posRepas(this.fait)[0], G - 45] : [m.hero.x, G - 110];
+    if (this.act === "trou") return [this.cx, G + 10];
+    if (this.act === "feu") return [this.cx, G - 160];
+    if (this.act === "deblayer") return [this.cx, G - 70];
+    if (this.act === "construire") return [this.cx, G - 80];
+    if (this.act === "copains") return [VW - 120, G - 120];
+    if (this.act === "fete" || this.act === "dormir") return [VW / 2, 150];
+    const v = this.faiseur();
+    return [v.x, G - 110];
+  }
+  pointOutil() { const v = this.faiseur(); return pointOutil(v.kind, v.col, v.x + v.dx, G + v.dy, v.outil); }
+
+  clic() {
+    if (!this.inter || this.fait >= this.n) return;
+    if (this.p === null && this.pret()) this.debutEtape(); else this.attente = true;
+  }
+  debutEtape() {
+    this.p = 0; this.evt = false; this.attente = false;
+    this.dureeEtape = { feu: 1.3, copains: 0.9, fete: 0.6, dormir: 0.6, rouler: 0.7, parler: 0.7 }[this.act] || 1.1;
+    const m = this.m;
+    if (this.act === "feu") joue("splash");
+    else if (this.act === "spectacle") {
+      const artistes = (this.cacheHeros ? [] : [m.hero]).concat(m.copains);
+      this.artiste = artistes.length ? artistes[this.fait % artistes.length] : null;
+      joue("klaxon");
+      if (this.artiste) m.eclat(this.artiste.x, G - 200, 20, null, 300);
+    } else if (this.act === "bulles") { joue("magie"); for (const a of this.souffleurs().slice(0, 3)) this.souffle(a, 12, 1); }
+    else if (this.act === "calin") { joue("pop"); const [x, y] = this.cible(); m.eclat(x, y + 20, 10, [[255, 100, 140], [255, 150, 180]], 180, "coeur", 1.4, -40); }
+    else if (this.act === "manger") joue("croque");
+    else if (this.act === "copains" && this.aVenir.length) { m.ajouteCopain(this.aVenir.shift()); joue("klaxon"); }
+    else if (this.act === "fete") {
+      m.parts.push({ x: rnd(150, VW - 150), y: G, vx: rnd(-60, 60), vy: -rnd(520, 640), g: 250, vie: 1, max: 1, col: [255, 255, 255], r: 5, type: "fusee", a: 0, va: 0 });
+      joue("fusee");
+    } else if (this.act === "dormir") {
+      const pos = [rnd(80, VW - 260), rnd(40, 220)];
+      this.etoiles.push(pos);
+      m.eclat(pos[0], pos[1], 14, [[255, 250, 200]], 160, "etoile", 0.7, 0);
+      joue("magie");
+    } else {
+      joue("klaxon");
+      const v = this.faiseur();
+      for (let i = 0; i < 3; i++) m.parts.push({ x: v.x + rnd(-40, 40), y: G - 180, vx: rnd(-40, 40), vy: -120, g: 0, vie: 1, max: 1, col: [90, 60, 160], r: rnd(4, 8), type: "note", a: 0, va: 0 });
+    }
+  }
+  pendantEtape(dt) {
+    const p = this.p, v = this.faiseur(), m = this.m, n = Math.max(1, this.n), q = Math.min(1, p);
+    if (["trou", "construire", "feu"].includes(this.act)) v.outil = Math.sin(PI * q);
+    if (this.act === "deblayer") { v.dx = 70 * Math.sin(PI * q); v.outil = 0.25; }
+    if (this.act === "rouler" || this.act === "parler" || (this.act === "copains" && !this.aVenir.length && this.inter)) v.dy = -Math.abs(Math.sin(PI * q)) * 35;
+    if (this.act === "trou" && p >= 0.5 && !this.evt) {
+      this.evt = true;
+      const [x0, y0] = this.pointOutil();
+      m.jet(x0, y0, this.cx, G + 15, { toupie: [170, 170, 175], pompier: [90, 160, 240] }[v.kind] || [150, 100, 60], 28, undefined, undefined, 60);
+      joue("terre");
+    }
+    if (this.act === "feu" && p > 0.15 && p < 0.95) { const [x0, y0] = this.pointOutil(); m.jet(x0, y0, this.cx + rnd(-50, 50), G - 150, [90, 170, 250], 3, [4, 7], undefined, 40); }
+    if (this.act === "deblayer" && p >= 0.45 && !this.evt) { this.evt = true; joue("terre"); m.jet(this.cx - 40, G - 60, this.cx + 260, G - 20, [225, 190, 120], 30, undefined, [0.5, 0.9], 90); }
+    if (this.act === "construire" && p >= 0.5 && !this.evt) {
+      this.evt = true;
+      const [x0, y0] = this.pointOutil(), murs = Math.max(1, this.n - 1), k = this.fait;
+      this.vol = { x0, y0, x1: this.cx, y1: G - Math.min(k, murs) * 38 - 19, u: 0, toit: k >= this.n - 1, k, haut: v.kind === "grue" ? 30 : 140 };
+    }
+    if (this.act === "spectacle" && this.artiste) { this.artiste.dy = -Math.abs(Math.sin(PI * q)) * 90; this.artiste.outil = Math.sin(PI * q); }
+    if (this.act === "spectacle" || this.act === "calin") m.amis.forEach((a, i) => { a.dy = -Math.abs(Math.sin(PI * q * 2 + i)) * 16; });
+    if (this.act === "manger") {
+      const i = Math.min(this.fait, this.n - 1), qui = this.mangeurs[i];
+      this.qte[i] = Math.max(0, 1 - p * 1.15);
+      if (qui === m.hero) qui.outil = Math.abs(Math.sin(PI * p * 2)) * 0.45; else qui.mange = Math.abs(Math.sin(PI * p * 3));
+      if (Math.random() < dt * 25) { const [x, k] = this.posRepas(i); m.jet(x, G - 20, x + rnd(-40, 40), G - 30, { chat: [150, 90, 50], trex: [80, 190, 80] }[k] || [150, 150, 160], 2, [3, 6], [0.4, 0.6], 20); }
+    }
+    if (["trou", "feu", "deblayer"].includes(this.act)) this.niveauCible = (this.fait + (p >= 0.5 ? 1 : 0)) / n;
+  }
+  finEtape() {
+    if (this.act === "manger" && this.fait < this.n) {
+      const qui = this.mangeurs[this.fait];
+      this.qte[this.fait] = 0; qui.mange = 0;
+      this.m.eclat(qui.x, G - (qui === this.m.hero || qui.kind === "trex" ? 190 : 100), 8, [[255, 110, 150], [255, 160, 190]], 140, "coeur", 1.2, -60);
+      joue(qui.kind === "chat" ? "miaou" : "pop");
+    }
+    this.fait++;
+    const v = this.faiseur(); v.outil = v.dx = v.dy = 0;
+    for (const c of this.m.copains) c.dy = c.outil = 0;
+    if (this.fait >= this.n) this.termine(); else if (this.attente) this.debutEtape();
+  }
+  souffle(a, n, force) {
+    const [x, y] = boucheAmi(a.kind, a.x, G, a.f);
+    for (let i = 0; i < n; i++) this.m.parts.push({ x, y, vx: a.f * rnd(30, 160) * force, vy: -rnd(10, 80) * force, g: -25, vie: 4.5, max: 4.5, col: [0, 0, 0], r: rnd(8, 20), type: "bulle", a: rnd(0, 6), va: rnd(2, 4) });
+  }
+  termine() {
+    const m = this.m;
+    if (this.act === "calin") for (const a of m.amis) if (a.humeur === "peur") a.humeur = "joie"; // les câlins, ça rassure
+    if (["trou", "feu", "deblayer", "construire"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
+    if (this.inter) { joue("bravo"); m.eclat(VW / 2, 200, 40, null, 420); this.app.voix.dire(rendu(choix(BRAVOS), this.valeurs)); }
+  }
+  maj(dt) {
+    const m = this.m;
+    this.t += dt; m.t += dt;
+    avance(m.hero, dt);
+    if (this.acteur) avance(this.acteur, dt);
+    for (const c of m.copains) avance(c, dt, 300);
+    const defile = this.act === "rouler" && Math.abs(m.hero.x - m.hero.cible) < 6;
+    if (defile) { m.scroll += 150 * dt; for (const v of [m.hero, ...m.copains]) v.rot += (150 * dt) / 30; }
+    m.amis.forEach((a, i) => {
+      const ecart = a.cible - a.x, pas = borne(ecart, -230 * dt, 230 * dt);
+      a.x += pas;
+      if (Math.abs(ecart) > 4) { a.f = ecart > 0 ? 1 : -1; a.marche += Math.abs(pas) / 12; }
+      else if (defile) { a.f = 1; a.marche += dt * 9; }
+      else { const centre = this.cacheHeros ? VW / 2 : m.hero.x; a.f = a.x < centre ? 1 : -1; }
+      a.dy = this.act === "fete" ? -Math.abs(Math.sin(m.t * 5 + i + 2)) * 16 : 0;
+    });
+    m.amis = m.amis.filter((a) => !(a.part && Math.abs(a.cible - a.x) < 5));
+    if (this.act === "bulles" && Math.random() < dt * 3) { const s = this.souffleurs(); if (s.length) this.souffle(choix(s), 1, 0.6); }
+
+    if (this.p !== null) {
+      this.p += dt / this.dureeEtape;
+      this.pendantEtape(dt);
+      if (this.p >= 1) { this.p = null; this.finEtape(); }
+    } else if (this.fait < this.n && !this.inter && this.t >= this.prochainAuto && this.pret()) {
+      this.debutEtape(); this.prochainAuto = this.t + this.espacement;
+    } else if (this.fait < this.n && this.inter && this.attente && this.pret()) this.debutEtape();
+    if ((this.n === 0 || (this.fait >= this.n && this.p === null)) && this.fini_t === null) this.fini_t = this.t;
+    if (this.niveauCible !== null) this.niveau += (this.niveauCible - this.niveau) * Math.min(1, dt * 3);
+    if (this.vol) {
+      this.vol.u += dt / 0.6;
+      if (this.vol.u >= 1) { this.etages++; joue("pop"); m.eclat(this.vol.x1, this.vol.y1 + 19, 10, [[200, 180, 150]], 150, "rond", 0.5, 300); this.vol = null; }
+    }
+    if (this.act === "fete" && Math.random() < dt * 25)
+      m.parts.push({ x: rnd(0, VW), y: -10, vx: rnd(-30, 30), vy: 80, g: 40, vie: 5, max: 5, type: "confetti", r: 5, a: rnd(0, 6), va: rnd(-8, 8), col: choix([[255, 90, 90], [255, 210, 60], [90, 170, 250], [120, 220, 120], [220, 130, 240]]) });
+    if (this.act === "dormir" && Math.random() < dt * 1.2)
+      m.parts.push({ x: m.hero.x - 30, y: G - 170, vx: 25, vy: -45, g: 0, vie: 2.5, max: 2.5, col: [255, 255, 255], r: rnd(4, 9), type: "zzz", a: 0, va: 0 });
+    m.majParticules(dt);
+  }
+  terminee() {
+    if (this.fini_t === null || this.t < this.duree) return false;
+    if (this.app.voix.parle()) return false; // on laisse la voix finir sa phrase
+    return this.t - this.fini_t >= (this.inter ? 3 : 0.6);
+  }
+  attendClic() { return this.inter && this.fait < this.n && this.p === null && this.pret(); }
+  dessine(ctx) {
+    const m = this.m, fete = this.act === "fete";
+    dessineDecor(ctx, VW, VH, m.decor, m.scroll, m.t, m.nuit, G);
+    for (const [x, y] of this.etoiles) etoile(ctx, x, y, 16 + 3 * Math.sin(m.t * 4 + x), [255, 240, 150], m.t * 0.5);
+    m.copains.forEach((c, i) => {
+      const dy = fete ? -Math.abs(Math.sin(m.t * 5 + i)) * 14 : 0;
+      dessineVehicule(ctx, c.kind, c.col, c.x, G - 32 + dy + c.dy, m.t + i, c.outil, c.rot, 0.72, c.f, m.nuit);
+    });
+    if (this.act === "trou") trou(ctx, this.cx, G, this.niveau);
+    else if (this.act === "feu") maisonFeu(ctx, this.cx, G, 1 - this.niveau, m.t, this.fait >= this.n);
+    else if (this.act === "deblayer") tas(ctx, this.cx, G, 1 - this.niveau);
+    else if (this.act === "construire") construction(ctx, this.cx, G, this.etages, Math.max(2, this.n), m.t);
+    for (const a of m.amis) dessineAmi(ctx, a.kind, a.x, G + a.dy, m.t, a.f, a.marche, a.mange, 1, a.humeur);
+    if (this.act === "manger") for (let i = 0; i < this.n; i++) { const [x, k] = this.posRepas(i); nourriture(ctx, k, x, G, this.qte[i]); }
+    for (const v of [m.hero].concat(this.acteur ? [this.acteur] : [])) {
+      const roule = Math.abs(v.x - v.cible) > 6 || this.act === "rouler";
+      let dy = v.dy + (roule ? Math.sin(m.t * 14) * 1.5 : 0);
+      if (fete) dy -= Math.abs(Math.sin(m.t * 5)) * 18;
+      dessineVehicule(ctx, v.kind, v.col, v.x + v.dx, G + dy, m.t, v.outil, v.rot, 1, 1, this.act === "dormir");
+    }
+    if (this.vol) {
+      const u = this.vol.u;
+      piece(ctx, lerp(this.vol.x0, this.vol.x1, u), lerp(this.vol.y0, this.vol.y1, u) - this.vol.haut * Math.sin(PI * u), this.vol.toit, this.vol.k);
+    }
+    m.dessineParticules(ctx);
+    if (fete && this.t > 0.5) ecrit(ctx, rendu("Bravo {prenom} !", this.valeurs), 64, [255, 230, 80], [VW / 2, 70 + 6 * Math.sin(m.t * 3)], [200, 60, 80]);
+    if (this.attendClic()) { const [x, y] = this.cible(); mainQuiClique(ctx, x, y, m.t); }
+  }
+}
+
+// ================================================================= application
+class App {
+  constructor(canvas, cfg) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.video = document.createElement("canvas");
+    this.video.width = VW; this.video.height = VH;
+    this.vctx = this.video.getContext("2d");
+    this.cfg = cfg;
+    this.prenom = cfg.prenom || "Arthur";
+    this.voix = new Voix(cfg);
+    this.t = 0; this.etat = "menu"; this.page = 0;
+    this.histoires = []; this.charge = false;
+    this.choixVeh = "tractopelle"; this.choixCol = "jaune";
+    this.histoire = null; this.fin = false; this.i = 0;
+    this.bRetour = new Bouton([14, 12, 150, 50], "Histoires", [110, 140, 220], 24);
+    this.bGo = new Bouton([910, 575, 330, 110], "C'est parti !", [70, 185, 90], 40);
+    this.bEncore = new Bouton([VX + VW / 2 - 330, VY + 330, 300, 100], "Encore !", [70, 185, 90], 38);
+    this.bAutres = new Bouton([VX + VW / 2 + 30, VY + 330, 300, 100], "Histoires", [110, 140, 220], 38);
+    this.rechargeHistoires();
+  }
+  async rechargeHistoires() {
+    try { this.histoires = await chargeTout(); } catch (e) { this.histoires = []; this.erreurChargement = String(e); }
+    this.charge = true;
+    this.prechargeMenu();
+  }
+  phraseTitre(h) { return `${h.titre}. Choisis ton véhicule et sa couleur !`; }
+  prechargeMenu() { this.voix.precharge(this.histoires.filter((h) => !h.erreur).map((h) => this.phraseTitre(h))); }
+  prechargeConfig() {
+    this.voix.precharge(VEHICULES.map((k) => textes(k, this.choixCol, this.prenom).Vehicule));
+    this.voix.precharge(Object.keys(COULEURS).map((c) => textes(this.choixVeh, c, this.prenom).couleur));
+  }
+  prechargeHistoire() {
+    const v = this.valeurs;
+    const l = this.histoire.scenes.map((d) => (rendu(d.texte, v) + " " + (d.interactif ? rendu(d.consigne, v) : "")).trim());
+    this.voix.precharge(l.concat(BRAVOS.map((b) => rendu(b, v)), [`C'est la fin de l'histoire. Bravo ${this.prenom} !`]));
+  }
+  ouvreConfig(h) {
+    this.histoire = h;
+    this.choixVeh = h.heros;
+    this.choixCol = COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros];
+    this.etat = "config";
+    this.voix.dire(this.phraseTitre(h));
+    this.prechargeConfig();
+  }
+  lance() {
+    const h = this.histoire;
+    this.valeurs = textes(this.choixVeh, this.choixCol, this.prenom);
+    this.monde = new Monde(this.choixVeh, this.choixCol, h.scenes[0].decor);
+    for (const k of h.copains) if (k !== this.choixVeh) { const c = this.monde.ajouteCopain(k); if (c) c.x = c.cible; }
+    this.i = 0; this.fin = false;
+    this.prechargeHistoire();
+    this.scene = new Scene(this, this.monde, h.scenes[0], this.valeurs);
+    this.etat = "histoire";
+  }
+  sceneSuivante() {
+    this.i++;
+    if (this.i >= this.histoire.scenes.length) { this.fin = true; joue("bravo"); this.voix.dire(`C'est la fin de l'histoire. Bravo ${this.prenom} !`); }
+    else this.scene = new Scene(this, this.monde, this.histoire.scenes[this.i], this.valeurs);
+  }
+  menu() { this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
+
+  // ------------------------------------------------ événements
+  cartes() { const r = []; for (let k = 0; k < 6; k++) r.push([75 + (k % 3) * 390, 125 + Math.floor(k / 3) * 225, 350, 200]); return r; }
+  boitesVehicules() { return VEHICULES.map((_, k) => [70 + k * 193, 118, 175, 145]); }
+  rondsCouleurs() { return Object.keys(COULEURS).map((_, k) => [355 + k * 95, 352]); }
+  touche(p) {
+    if (this.etat === "menu") {
+      const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
+      if (pages > 1 && dans([20, 610, 90, 90], p)) { this.page = mod(this.page - 1, pages); joue("clic"); }
+      if (pages > 1 && dans([W - 110, 610, 90, 90], p)) { this.page = mod(this.page + 1, pages); joue("clic"); }
+      const liste = this.histoires.slice(this.page * 6, this.page * 6 + 6);
+      this.cartes().forEach((r, k) => {
+        const h = liste[k];
+        if (!h || !dans(r, p)) return;
+        if (h.erreur) this.voix.dire("Oups, cette histoire est mal écrite. Demande à Claude de la réparer.");
+        else { joue("pop"); this.ouvreConfig(h); }
+      });
+    } else if (this.etat === "config") {
+      if (this.bRetour.touche(p)) return this.menu();
+      if (this.bGo.touche(p)) { joue("klaxon"); return this.lance(); }
+      this.boitesVehicules().forEach((r, k) => {
+        if (dans(r, p)) { this.choixVeh = VEHICULES[k]; joue("klaxon"); this.voix.dire(textes(VEHICULES[k], this.choixCol, this.prenom).Vehicule); }
+      });
+      this.rondsCouleurs().forEach(([x, y], k) => {
+        if (Math.hypot(p[0] - x, p[1] - y) < 42) { const c = Object.keys(COULEURS)[k]; this.choixCol = c; joue("pop"); this.voix.dire(textes(this.choixVeh, c, this.prenom).couleur); }
+      });
+    } else {
+      if (this.bRetour.touche(p)) this.menu();
+      else if (this.fin) { if (this.bEncore.touche(p)) this.lance(); else if (this.bAutres.touche(p)) this.menu(); }
+      else this.scene.clic();
+    }
+  }
+  clavier(e) {
+    if (this.etat === "histoire") {
+      if (e.key === "Escape") this.menu();
+      else if (e.key === "ArrowRight" && !this.fin) this.sceneSuivante();
+      else if (!this.fin) this.scene.clic(); // les petits tapent sur le clavier : ça compte aussi
+    } else if (this.etat === "config" && e.key === "Escape") this.menu();
+  }
+
+  // ------------------------------------------------ boucle
+  maj(dt) {
+    this.t += dt;
+    if (this.etat === "histoire") {
+      if (!this.fin) { this.scene.maj(dt); if (this.scene.terminee()) this.sceneSuivante(); }
+      else {
+        this.monde.t += dt; this.monde.majParticules(dt);
+        if (Math.random() < dt * 1.5) this.monde.eclat(rnd(100, VW - 100), rnd(60, 200), 25, null, 250);
+      }
+    }
+  }
+  fond(ctx) {
+    rrect(ctx, 0, 0, W, H_, 0, FOND);
+    for (let k = 0; k < W; k += 80) for (let j = 0; j < H_; j += 80) rond(ctx, k + (Math.floor(j / 80) % 2) * 40, j, 9, [255, 228, 160]);
+  }
+  dessine() {
+    const ctx = this.ctx;
+    this.fond(ctx);
+    if (this.etat === "menu") this.dessineMenu(ctx);
+    else if (this.etat === "config") this.dessineConfig(ctx);
+    else this.dessineHistoire(ctx);
+  }
+  dessineMenu(ctx) {
+    ecrit(ctx, `Les aventures de ${this.prenom}`, 54, [255, 200, 40], [W / 2, 58], [200, 80, 40]);
+    const liste = this.histoires.slice(this.page * 6, this.page * 6 + 6);
+    this.cartes().forEach((r, k) => {
+      const h = liste[k];
+      if (!h) return;
+      const [x, y, w, hh] = r, erreur = !!h.erreur;
+      rrect(ctx, x, y + 8, w, hh, 24, [200, 170, 110]);
+      rrect(ctx, x, y, w, hh, 24, erreur ? [255, 235, 235] : [255, 255, 255]);
+      const col = erreur ? [220, 90, 90] : COULEURS[h.couleur] || COULEURS[COULEUR_DEFAUT[h.heros]];
+      ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, hh, 24); ctx.clip(); rrect(ctx, x, y, w, 22, 0, col); ctx.restore();
+      rrect(ctx, x, y, w, hh, 24, null, 4);
+      dessineVehicule(ctx, h.heros, col, x + 85, y + hh - 22, this.t, 0, 0, 0.5);
+      const lignes = coupe(ctx, h.titre, 26, w - 190).slice(0, 4), y0 = y + 40 + (4 - lignes.length) * 16;
+      lignes.forEach((l, i) => ecrit(ctx, l, 26, CONTOUR, [x + 165, y0 + i * 34], null, true));
+      if (erreur) ecrit(ctx, "Histoire illisible", 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);
+      else ecrit(ctx, `${h.scenes.length} images`, 18, [150, 140, 130], [x + 165, y + hh - 32], null, true);
+      if (!erreur && estNouvelle(h)) { etoile(ctx, x + w - 4, y - 2, 34, [255, 210, 50], 0.2); ecrit(ctx, "Nouveau", 15, CONTOUR, [x + w - 4, y]); }
+    });
+    if (this.charge && !this.histoires.length) ecrit(ctx, "Aucune histoire pour l'instant : raconte-en une à Claude !", 30, CONTOUR, [W / 2, 330]);
+    if (!this.charge) ecrit(ctx, "Chargement des histoires…", 30, CONTOUR, [W / 2, 330]);
+    const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
+    rrect(ctx, 0, 600, W, 120, 0, [120, 120, 130]);
+    for (let k = 0; k < 16; k++) rrect(ctx, mod(k * 90 - this.t * 80, W + 90) - 45, 690, 45, 6, 0, [250, 250, 250]);
+    VEHICULES.forEach((kind, k) => dessineVehicule(ctx, kind, COULEUR_DEFAUT[kind], mod(k * 230 + this.t * 70, W + 300) - 150, 680, this.t + k, 0, this.t * 3, 0.38));
+    if (pages > 1) {
+      for (const [x, d] of [[65, -1], [W - 65, 1]]) poly(ctx, [[x - 28 * d, 625], [x + 28 * d, 655], [x - 28 * d, 685]], [110, 140, 220], 4);
+      ecrit(ctx, `Page ${this.page + 1}/${pages}`, 22, [255, 255, 255], [W / 2, 700]);
+    }
+    ecrit(ctx, "Nouvelle histoire ? Raconte-la à Claude, elle apparaîtra ici toute seule.", 18, [255, 255, 255], [W / 2, 614]);
+  }
+  dessineConfig(ctx) {
+    this.bRetour.dessine(ctx);
+    ecrit(ctx, this.histoire.titre, 36, [255, 200, 40], [W / 2, 40], [200, 80, 40]);
+    ecrit(ctx, "Choisis ton véhicule", 26, CONTOUR, [W / 2, 96]);
+    const col = COULEURS[this.choixCol];
+    this.boitesVehicules().forEach(([x, y, w, h], k) => {
+      const kind = VEHICULES[k], choisi = kind === this.choixVeh, yy = choisi ? y - 8 * Math.abs(Math.sin(this.t * 4)) : y;
+      rrect(ctx, x, yy, w, h, 20, choisi ? [255, 250, 220] : [255, 255, 255], choisi ? 7 : 3, choisi ? [255, 140, 30] : CONTOUR);
+      dessineVehicule(ctx, kind, choisi ? col : COULEUR_DEFAUT[kind], x + w / 2, yy + h - 10, this.t, 0, 0, 0.42);
+    });
+    ecrit(ctx, "Choisis ta couleur", 26, CONTOUR, [W / 2, 284]);
+    this.rondsCouleurs().forEach(([x, y], k) => {
+      const c = Object.keys(COULEURS)[k], choisi = c === this.choixCol, r = 34 + (choisi ? 5 * Math.sin(this.t * 6) : 0);
+      if (choisi) rond(ctx, x, y, r + 10, [255, 255, 255]);
+      rond(ctx, x, y, r, COULEURS[c], 4);
+    });
+    rrect(ctx, 0, 640, W, 80, 0, [200, 170, 120]);
+    dessineVehicule(ctx, this.choixVeh, col, 470, 645 + Math.sin(this.t * 12) * 1.5, this.t, 0, this.t * 4, 0.8);
+    const v = textes(this.choixVeh, this.choixCol, this.prenom);
+    ecrit(ctx, `${v.nom}, ${v.heros}`, 28, CONTOUR, [1075, 535]);
+    this.bGo.dessine(ctx, this.t, true);
+  }
+  dessineHistoire(ctx) {
+    const t = this.t, vc = this.vctx;
+    dinoLongCou(ctx, 70, 330 + 6 * Math.sin(t * 2), 0.42, undefined, t);
+    dessineVehicule(ctx, "tractopelle", "jaune", 75, 560, t, 0.5 + 0.5 * Math.sin(t * 2), 0, 0.45);
+    dinoStego(ctx, 1208, 300 + 6 * Math.sin(t * 2 + 1), 0.55, undefined, t, -1);
+    dessineVehicule(ctx, "toupie", "bleu", 1205, 560, t, 0, 0, 0.36, -1);
+    [[40, 120], [120, 400], [1250, 120], [1170, 380], [60, 640], [1230, 650]].forEach(([x, y], k) => etoile(ctx, x, y, 14 + 4 * Math.sin(t * 3 + k), [255, 200, 60], t * 0.5 + k));
+    if (!this.fin) this.scene.dessine(vc);
+    else {
+      const m = this.monde;
+      dessineDecor(vc, VW, VH, m.decor, m.scroll, m.t, false, G);
+      m.copains.forEach((c, i) => dessineVehicule(vc, c.kind, c.col, c.x, G - 32 - Math.abs(Math.sin(t * 5 + i)) * 14, t, 0, c.rot, 0.72, c.f));
+      m.amis.forEach((a, i) => dessineAmi(vc, a.kind, a.x, G - Math.abs(Math.sin(t * 5 + i + 2)) * 16, t, a.f, a.marche, 0, 1, "joie"));
+      dessineVehicule(vc, m.hero.kind, m.hero.col, VW / 2, G - Math.abs(Math.sin(t * 5)) * 18, t, 0, m.hero.rot);
+      vc.fillStyle = "rgba(255,255,255,0.35)"; vc.fillRect(0, 0, VW, VH);
+      m.dessineParticules(vc);
+      ecrit(vc, "Fin !", 110, [255, 220, 60], [VW / 2, 120], [200, 70, 60]);
+    }
+    rrect(ctx, VX - 11, VY - 11, VW + 22, VH + 22, 26, [90, 70, 60]);
+    rrect(ctx, VX - 6, VY - 6, VW + 12, VH + 12, 22, [255, 200, 80]);
+    ctx.drawImage(this.video, VX, VY);
+    if (this.fin) { this.bEncore.dessine(ctx, t, true); this.bAutres.dessine(ctx); }
+    this.bRetour.dessine(ctx);
+    ecrit(ctx, this.histoire.titre, 32, [255, 200, 40], [W / 2, 34], [200, 80, 40]);
+    const n = this.histoire.scenes.length;
+    for (let k = 0; k < n; k++) {
+      const x = W - 30 - (n - 1 - k) * 22, plein = k < this.i || this.fin || k === this.i;
+      rond(ctx, x, 36, 8, plein && k === this.i && !this.fin ? [255, 140, 30] : plein ? [120, 190, 90] : [255, 255, 255], 2);
+    }
+    const bx = VX, by = VY + VH + 16, bw = VW, bh = H_ - VY - VH - 26;
+    rrect(ctx, bx, by, bw, bh, 18, [255, 255, 255], 3);
+    if (this.fin) return ecrit(ctx, `Bravo ${this.prenom} ! On recommence ?`, 26, CONTOUR, [bx + bw / 2, by + bh / 2]);
+    const sc = this.scene, consigne = (sc.attendClic() || sc.p !== null) && sc.fait < sc.n ? sc.consigne : "";
+    let taille = 24, pas = 31, lignes = coupe(ctx, sc.texte, taille, VW - 40);
+    if (lignes.length + (consigne ? 1 : 0) > 3) { taille = 20; pas = 25; lignes = coupe(ctx, sc.texte, taille, VW - 40); }
+    let y = by + 8;
+    for (const l of lignes.slice(0, 4 - (consigne ? 1 : 0))) { ecrit(ctx, l, taille, CONTOUR, [bx + 20, y], null, true); y += pas; }
+    if (consigne) ecrit(ctx, consigne, taille + 2, [235, 110, 20], [bx + 20, y], null, true);
+  }
+}
+
+// ================================================================= démarrage
+async function demarre() {
+  const canvas = document.getElementById("ecran");
+  let cfg = {};
+  try { cfg = await (await fetch("config.json", { cache: "no-store" })).json(); } catch (e) { /* valeurs par défaut */ }
+  try { await document.fonts.load(police(30)); } catch (e) { /* police de secours */ }
+  const app = new App(canvas, cfg);
+  window.app = app;
+
+  const ajuste = () => { // garde le 1280×720 et le met à l'échelle de l'écran (net sur Retina)
+    const r = Math.min(window.innerWidth / W, window.innerHeight / H_), dpr = window.devicePixelRatio || 1;
+    canvas.style.width = `${W * r}px`; canvas.style.height = `${H_ * r}px`;
+    canvas.width = Math.round(W * r * dpr); canvas.height = Math.round(H_ * r * dpr);
+    app.ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H_, 0, 0);
+    app.vctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  window.addEventListener("resize", ajuste);
+  ajuste();
+
+  let premier = true;
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    Audio_.debloque();
+    if (premier) { premier = false; app.prechargeMenu(); }
+    const b = canvas.getBoundingClientRect();
+    app.touche([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
+  });
+  window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && app.etat === "menu") app.rechargeHistoires(); });
+
+  let avant = performance.now();
+  const boucle = (maintenant) => {
+    const dt = Math.min(0.05, (maintenant - avant) / 1000);
+    avant = maintenant;
+    app.maj(dt);
+    app.dessine();
+    requestAnimationFrame(boucle);
+  };
+  requestAnimationFrame(boucle);
+}
+demarre();

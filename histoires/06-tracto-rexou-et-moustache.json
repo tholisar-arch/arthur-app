@@ -1,0 +1,15 @@
+{
+  "titre": "Tracto, Rexou et Moustache",
+  "heros": "tractopelle",
+  "couleur": "jaune",
+  "decor": "dinosaures",
+  "scenes": [
+    {"texte": "{nom}, {heros}, se promène au pays des dinosaures. Vroum, vroum !", "action": "rouler", "amis": []},
+    {"texte": "Oh ! Un grand tyrannosaure arrive. Mais il est très gentil ! Bonjour, je m'appelle Rexou !", "action": "parler", "amis": ["trex"], "interactif": true, "clics": 3, "consigne": "Clique pour dire bonjour à Rexou !"},
+    {"texte": "{nom} et Rexou discutent. Ils ont tous les deux très faim ! Ils décident de partir à l'aventure pour trouver à manger.", "action": "parler", "amis": []},
+    {"texte": "En route pour l'aventure ! {nom} roule, et Rexou marche à côté de lui. Boum, boum, boum !", "action": "rouler", "decor": "campagne", "amis": []},
+    {"texte": "Sur le chemin, ils rencontrent un petit chat. Miaou ! Je m'appelle Moustache. Je vais vous aider à trouver à manger !", "action": "parler", "amis": ["chat"]},
+    {"texte": "Moustache trouve des pierres pour {nom}, de l'herbe bien verte pour Rexou, et de la pâtée pour lui. Miam, miam !", "action": "manger", "interactif": true, "amis": []},
+    {"texte": "Tout le monde a le ventre bien plein. Merci Moustache ! Hourra pour les trois copains !", "action": "fete", "interactif": true, "clics": 4, "amis": []}
+  ]
+}
