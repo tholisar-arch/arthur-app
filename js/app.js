@@ -107,6 +107,7 @@ class Monde { // ce qui reste d'une scène à l'autre
       else if (p.type === "fusee") { rond(ctx, p.x, p.y, 5, [255, 240, 200]); trait(ctx, [p.x, p.y], [p.x - p.vx * 0.05, p.y - p.vy * 0.05], 3, [255, 180, 80]); }
       else if (p.type === "bulle") bulle(ctx, p.x + 6 * Math.sin(p.a), p.y, p.r);
       else if (p.type === "coeur") coeur(ctx, p.x, p.y, p.r * (0.6 + 0.4 * k) + 4, p.col);
+      else if (p.type === "anneau") { ctx.globalAlpha = k; rond(ctx, p.x, p.y, 10 + (1 - k) * 26, null, 5, [255, 255, 255]); ctx.globalAlpha = 1; }
       else if (p.type === "note" || p.type === "zzz") {
         ctx.globalAlpha = Math.min(1, k * 2);
         ecrit(ctx, p.type === "zzz" ? "Z" : "♪", 18 + p.r * 2, p.col, [p.x, p.y]);
@@ -116,6 +117,7 @@ class Monde { // ce qui reste d'une scène à l'autre
   }
 }
 
+const RAYON_CIBLE = 100; // taille de la zone à toucher autour de la cible (en pixels de l'image)
 const estimeDuree = (texte) => texte.length / 11 + 1;
 
 class Scene {
@@ -218,9 +220,17 @@ class Scene {
   }
   pointOutil() { const v = this.faiseur(); return pointOutil(v.kind, v.col, v.x + v.dx, G + v.dy, v.outil); }
 
-  clic() {
+  clic(pos) { // pos = endroit touché dans l'image ; il faut toucher la cible (le rond jaune avec la main)
     if (!this.inter || this.fait >= this.n) return;
+    if (pos) {
+      const [cx, cy] = this.cible();
+      if (Math.hypot(pos[0] - cx, pos[1] - cy) > RAYON_CIBLE) return this.rate(pos);
+    }
     if (this.p === null && this.pret()) this.debutEtape(); else this.attente = true;
+  }
+  rate(pos) { // touché à côté : un petit rond et un petit son, rien ne se passe
+    joue("clic");
+    this.m.parts.push({ x: pos[0], y: pos[1], vx: 0, vy: 0, g: 0, vie: 0.45, max: 0.45, col: [255, 255, 255], r: 0, type: "anneau", a: 0, va: 0 });
   }
   debutEtape() {
     this.p = 0; this.evt = false; this.evt2 = false; this.attente = false;
@@ -593,14 +603,13 @@ class App {
     } else {
       if (this.bRetour.touche(p)) this.menu();
       else if (this.fin) { if (this.bEncore.touche(p)) this.lance(); else if (this.bAutres.touche(p)) this.menu(); }
-      else this.scene.clic();
+      else this.scene.clic([p[0] - VX, p[1] - VY]); // position dans l'image
     }
   }
   clavier(e) {
     if (this.etat === "histoire") {
       if (e.key === "Escape") this.menu();
       else if (e.key === "ArrowRight" && !this.fin) this.sceneSuivante();
-      else if (!this.fin) this.scene.clic(); // les petits tapent sur le clavier : ça compte aussi
     } else if ((this.etat === "config" || this.etat === "perso") && e.key === "Escape") this.menu();
   }
 
