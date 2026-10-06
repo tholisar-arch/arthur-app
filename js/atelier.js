@@ -6,6 +6,7 @@
 const CLE_LOCALE = "tracto.personnages.v1";
 const NOMS_COIFFURES = { court: "Court", herisse: "En pics", boucle: "Bouclés", milong: "Mi-longs", long: "Longs", couettes: "Couettes", chignon: "Chignon", chauve: "Dégarni" };
 const NOMS_DESSINS = { tractopelle: "Tractopelle", dino: "Dinosaure", etoile: "Étoile", coeur: "Cœur" };
+const NOMS_HAUTS = { teeshirt: "Tee-shirt", pull: "Pull", chemise: "Chemise", debardeur: "Débardeur", salopette: "Salopette", robe: "Robe" };
 
 async function chargePersonnages() {
   let fichier = {}, local = { modifies: {}, supprimes: [] };
@@ -24,7 +25,10 @@ function modeleAuHasard(nom, age = "enfant") {
     nom, age, peau: auHasard(Object.keys(PALETTES.peau)), cheveux: auHasard(Object.keys(PALETTES.cheveux).filter((c) => age === "adulte" || !["gris", "blanc"].includes(c))),
     coiffure: auHasard(fille ? ["long", "milong", "couettes", "boucle", "chignon"] : ["court", "herisse", "boucle", "milong"]),
     yeux: auHasard(Object.keys(PALETTES.yeux)), haut: auHasard(Object.keys(PALETTES.habits)), bas: auHasard(["jean", "marine", "noir", "beige", "rouge", "vert"]),
-    robe: fille && Math.random() < 0.6, cils: fille, dessin: auHasard(DESSINS_TSHIRT),
+    haut_type: auHasard(fille ? ["robe", "robe", "teeshirt", "pull", "salopette"] : ["teeshirt", "teeshirt", "pull", "chemise", "salopette", "debardeur"]),
+    bas_type: auHasard(fille ? ["pantalon", "short", "jupe"] : ["pantalon", "short"]),
+    corpulence: auHasard(["mince", "moyen", "moyen", "costaud", "rond"]), chaussures: auHasard(Object.keys(PALETTES.chaussures)),
+    cils: fille, dessin: auHasard(DESSINS_TSHIRT),
   };
 }
 
@@ -79,7 +83,7 @@ class Atelier {
   }
   hasard() {
     const p = PERSONNAGES[this.sel], h = modeleAuHasard(p.nom, p.age);
-    this.modifie({ ...h, taille: p.taille, muscle: p.muscle });
+    this.modifie({ ...h, taille: p.taille, robe: false, muscle: false });
     joue("magie");
   }
   touche(p) {
@@ -133,10 +137,10 @@ class Atelier {
     bouton([516, 648, 186, 52], "Supprimer", [210, 80, 80], () => this.supprime(), 22, !PERSONNAGES_DEFAUT[this.sel]);
 
     // --- les réglages à droite
-    [["visage", "Visage"], ["habits", "Habits"], ["plus", "Plus"]].forEach(([o, nom], k) => {
-      const r = [725 + k * 180, 82, 168, 50], actif = this.onglet === o;
+    [["visage", "Visage"], ["corps", "Corps"], ["haut", "Haut"], ["bas", "Bas"], ["plus", "Plus"]].forEach(([o, nom], k) => {
+      const r = [725 + k * 107, 82, 100, 50], actif = this.onglet === o;
       rrect(ctx, ...r, 14, actif ? [255, 200, 60] : [255, 255, 255], 3);
-      ecrit(ctx, nom, 24, actif ? [120, 60, 20] : CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+      ecrit(ctx, nom, 21, actif ? [120, 60, 20] : CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
       z.push({ r, action: () => { this.onglet = o; joue("clic"); } });
     });
     const titre = (texte, y) => ecrit(ctx, texte, 22, CONTOUR, [735, y], null, true);
@@ -178,25 +182,43 @@ class Atelier {
         const s3 = STYLES.__apercu, e3 = 0.95;
         personne(ctx, cx, cy + (s3.L + s3.T + s3.R - 6) * e3 + 6, e3, 0.5, 1, 0, 0, null, "__apercu");
       }, (c) => this.modifie({ coiffure: c }));
-    } else if (this.onglet === "habits") {
-      titre("Haut", 148); nuancier(148, "habits", "haut");
-      titre("Bas", 266); nuancier(266, "habits", "bas", ["peau"]);
-      titre("Robe", 384); choix(384, [[false, "Non"], [true, "Oui"]], (v) => !!p.robe === v, (v) => this.modifie({ robe: v, bas: v && p.bas === "jean" ? "peau" : p.bas }));
-      titre(`Dessin sur le haut : ${NOMS_DESSINS[st.dessin] || "aucun"}`, 502);
-      vignettes(502, DESSINS_TSHIRT, (d) => (st.dessin || null) === d, (d, cx, cy) => {
+    } else if (this.onglet === "corps") {
+      titre("Âge", 148); choix(148, [["enfant", "Enfant"], ["adulte", "Adulte"]], (v) => (p.age || "enfant") === v, (v) => this.modifie({ age: v }));
+      titre("Taille", 266); choix(266, [["petit", "Petit"], ["moyen", "Moyen"], ["grand", "Grand"]], (v) => (p.taille || "moyen") === v, (v) => this.modifie({ taille: v }));
+      titre("Corpulence", 384);
+      vignettes(384, CORPULENCES, (c) => st.corpulence === c, (c, cx, cy) => { // le personnage en petit, avec chaque silhouette
+        STYLES.__apercu = styleDe({ ...p, corpulence: c, muscle: false, age: "enfant", taille: "moyen" });
+        const s3 = STYLES.__apercu, e3 = 0.4;
+        personne(ctx, cx, cy + (s3.L + s3.T + s3.R * 2) * e3 / 2, e3, 0.5, 1, 0, 0, null, "__apercu");
+      }, (c) => this.modifie({ corpulence: c, muscle: false }));
+      choix(470, [["mince", "Mince"], ["moyen", "Moyen"], ["costaud", "Costaud"], ["rond", "Rond"]], (v) => st.corpulence === v, (v) => this.modifie({ corpulence: v, muscle: false }), 120);
+    } else if (this.onglet === "haut") {
+      titre(`Haut : ${NOMS_HAUTS[st.typeHaut]}`, 148);
+      vignettes(148, HAUTS, (h) => st.typeHaut === h, (h, cx, cy) => {
+        STYLES.__apercu = styleDe({ ...p, haut_type: h, robe: false, age: "enfant", taille: "moyen" });
+        const s3 = STYLES.__apercu, e3 = 0.4;
+        personne(ctx, cx, cy + (s3.L + s3.T + s3.R * 2) * e3 / 2, e3, 0.5, 1, 0, 0, null, "__apercu");
+      }, (h) => this.modifie({ haut_type: h, robe: false }));
+      titre("Couleur du haut", 266); nuancier(266, "habits", "haut");
+      titre(`Dessin sur le haut : ${NOMS_DESSINS[st.dessin] || "aucun"}`, 384);
+      vignettes(384, DESSINS_TSHIRT, (d) => (st.dessin || null) === d, (d, cx, cy) => {
         if (d === "tractopelle") dessineVehicule(ctx, "tractopelle", "jaune", cx + 4, cy + 20, 0.5, 0.3, 0, 0.21);
         else if (d === "dino") dinoLongCou(ctx, cx - 4, cy + 24, 0.2, undefined, 0.5);
         else if (d === "etoile") etoile(ctx, cx, cy, 20, [255, 215, 60]);
         else if (d === "coeur") coeur(ctx, cx, cy - 4, 17, [230, 60, 90]);
         else ecrit(ctx, "Aucun", 15, [150, 140, 130], [cx, cy]);
       }, (d) => this.modifie({ dessin: d }));
+    } else if (this.onglet === "bas") {
+      const sansBas = st.typeHaut === "robe" || st.typeHaut === "salopette";
+      titre(sansBas ? `Bas : avec une ${NOMS_HAUTS[st.typeHaut].toLowerCase()}, la couleur suffit` : "Bas", 148);
+      if (!sansBas) choix(148, [["pantalon", "Pantalon"], ["short", "Short"], ["jupe", "Jupe"]], (v) => st.typeBas === v, (v) => this.modifie({ bas_type: v }));
+      titre(st.typeHaut === "robe" ? "Collant (ou jambes nues)" : "Couleur du bas", 266); nuancier(266, "habits", "bas", ["peau"]);
+      titre("Chaussures", 384); nuancier(384, "chaussures", "chaussures");
     } else {
-      titre("Âge", 148); choix(148, [["enfant", "Enfant"], ["adulte", "Adulte"]], (v) => (p.age || "enfant") === v, (v) => this.modifie({ age: v }));
-      titre("Taille", 266); choix(266, [["petit", "Petit"], ["moyen", "Moyen"], ["grand", "Grand"]], (v) => (p.taille || "moyen") === v, (v) => this.modifie({ taille: v }));
-      const bascule = (champ) => (v) => this.modifie({ [champ]: !p[champ] });
-      titre("Accessoires", 384);
-      choix(384, [["lunettes", "Lunettes"], ["couronne", "Couronne"], ["cils", "Cils"]], (v) => !!p[v], (v) => bascule(v)(v));
-      choix(470, [["moustache", "Moustache"], ["barbe", "Barbe"], ["muscle", "Musclé"]], (v) => !!p[v], (v) => bascule(v)(v));
+      const bascule = (champ) => this.modifie({ [champ]: !p[champ] });
+      titre("Accessoires", 148);
+      choix(148, [["lunettes", "Lunettes"], ["couronne", "Couronne"], ["cils", "Cils"]], (v) => !!p[v], bascule);
+      choix(234, [["moustache", "Moustache"], ["barbe", "Barbe"]], (v) => !!p[v], bascule);
     }
     ecrit(ctx, this.messageT > 0 ? "✓ Enregistré sur cet appareil" : "Les changements sont gardés sur cet appareil", 17,
       this.messageT > 0 ? [60, 150, 70] : [150, 140, 130], [995, 700]);

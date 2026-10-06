@@ -594,8 +594,12 @@ const PALETTES = {
   cheveux: { noir: [30, 25, 25], brun_fonce: [60, 35, 20], brun: [110, 65, 35], chatain: [150, 100, 55], blond_fonce: [175, 130, 65], blond: [228, 188, 98], blond_clair: [245, 222, 155], roux: [210, 100, 40], gris: [170, 170, 178], blanc: [228, 228, 234] },
   yeux: { marron_fonce: [70, 45, 25], marron: [120, 75, 40], noisette: [150, 110, 50], vert: [70, 150, 80], vert_clair: [120, 195, 130], bleu: [70, 130, 220], bleu_clair: [130, 190, 240], gris: [130, 140, 150] },
   habits: { bleu: [90, 160, 230], marine: [60, 90, 150], rouge: [215, 60, 60], rose: [235, 110, 160], orange: [240, 130, 50], jaune: [250, 200, 40], vert: [90, 190, 110], lilas: [170, 140, 220], blanc: [240, 240, 245], noir: [60, 60, 75], beige: [200, 180, 140], jean: [70, 80, 120] },
+  chaussures: { noir: [60, 50, 60], marron: [120, 75, 45], blanc: [245, 245, 248], rouge: [215, 60, 60], bleu: [70, 120, 210], rose: [240, 130, 180], jaune: [250, 200, 40], vert: [80, 170, 90] },
 };
 const COIFFURES = ["court", "herisse", "boucle", "milong", "long", "couettes", "chignon", "chauve"];
+const CORPULENCES = ["mince", "moyen", "costaud", "rond"];
+const HAUTS = ["teeshirt", "pull", "chemise", "debardeur", "salopette", "robe"];
+const BAS = ["pantalon", "short", "jupe"];
 const DESSINS_TSHIRT = [null, "tractopelle", "dino", "etoile", "coeur"];
 const PERSONNAGES_DEFAUT = {
   arthur: { nom: "Arthur", age: "enfant", peau: "clair", cheveux: "blond_fonce", coiffure: "court", yeux: "vert", haut: "bleu", bas: "jean", dessin: "tractopelle" },
@@ -614,14 +618,19 @@ function couleurDe(pal, v, defaut) {
 }
 function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
   const adulte = p.age === "adulte", k = { petit: 0.92, moyen: 1, grand: 1.07 }[p.taille] || 1;
-  const b = adulte ? { L: 92, T: 74, R: 23.5, W: p.muscle ? 62 : 48 } : { L: 39, T: 41, R: 24.5, W: 33 };
+  const corp = CORPULENCES.includes(p.corpulence) ? p.corpulence : p.muscle ? "costaud" : "moyen";
+  const kW = { mince: 0.86, moyen: 1, costaud: 1.25, rond: 1.25 }[corp];
+  const b = adulte ? { L: 92, T: 74, R: 23.5, W: 48 } : { L: 39, T: 41, R: 24.5, W: 33 };
+  const typeHaut = HAUTS.includes(p.haut_type) ? p.haut_type : p.robe ? "robe" : "teeshirt";
+  const typeBas = typeHaut === "salopette" ? "pantalon" : BAS.includes(p.bas_type) ? p.bas_type : "pantalon";
   return {
-    L: b.L * k, T: b.T * k, R: b.R, W: b.W,
+    L: b.L * k, T: b.T * k, R: b.R, W: b.W * kW, corpulence: corp, typeHaut, typeBas,
     peau: couleurDe("peau", p.peau, "clair"), cheveux: couleurDe("cheveux", p.cheveux, "brun"),
     coiffure: COIFFURES.includes(p.coiffure) ? p.coiffure : "court", yeux: couleurDe("yeux", p.yeux, "marron"),
     haut: couleurDe("habits", p.haut, "bleu"), bas: couleurDe("habits", p.bas, "jean"),
-    robe: !!p.robe, cils: !!p.cils, lunettes: !!p.lunettes, couronne: !!p.couronne, moustache: !!p.moustache,
-    barbe: !!p.barbe, muscle: !!p.muscle, dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
+    chaussures: couleurDe("chaussures", p.chaussures, "noir"),
+    robe: typeHaut === "robe", cils: !!p.cils, lunettes: !!p.lunettes, couronne: !!p.couronne, moustache: !!p.moustache,
+    barbe: !!p.barbe, muscle: corp === "costaud", rond: corp === "rond", dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
   };
 }
 let PERSONNAGES = {};
@@ -632,24 +641,50 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const { L, T, R, W } = st, hanche = -L, epaule = -L - T, tx = 0, ty = epaule - R + 6;
   if (st.coiffure === "long") pen.ellipse(st.cheveux, -R * 1.15, ty - R * 1.05, R * 1.15, epaule + T * 0.35);
   if (st.coiffure === "milong") pen.ellipse(st.cheveux, -R * 1.12, ty - R * 1.05, R * 1.12, ty + R * 0.95);
+  // jambes (pantalon, short ou jupe) et chaussures
+  const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
+  const largJambe = Math.min(W * 0.26, 14 + (st.L > 70 ? 6 : 0)) * (st.rond ? 1.15 : 1);
   [-W * 0.22, W * 0.22].forEach((lx, k) => {
     const sw = Math.sin(marche + k * PI) * L * 0.3;
-    pen.bras(st.bas || st.peau, [lx, hanche], [lx + sw, -7], W * 0.26);
-    pen.ellipse([60, 50, 60], lx + sw - W * 0.2, -11, lx + sw + W * 0.32, 1);
+    pen.bras(jambeNue ? st.peau : st.typeBas === "short" ? st.peau : st.bas, [lx, hanche], [lx + sw, -7], largJambe);
+    if (st.typeBas === "short" && st.bas && !st.robe) pen.bras(st.bas, [lx, hanche], [lx + sw * 0.45, hanche + L * 0.45], largJambe * 1.15);
+    pen.ellipse(st.chaussures, lx + sw - W * 0.2, -11, lx + sw + W * 0.32, 1);
   });
   const joie = humeur === "joie";
-  [-1, 1].forEach((sx, k) => {
-    const sw = Math.sin(marche + k * PI) * 10;
-    const main = joie ? [sx * (W / 2 + 22), epaule - 32 - 6 * Math.sin(t * 8 + k)] : [sx * (W / 2 + 8) + sw * 0.3, hanche - 6 + sw * 0.4];
-    const larg = W * (st.muscle ? 0.3 : 0.22);
-    pen.bras(st.peau, [sx * W * 0.42, epaule + 8], main, larg);
-    if (st.muscle) pen.circle(st.peau, sx * W * 0.5, epaule + 26, larg * 0.75, true);
-    pen.circle(st.peau, main[0], main[1], larg * 0.6, true);
-  });
+  if (jupe) pen.poly(st.bas, [[-W * 0.5, hanche - 6], [W * 0.5, hanche - 6], [W * 0.85, hanche + L * 0.42], [-W * 0.85, hanche + L * 0.42]]);
+  // le corps
   if (st.robe) {
     pen.poly(st.haut, [[-W * 0.45, epaule], [W * 0.45, epaule], [W * 0.95, hanche + L * 0.4], [-W * 0.95, hanche + L * 0.4]]);
     pen.poly(clair(st.haut, 0.4), [[-W * 0.3, hanche - 4], [W * 0.3, hanche - 4], [W * 0.36, hanche + 4], [-W * 0.36, hanche + 4]], false);
-  } else pen.rect(st.haut, -W / 2, epaule, W / 2, hanche + 6, W * 0.25);
+  } else if (st.rond) pen.ellipse(st.haut, -W * 0.62, epaule - 2, W * 0.62, hanche + 10); // petit ventre tout rond
+  else pen.rect(st.haut, -W / 2, epaule, W / 2, hanche + 6, W * 0.25);
+  if (st.typeHaut === "pull") pen.rect(fonce(st.haut, 0.85), -W * (st.rond ? 0.45 : 0.5), hanche - 2, W * (st.rond ? 0.45 : 0.5), hanche + 6, 3, false);
+  if (st.typeHaut === "chemise") { // col et boutons
+    pen.poly(clair(st.haut, 0.5), [[-W * 0.28, epaule], [0, epaule + 10], [-W * 0.05, epaule + 2]]);
+    pen.poly(clair(st.haut, 0.5), [[W * 0.28, epaule], [0, epaule + 10], [W * 0.05, epaule + 2]]);
+    for (let b2 = 0; b2 < 3; b2++) pen.circle(fonce(st.haut, 0.6), 0, epaule + 16 + b2 * T * 0.22, Math.max(1.5, W * 0.045));
+  }
+  if (st.typeHaut === "salopette") { // bavette + bretelles dans la couleur du bas
+    const bv = st.bas || [70, 80, 120];
+    pen.rect(bv, -W * 0.32, epaule + T * 0.35, W * 0.32, hanche + 6, 4);
+    for (const sx of [-1, 1]) {
+      pen.line(bv, [sx * W * 0.3, epaule + T * 0.38], [sx * W * 0.36, epaule + 2], Math.max(3, W * 0.12));
+      pen.circle([250, 210, 80], sx * W * 0.24, epaule + T * 0.42, Math.max(1.5, W * 0.06));
+    }
+  }
+  // bras par-dessus le corps, avec les manches du haut
+  const manche = { teeshirt: 0.42, pull: 0.95, chemise: 0.95, debardeur: 0, salopette: 0.42, robe: 0.3 }[st.typeHaut];
+  const demiCorps = st.rond ? W * 0.6 : st.robe ? W * 0.45 : W * 0.5;
+  [-1, 1].forEach((sx, k) => {
+    const sw = Math.sin(marche + k * PI) * 10;
+    const larg = Math.min(W * (st.muscle ? 0.3 : 0.22), st.L > 70 ? 18 : 9) * (st.muscle ? 1.1 : st.rond ? 1.15 : 1);
+    const ep = [sx * (demiCorps - larg * 0.2), epaule + 8];
+    const main = joie ? [sx * (demiCorps + 20), epaule - 32 - 6 * Math.sin(t * 8 + k)] : [sx * (demiCorps + larg * 0.55 + 2) + sw * 0.3, hanche - 4 + sw * 0.4];
+    pen.bras(st.peau, ep, main, larg);
+    if (st.muscle && manche < 0.5) pen.circle(st.peau, ep[0] + (main[0] - ep[0]) * 0.52, ep[1] + (main[1] - ep[1]) * 0.52, larg * 0.75, true);
+    if (manche > 0) pen.bras(st.haut, ep, [ep[0] + (main[0] - ep[0]) * manche, ep[1] + (main[1] - ep[1]) * manche], larg * 1.2);
+    pen.circle(st.peau, main[0], main[1], larg * 0.6, true);
+  });
   if (st.dessin) { // le dessin sur le tee-shirt
     const c = pen.P(0, epaule + T * 0.62);
     if (st.dessin === "tractopelle") dessineVehicule(ctx, "tractopelle", "jaune", c[0], c[1], t, 0.3, 0, 0.13 * s, f);

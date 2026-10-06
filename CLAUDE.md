@@ -56,15 +56,17 @@ son entrée dans `personnages.json` (identifiant = prénom sans accents, minuscu
 ```json
 "jean-eudes": {"nom": "Jean-Eudes", "age": "enfant", "taille": "moyen", "peau": "clair",
   "cheveux": "blond", "coiffure": "boucle", "yeux": "bleu", "haut": "rouge", "bas": "marine",
-  "robe": false, "cils": false, "lunettes": false, "couronne": false, "moustache": false,
-  "barbe": false, "muscle": false, "dessin": null}
+  "corpulence": "moyen", "haut_type": "teeshirt", "bas_type": "pantalon", "chaussures": "noir",
+  "cils": false, "lunettes": false, "couronne": false, "moustache": false, "barbe": false, "dessin": null}
 ```
-- `age` : enfant | adulte — `taille` : petit | moyen | grand
+- `age` : enfant | adulte — `taille` : petit | moyen | grand — `corpulence` : mince | moyen | costaud | rond
 - `peau` : tres_clair | clair | beige | mat | cuivre | brun | fonce | tres_fonce
 - `cheveux` : noir | brun_fonce | brun | chatain | blond_fonce | blond | blond_clair | roux | gris | blanc
 - `coiffure` : court | herisse | boucle | milong | long | couettes | chignon | chauve
 - `yeux` : marron_fonce | marron | noisette | vert | vert_clair | bleu | bleu_clair | gris
-- `haut` / `bas` : bleu | marine | rouge | rose | orange | jaune | vert | lilas | blanc | noir | beige | jean (`bas: "peau"` = jambes nues, pour une robe)
+- `haut_type` : teeshirt | pull | chemise | debardeur | salopette | robe — `bas_type` : pantalon | short | jupe
+- `chaussures` : noir | marron | blanc | rouge | bleu | rose | jaune | vert
+- `haut` / `bas` (couleurs) : bleu | marine | rouge | rose | orange | jaune | vert | lilas | blanc | noir | beige | jean (`bas: "peau"` = jambes nues ; avec une robe, `bas` = la couleur du collant)
 - `dessin` (sur le haut) : null | tractopelle | dino | etoile | coeur
 Les parents peuvent aussi tout régler dans l'appli (bouton **Personnages** de l'accueil) ;
 ces réglages-là restent sur l'appareil (localStorage) et passent avant `personnages.json`.
