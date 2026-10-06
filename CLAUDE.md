@@ -40,6 +40,10 @@ violence, adultes, alcool/drogue, liens, e-mails, numéros de téléphone). Ces 
 dans le `localStorage` de l'appareil (clé `tracto.histoires.v1`), pas dans le dépôt ; elles sont
 transformées en histoires jouables par `compileHistoire()` et ajoutées à l'accueil (badge « Moi »).
 Pour en faire une histoire du dépôt (visible partout), le parent peut la recopier à Claude.
+Champs d'une étape de l'éditeur : `action`, `decor`, `presents`, `interactif`, `texteLibre` ({fr, en}),
+`nuit`, `humeur` (auto | joie | calme | peur), `copains` (engins), `clics`, `consigne` ({fr, en}).
+Mode « 📝 Texte libre » : une ligne = une scène, analysée sur place par `etapesDepuisTexte()`
+(lieux, actions, personnages, « touche »/« configuration » = interactif, nuit), puis éditable.
 
 ## Format d'une histoire
 ```json

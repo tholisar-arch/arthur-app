@@ -135,7 +135,7 @@ class Scene {
     this.acteur = null; this.vol = null; this.etoiles = []; this.artiste = null; this.niveauCible = null;
     const m = monde, hero = m.hero;
     if (d.decor !== m.decor) m.scroll = 0;
-    m.decor = d.decor; m.nuit = this.act === "dormir";
+    m.decor = d.decor; m.nuit = this.act === "dormir" || !!d.nuit;
     for (const v of [hero, ...m.copains]) v.outil = v.dx = v.dy = 0;
     const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo"].includes(this.act);
     this.n = aFaire ? d.clics : 0;
@@ -597,7 +597,8 @@ class App {
     this.page = Math.min(this.page, Math.max(0, Math.ceil(this.histoires.length / 6) - 1));
   }
   menu() {
-    this.modeSuppr = false; this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
+    this.modeSuppr = false;
+    this.ecriture.ferme(); this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
 
   // ------------------------------------------------ événements
   cartes() { const r = []; for (let k = 0; k < 6; k++) r.push([75 + (k % 3) * 390, 125 + Math.floor(k / 3) * 225, 350, 200]); return r; }

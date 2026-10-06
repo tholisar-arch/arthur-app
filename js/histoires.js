@@ -133,7 +133,7 @@ function scene(d, decorCourant, premiere, derniere, heros) {
     texte_en: d.texte_en ? String(d.texte_en).trim() : null, consigne_en: d.consigne_en || null,
     vehicule: d.vehicule ? vehicule(d.vehicule) : null,
     amis: amis.filter(estAmi), partent: (d.partent || []).filter(estAmi),
-    positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros,
+    positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros, nuit: !!d.nuit,
   };
 }
 
