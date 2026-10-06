@@ -5,12 +5,13 @@
 "use strict";
 
 const CLE_HISTOIRES = "tracto.histoires.v1";
-const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures"];
+const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures", "foret", "montagne", "ferme", "port"];
 const ACTIONS_ECRITURE = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
-  "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir"];
+  "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher"];
 const ANIMAUX_ECRITURE = ["trex", "chat", "dino", "stego"];
-const MAX_SCENES = 30;
-const METEOS = ["aucune", "pluie", "neige", "arcenciel", "etoiles"];
+const MAX_SCENES = 120; // assez pour une histoire de plus de 10 minutes
+const METEOS = ["aucune", "pluie", "orage", "neige", "arcenciel", "etoiles"];
+const OBJETS = ["ballon", "doudou", "cle", "chat"];
 const nouvelId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const cleVoix = (e, et) => e.id + ":" + et.vid; // la voix enregistrée d'une scène (IndexedDB)
 
@@ -37,6 +38,10 @@ const MODELES = {
   velo: ["{prenom} s'envole sur le vélo jaune !", "{prenom} flies away on the yellow bike!"],
   fete: ["Hourra ! On fait la fête avec des feux d'artifice !", "Hooray! Let's party with fireworks!"],
   dormir: ["Le soir arrive. Bonne nuit, {nom} !", "Evening comes. Good night, {nom}!"],
+  pont: ["Oh non ! Le pont est cassé. {nom} pose de nouvelles planches.", "Oh no! The bridge is broken. {nom} lays down new planks."],
+  arbre: ["Oh ! Un arbre est tombé sur la route. {nom} le pousse.", "Oh! A tree has fallen across the road. {nom} pushes it away."],
+  panne: ["Un camion est en panne. On va le réparer !", "A truck has broken down. Let's fix it!"],
+  chercher: ["Quelque chose est perdu… On cherche derrière les buissons !", "Something is lost… Let's look behind the bushes!"],
 };
 const NOMS_PERSOS = { // comment on appelle chacun dans le texte
   fr: { arthur: "{prenom}", trex: "Rexou", chat: "Moustache", dino: "le dinosaure", stego: "le stégosaure" },
@@ -83,6 +88,8 @@ function compileHistoire(e) {
       ...(et.meteo && et.meteo !== "aucune" ? { meteo: et.meteo } : {}),
       ...(et.bulle && et.bulle.fr ? { bulle: { qui: et.bulle.qui, texte: et.bulle.fr, texte_en: et.bulle.en || null } } : {}),
       ...(et.voix && et.vid ? { voixPerso: cleVoix(e, et) } : {}),
+      ...(et.partie ? { partie: et.partie.fr || "", partie_en: et.partie.en || null } : {}),
+      ...(et.objet ? { objet: et.objet } : {}),
     };
   });
   return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes };
@@ -115,16 +122,19 @@ function quiParle(nom, prenom) { // « Papa », « Tracto », « Arthur »… ->
 }
 function etapesDepuisTexte(lignes, prenom) {
   const presents = new Set(), etapes = [];
-  let decor = null;
+  let decor = null, partie = null;
+  const pousse = (et) => { if (partie !== null) { et.partie = { fr: partie, en: null }; partie = null; } etapes.push(et); };
   lignes.forEach((brut, i) => {
+    const chap = brut.trim().match(/^(?:#+\s*(.*)|(?:chapitre|partie|chapter)\s*\d+\s*[:.\-–]?\s*(.*))$/i);
+    if (chap) { partie = (chap[1] ?? chap[2] ?? "").trim(); return; } // « # L'orage » ou « Chapitre 2 : L'orage »
     const texte = brut.replace(/\bconfiguration\b\s*[:,.!\-–]*\s*/gi, "").trim().replace(/(^|[.!?]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
     const dialogue = texte.match(/^([^:]{1,30}?)\s*:\s*(.+)$/), qui = dialogue && quiParle(dialogue[1], prenom);
     if (qui) { // « Papa : On y va ! » -> une bulle sur la scène d'avant (ou une scène pour parler)
       if (qui !== "heros") presents.add(qui);
       let et = etapes[etapes.length - 1];
-      if (!et || et.bulle) {
+      if (!et || et.bulle || partie !== null) {
         et = { action: "parler", decor: decor || "campagne", presents: [], interactif: false, texteLibre: { fr: "", en: null }, humeur: "auto", nuit: et ? et.nuit : false, copains: [], clics: null, consigne: null };
-        etapes.push(et);
+        pousse(et);
       }
       et.presents = [...presents];
       et.bulle = { qui, fr: dialogue[2].trim(), en: null };
@@ -134,10 +144,11 @@ function etapesDepuisTexte(lignes, prenom) {
     for (const id of amisCites(texte)) presents.add(id);
     if (prenom && new RegExp("(^|[^a-z])" + sansAccent(prenom) + "([^a-z]|$)").test(sa)) presents.add("arthur");
     decor = devineDecor(texte) || decor || "campagne";
-    etapes.push({
+    pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
       texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: [], clics: null, consigne: null,
-      meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
+      objet: /\bdoudou\b/.test(sa) ? "doudou" : /\bcles?\b/.test(sa) ? "cle" : /\b(chat|moustache|minou)\b/.test(sa) ? "chat" : null,
+      meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(orage|tonnerre|eclairs?)\b/.test(sa) ? "orage" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
     });
   });
   return etapes;
@@ -208,6 +219,27 @@ class Ecriture {
     if (!window.confirm(tr("confirmeSupprimerHistoire", { titre: e.titre }))) return;
     this.histoires = this.histoires.filter((x) => x !== e); this.id = null; this.sauve();
     effaceVoixHistoire(e);
+  }
+  ecritChapitre() {
+    const et = this.etape(), p = et.partie || {};
+    const fr = window.prompt(tr("promptChapitre"), p.fr || "");
+    if (fr === null) return;
+    const refus = texteRefuse(fr, 80);
+    if (refus) return this.dit(tr("refuse", { raison: refus }));
+    const en = window.prompt(tr("promptChapitreEn"), p.en || "") || "";
+    const refusEn = texteRefuse(en, 80);
+    if (refusEn) return this.dit(tr("refuse", { raison: refusEn }));
+    this.change({ partie: { fr: fr.trim(), en: en.trim() || null } });
+  }
+  numeroChapitre(i) { const e = this.histoire(); let n = 1; for (let j = 1; j <= i; j++) if (e.etapes[j].partie) n++; return n; }
+  duree() { // durée estimée (minutes), recalculée quand l'histoire change
+    const e = this.histoire();
+    if (!this.dureeCache || this.dureeCache.date !== e.date || this.dureeCache.id !== e.id) {
+      let m = 1;
+      try { m = dureeHistoire(normalise(compileHistoire(e), "moi-" + e.id, e.date)); } catch (err) { /* histoire incomplète */ }
+      this.dureeCache = { id: e.id, date: e.date, m };
+    }
+    return this.dureeCache.m;
   }
   ecritBulle() {
     const et = this.etape(), b = et.bulle;
@@ -386,12 +418,14 @@ class Ecriture {
       ecrit(ctx, String(i + 1), 18, [255, 255, 255], [r[0] + 14, r[1] + 14], [90, 90, 110]);
       ecrit(ctx, tr("actions")[et.action] || et.action, 15, CONTOUR, [r[0] + r[2] / 2, r[1] + 51]);
       if (et.interactif) rond(ctx, r[0] + r[2] - 14, r[1] + 14, 8, [255, 210, 60], 2);
+      if (et.partie && i > 0) { rrect(ctx, r[0] - 5, r[1] - 4, 8, r[3] + 8, 4, [235, 130, 40]); ecrit(ctx, "📖", 13, [0, 0, 0], [r[0] + 36, r[1] + 14]); }
       if (et.bulle && et.bulle.fr) ecrit(ctx, "💬", 14, [0, 0, 0], [r[0] + r[2] - 34, r[1] + 15]);
       if (et.voix) ecrit(ctx, "🎤", 14, [0, 0, 0], [r[0] + r[2] - 14, r[1] + 34]);
       z.push({ r, action: () => { this.sc = i; joue("clic"); } });
     });
     if (nb < MAX_SCENES) bouton([357 + VUES * 98, 144, 64, 64], tr("ajouterScene"), [70, 185, 90], () => this.ajouteScene(), 30);
-    ecrit(ctx, `${this.sc + 1} / ${nb}`, 15, [150, 140, 130], [1253, 176]);
+    ecrit(ctx, `${this.sc + 1} / ${nb}`, 15, [150, 140, 130], [1243, 166]);
+    ecrit(ctx, "≈ " + tr("minutes", { n: this.duree() }), 14, [150, 140, 130], [1243, 188]);
 
     // --- les onglets de la scène
     const et = this.etape();
@@ -405,12 +439,12 @@ class Ecriture {
     const Y = 282;
     if (this.onglet === "lieu") {
       titre(tr("lieu"), 268, Y);
-      LIEUX_ECRITURE.forEach((l, i) => puce([265 + i * 111, Y + 20, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240]));
-      titre(tr("action"), 268, Y + 78);
-      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 7) * 143, Y + 98 + Math.floor(i / 7) * 46, 136, 40], tr("actions")[a], et.action === a, () => this.change({ action: a })));
-      titre(tr("moment"), 268, Y + 250);
-      puce([265, Y + 270, 120, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
-      puce([395, Y + 270, 120, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
+      LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 9) * 111, Y + 20 + Math.floor(i / 9) * 46, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 16));
+      titre(tr("action"), 268, Y + 112);
+      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 132 + Math.floor(i / 9) * 46, 104, 40], tr("actions")[a], et.action === a, () => this.change({ action: a }), [255, 200, 60], 15));
+      titre(tr("moment"), 268, Y + 276);
+      puce([265, Y + 296, 120, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
+      puce([395, Y + 296, 120, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
     } else if (this.onglet === "qui") {
       titre(tr("quiEstLa"), 268, Y);
       Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).slice(0, 14).forEach((id, i) => {
@@ -447,7 +481,7 @@ class Ecriture {
       }
     } else if (this.onglet === "plus") {
       titre(tr("meteo"), 268, Y);
-      METEOS.forEach((m, i) => puce([265 + i * 176, Y + 20, 168, 40], tr("meteos")[m], (et.meteo || "aucune") === m, () => this.change({ meteo: m }), [140, 200, 240]));
+      METEOS.forEach((m, i) => puce([265 + i * 160, Y + 20, 152, 40], tr("meteos")[m], (et.meteo || "aucune") === m, () => this.change({ meteo: m }), [140, 200, 240]));
       titre(tr("bulleMot"), 268, Y + 80);
       const parleurs = ["heros"].concat(et.presents.filter(estAmi)), b = et.bulle || {};
       puce([265, Y + 100, 130, 40], tr("bulleAucune"), !b.qui, () => this.change({ bulle: null }), [255, 200, 60], 16);
@@ -468,6 +502,19 @@ class Ecriture {
       bouton([495, Y + 244, 160, 50], tr("ecouter"), [70, 185, 90], () => this.ecoute(), 19, !!et.voix && !rec);
       bouton([665, Y + 244, 160, 50], tr("effacerVoix"), [150, 160, 175], () => this.effaceVoix(), 19, !!et.voix && !rec);
       if (rec) rond(ctx, 465, Y + 256, 6 + 2 * Math.sin(t * 8), [255, 255, 255]);
+      if (et.action === "chercher") {
+        titre(tr("objetMot"), 848, Y + 222);
+        OBJETS.forEach((o, i) => puce([845 + i * 104, Y + 244, 98, 50], tr("objets")[o], (et.objet || "ballon") === o, () => this.change({ objet: o }), [255, 200, 60], 16));
+      }
+      if (et.partie || this.sc > 0) {
+        if (et.partie) {
+          const rp = [265, Y + 308, 560, 44];
+          rrect(ctx, ...rp, 12, [255, 245, 225], 3, [235, 130, 40]);
+          ecrit(ctx, coupe(ctx, tr("chapitreNom", { n: this.numeroChapitre(this.sc), titre: (LANGUE === "en" && et.partie.en) || et.partie.fr }), 18, 530)[0] || "", 18, [180, 90, 30], [rp[0] + 14, rp[1] + 12], null, true);
+          bouton([835, Y + 308, 60, 44], "✎", [110, 140, 220], () => this.ecritChapitre(), 20);
+          bouton([905, Y + 308, 60, 44], "✕", [150, 160, 175], () => this.change({ partie: null }), 20);
+        } else bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
+      } else if (e.etapes.some((x) => x.partie)) bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
     } else if (this.onglet === "placer") {
       const presents = et.presents.filter(estAmi);
       if (!presents.length) { ecrit(ctx, tr("placerPersonne"), 20, [150, 140, 130], [765, 420]); }

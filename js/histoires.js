@@ -2,7 +2,7 @@
 "use strict";
 
 const VEHICULES = ["tractopelle", "benne", "toupie", "pompier", "bulldozer", "grue"];
-const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir"];
+const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher"];
 const estAmi = (k) => k in AMIS_DESSIN; // animaux + tous les personnages (y compris ceux du configurateur)
 const INFOS_VEHICULE = {
   tractopelle: ["le tractopelle", "Tracto", "m"], benne: ["le camion benne", "Benny", "m"],
@@ -10,7 +10,7 @@ const INFOS_VEHICULE = {
   bulldozer: ["le bulldozer", "Bouldo", "m"], grue: ["la grue", "Grutty", "f"],
 };
 const COULEUR_FEMININ = { bleu: "bleue", vert: "verte", violet: "violette" };
-const CLICS_DEFAUT = { piscine: 4, cueillir: 5, chateau: 3, route: 5, voler: 3, fenetres: 4, cadeau: 1, velo: 3,manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3 };
+const CLICS_DEFAUT = { piscine: 4, cueillir: 5, chateau: 3, route: 5, voler: 3, fenetres: 4, cadeau: 1, velo: 3,manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3, pont: 4, arbre: 4, panne: 4, chercher: 3 };
 const CONSIGNES = {
   trou: "Clique pour remplir le trou !", feu: "Clique pour arroser le feu !", deblayer: "Clique pour pousser le sable !",
   construire: "Clique pour construire la maison !", copains: "Clique pour appeler les copains !",
@@ -22,6 +22,8 @@ const CONSIGNES = {
   voler: "Clique pour voler plus haut !", fenetres: "Clique pour poser les fenêtres !",
   cadeau: "Clique pour ouvrir le cadeau !", velo: "Clique pour pédaler plus haut !",
   rouler: "Clique pour klaxonner !", parler: "Clique pour klaxonner !",
+  pont: "Clique pour poser les planches du pont !", arbre: "Clique pour pousser l'arbre !",
+  panne: "Clique pour réparer le camion !", chercher: "Clique sur les buissons pour chercher !",
 };
 const ALIAS_VEHICULE = [
   ["camions? de pompiers?|pompiers?", "pompier"], ["camions?[- ]bennes?|bennes?", "benne"],
@@ -33,12 +35,12 @@ const ALIAS_ACTION = {
   incendie: "feu", arroser: "feu", construire: "construire", batir: "construire", copains: "copains", amis: "copains",
   manger: "manger", miam: "manger", repas: "manger", spectacle: "spectacle", show: "spectacle", bulles: "bulles",
   calin: "calin", bisous: "calin", piscine: "piscine", plouf: "piscine", cueillir: "cueillir", ramasser: "cueillir", chateau: "chateau", "bac a sable": "chateau", voler: "voler", envol: "voler", fenetres: "fenetres", portes: "fenetres", cadeau: "cadeau", velo: "velo", fete: "fete", fin: "fete", dormir: "dormir", nuit: "dormir",
-  rouler: "rouler", route: "route", paver: "route", parler: "parler", attendre: "parler",
+  rouler: "rouler", route: "route", pont: "pont", arbre: "arbre", panne: "panne", reparer: "panne", chercher: "chercher", cacher: "chercher", paver: "route", parler: "parler", attendre: "parler",
 };
 const ALIAS_DECOR = {
-  chantier: "chantier", ville: "ville", campagne: "campagne", foret: "campagne", ferme: "campagne",
+  chantier: "chantier", ville: "ville", campagne: "campagne", foret: "foret", bois: "foret", ferme: "ferme", port: "port", bateau: "port", phare: "port",
   dinosaures: "dinosaures", dinosaure: "dinosaures", dinos: "dinosaures", plage: "plage", mer: "plage",
-  neige: "neige", montagne: "neige", ecole: "ecole", cour: "ecole", recre: "ecole", vacances: "vacances", piscine: "vacances", jardin: "jardin", pms: "pms", societe: "pms",
+  neige: "neige", montagne: "montagne", ecole: "ecole", cour: "ecole", recre: "ecole", vacances: "vacances", piscine: "vacances", jardin: "jardin", pms: "pms", societe: "pms",
 };
 
 const sansAccent = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -76,6 +78,10 @@ function devineAction(texte, premiere, derniere) {
   const n = sansAccent(texte);
   if (a("artifice|\\bfete\\b|hourra|bravo|\\bgagne", n)) return "fete";
   if (a("\\bfeu\\b|flamme|incendie|brul", n)) return "feu";
+  if (a("\\bpont\\b", n)) return "pont";
+  if (a("arbres? (est |sont )?tombe|tronc|grosse branche", n)) return "arbre";
+  if (a("en panne|repar|\\bcasse", n)) return "panne";
+  if (a("cherch|perdu|cache|ou est", n)) return "chercher";
   if (a("\\btrous?\\b", n)) return "trou";
   if (a("chateaux? de sable|bac a sable", n)) return "chateau";
   if (a("\\bvelo\\b", n)) return "velo";
@@ -84,7 +90,7 @@ function devineAction(texte, premiere, derniere) {
   if (a("s.envol|\\bvol(e|er|ent)\\b", n)) return "voler";
   if (a("\\broute\\b", n) && a("constru|pierre|pave", n)) return "route";
   if (a("deblay|\\bsable\\b|montagne|rocher|caillou|pierre|bloque|pousse|eboulement", n)) return "deblayer";
-  if (a("constru|\\bbati|\\bpont\\b|brique|\\btour\\b", n)) return "construire";
+  if (a("constru|\\bbati|brique|\\btour\\b", n)) return "construire";
   if (a("\\b(mange|mangent|manger|miam|repas|croque)", n)) return "manger";
   if (a("spectacle|\\bshow\\b", n)) return "spectacle";
   if (a("\\bbulles?\\b", n)) return "bulles";
@@ -100,7 +106,7 @@ function devineAction(texte, premiere, derniere) {
 function devineDecor(texte) {
   const n = sansAccent(texte);
   for (const [motif, d] of [["\\bpms\\b|societe", "pms"], ["\\bjardin", "jardin"], ["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["dinosaure|dino\\b|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
-    ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["foret|campagne|ferme|champ|prairie", "campagne"], ["chantier", "chantier"]])
+    ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["\\bport\\b|bateau|\\bphare", "port"], ["foret|\\bbois\\b", "foret"], ["\\bmontagnes?\\b(?! de)|cascade", "montagne"], ["\\bferme|grange|tracteur|vache", "ferme"], ["campagne|\\bchamps?\\b|prairie", "campagne"], ["chantier", "chantier"]])
     if (a(motif, n)) return d;
   return null;
 }
@@ -128,31 +134,39 @@ function scene(d, decorCourant, premiere, derniere, heros) {
   const positions = {};
   for (const [k, v] of Object.entries(d.positions || {})) if (estAmi(k)) positions[k] = Number(v);
   return {
-    texte, action: act, decor: dec, interactif: !!inter, clics: Math.max(1, Math.min(10, Math.floor(n))),
+    texte, action: act, decor: dec, interactif: !!inter, clics: Math.max(inter ? 1 : 0, Math.min(10, Math.floor(n))), // 0 : on montre seulement (le problème reste là)
     consigne: d.consigne || CONSIGNES[act] || "Clique !", copains,
     texte_en: d.texte_en ? String(d.texte_en).trim() : null, consigne_en: d.consigne_en || null,
     vehicule: d.vehicule ? vehicule(d.vehicule) : null,
     amis: amis.filter(estAmi), partent: (d.partent || []).filter(estAmi),
     positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros, nuit: !!d.nuit,
     bulle: d.bulle && d.bulle.texte ? { qui: d.bulle.qui, texte: String(d.bulle.texte), texte_en: d.bulle.texte_en || null } : null,
-    meteo: ["pluie", "neige", "arcenciel", "etoiles"].includes(d.meteo) ? d.meteo : null, voixPerso: d.voixPerso || null,
+    meteo: ["pluie", "neige", "arcenciel", "etoiles", "orage"].includes(d.meteo) ? d.meteo : null, voixPerso: d.voixPerso || null,
+    objet: d.objet || null, partie: d.partie != null ? String(d.partie) : null, partie_en: d.partie_en || null,
   };
 }
 
 function normalise(brut, fichier, date) {
   const heros = vehicule(brut.heros, "tractopelle");
   let dec = decor(brut.decor, "chantier");
-  const brutes = brut.scenes || [];
+  // une histoire en plusieurs parties : {"parties": [{"titre": "…", "titre_en": "…", "scenes": […]}, …]}
+  const brutes = Array.isArray(brut.parties) ? brut.parties.flatMap((p) => (p.scenes || []).map((s, i) =>
+    (i === 0 ? { ...(typeof s === "string" ? { texte: s } : s), partie: p.titre || "", partie_en: p.titre_en || null } : s))) : brut.scenes || [];
   if (!brutes.length) throw new Error("aucune scène");
   const scenes = brutes.map((s, i) => {
     const sc = scene(typeof s === "string" ? { texte: s } : s, dec, i === 0, i === brutes.length - 1, heros);
     dec = sc.decor;
     return sc;
   });
+  const chapitres = [];
+  if (scenes.some((sc) => sc.partie !== null)) {
+    if (scenes[0].partie === null) scenes[0].partie = "";
+    scenes.forEach((sc, i) => { if (sc.partie !== null) chapitres.push({ titre: sc.partie, titre_en: sc.partie_en, debut: i }); sc.chap = chapitres.length - 1; });
+  }
   return {
     titre: String(brut.titre || fichier.replace(/\.[^.]+$/, "")), titre_en: brut.titre_en || null, heros,
     couleur: String(brut.couleur || "").toLowerCase() || null,
-    copains: (brut.copains || []).map((c) => vehicule(c)), scenes, fichier, date,
+    copains: (brut.copains || []).map((c) => vehicule(c)), scenes, chapitres, fichier, date,
   };
 }
 
@@ -228,3 +242,16 @@ const texteDe = (d) => (LANGUE === "en" && d.texte_en) || d.texte;
 const langueDe = (d) => (LANGUE === "en" && d.texte_en ? "en" : "fr");
 const consigneDe = (d) => (langueDe(d) === "en" ? d.consigne_en || CONSIGNES_EN[d.action] || "Tap!" : d.consigne);
 const rendu = (texte, valeurs) => String(texte).replace(/\{(\w+)\}/g, (m, k) => (k in valeurs ? valeurs[k] : m));
+
+// durée approximative d'une histoire (en minutes) : lecture + touchers + transitions
+function dureeHistoire(h) {
+  let s = 0;
+  for (const d of h.scenes || []) {
+    s += Math.max(4, String(texteDe(d) || "").length / 11 + 1.5) + 1;
+    if (d.bulle) s += String(d.bulle.texte).length / 11 + 1;
+    if (d.interactif) s += 2.5 + 1.6 * d.clics;
+  }
+  s += 4 * (h.chapitres || []).length;
+  return Math.max(1, Math.round(s / 60));
+}
+const titreChapitre = (h, k) => { const c = h.chapitres[k]; return (c && ((LANGUE === "en" && traduite(h) && c.titre_en) || c.titre)) || ""; };

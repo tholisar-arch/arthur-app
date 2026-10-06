@@ -1,0 +1,94 @@
+{
+  "titre": "La grande aventure de Tracto",
+  "titre_en": "Tracto's Great Adventure",
+  "heros": "tractopelle",
+  "couleur": "jaune",
+  "decor": "jardin",
+  "copains": [],
+  "parties": [
+    {
+      "titre": "Le grand départ",
+      "titre_en": "Off We Go",
+      "scenes": [
+        {"texte": "Ce matin, il fait beau dans le jardin. {nom}, {heros}, se réveille en bâillant.", "texte_en": "This morning, the sun is shining in the backyard. {nom}, {heros}, wakes up with a big yawn.", "action": "parler", "decor": "jardin", "amis": []},
+        {"texte": "{prenom} arrive en courant avec Papa et Maman.", "texte_en": "{prenom} comes running with Daddy and Mommy.", "action": "parler", "amis": ["arthur", "papa", "maman"], "humeur": {"arthur": "joie"}, "decor": "jardin"},
+        {"texte": "Aujourd'hui, c'est un grand jour : on part en voyage jusqu'à la mer, pour la grande fête du port !", "texte_en": "Today is a big day: we're going on a trip all the way to the sea, for the big harbor party!", "action": "parler", "amis": [], "bulle": {"qui": "arthur", "texte": "Youpi !", "texte_en": "Hooray!"}, "decor": "jardin"},
+        {"texte": "Mais avant de partir, il faut faire le plein d'énergie. Tout le monde prend son petit-déjeuner.", "texte_en": "But before leaving, everyone needs lots of energy. Time for breakfast!", "action": "manger", "amis": [], "interactif": true, "clics": 4, "decor": "jardin"},
+        {"texte": "Papa vérifie que {nom} est prêt : les roues, le moteur, la pelle. Tout est parfait ! Klaxonne pour dire que tu es prêt !", "texte_en": "Daddy checks that {nom} is ready: the wheels, the engine, the bucket. Everything is perfect! Honk to say you're ready!", "action": "parler", "amis": [], "interactif": true, "clics": 3, "decor": "jardin"},
+        {"texte": "Maman a préparé un cadeau pour le voyage.", "texte_en": "Mommy has a present for the trip.", "action": "cadeau", "amis": [], "interactif": true, "clics": 1, "consigne": "Touche le cadeau pour l'ouvrir !", "consigne_en": "Tap the present to open it!", "decor": "jardin"},
+        {"texte": "C'est une carte au trésor ! Elle montre le chemin jusqu'au port.", "texte_en": "It's a treasure map! It shows the way to the harbor.", "action": "parler", "amis": [], "bulle": {"qui": "maman", "texte": "Ne vous perdez pas !", "texte_en": "Don't get lost!"}, "decor": "jardin"},
+        {"texte": "{prenom} et Papa montent avec {nom}. Maman leur fait un gros câlin.", "texte_en": "{prenom} and Daddy climb aboard {nom}. Mommy gives them a big hug.", "action": "calin", "amis": [], "interactif": true, "clics": 3, "decor": "jardin"},
+        {"texte": "Au revoir Maman ! {nom} klaxonne et prend la route.", "texte_en": "Bye-bye Mommy! {nom} honks and hits the road.", "action": "rouler", "decor": "campagne", "amis": [], "partent": ["maman"], "interactif": true, "clics": 3}
+      ]
+    },
+    {
+      "titre": "L'orage dans la forêt",
+      "titre_en": "The Storm in the Forest",
+      "scenes": [
+        {"texte": "La route entre dans une grande forêt. Il y a des sapins et des champignons partout.", "texte_en": "The road goes into a big forest. There are fir trees and mushrooms everywhere.", "action": "rouler", "decor": "foret", "amis": []},
+        {"texte": "{prenom} compte les champignons : un, deux, trois… Il y en a partout !", "texte_en": "{prenom} counts the mushrooms: one, two, three… They're everywhere!", "action": "rouler", "amis": [], "bulle": {"qui": "arthur", "texte": "Un, deux, trois !", "texte_en": "One, two, three!"}, "decor": "foret"},
+        {"texte": "Oh ! De gros nuages arrivent. Le ciel devient tout gris.", "texte_en": "Oh! Big clouds are coming. The sky turns all gray.", "action": "parler", "amis": [], "meteo": "pluie", "humeur": {"arthur": "calme"}, "decor": "foret"},
+        {"texte": "Boum ! C'est l'orage ! {prenom} a un peu peur.", "texte_en": "Boom! It's a thunderstorm! {prenom} is a little scared.", "action": "parler", "amis": [], "meteo": "orage", "humeur": {"arthur": "peur"}, "bulle": {"qui": "papa", "texte": "Ce n'est rien, c'est juste du bruit.", "texte_en": "It's okay, it's just noise."}, "decor": "foret"},
+        {"texte": "Papa fait un gros câlin à {prenom}. Ça va mieux !", "texte_en": "Daddy gives {prenom} a big hug. That's better!", "action": "calin", "amis": [], "meteo": "orage", "interactif": true, "clics": 3, "decor": "foret"},
+        {"texte": "Crac ! Le vent a fait tomber un arbre sur la route. On ne peut plus passer !", "texte_en": "Crack! The wind knocked a tree across the road. We can't get through!", "action": "arbre", "amis": [], "meteo": "pluie", "clics": 0, "decor": "foret"},
+        {"texte": "Heureusement, {nom} est très fort. Aide-le à pousser l'arbre !", "texte_en": "Luckily, {nom} is very strong. Help him push the tree!", "action": "arbre", "amis": [], "meteo": "pluie", "interactif": true, "clics": 5, "decor": "foret"},
+        {"texte": "Bravo ! La route est libre. Et regarde : la pluie s'arrête.", "texte_en": "Well done! The road is clear. And look: the rain is stopping.", "action": "parler", "amis": [], "humeur": {"arthur": "joie"}, "decor": "foret"},
+        {"texte": "Un magnifique arc-en-ciel apparaît au-dessus de la forêt !", "texte_en": "A beautiful rainbow appears above the forest!", "action": "parler", "amis": [], "meteo": "arcenciel", "bulle": {"qui": "arthur", "texte": "Oh, c'est beau !", "texte_en": "Oh, it's beautiful!"}, "decor": "foret"},
+        {"texte": "Pour fêter ça, Papa et {prenom} soufflent de jolies bulles.", "texte_en": "To celebrate, Daddy and {prenom} blow pretty bubbles.", "action": "bulles", "amis": [], "meteo": "arcenciel", "interactif": true, "clics": 3, "decor": "foret"},
+        {"texte": "{nom} repart, tout content, en éclaboussant les flaques.", "texte_en": "{nom} drives off happily, splashing through the puddles.", "action": "rouler", "amis": [], "meteo": "arcenciel", "interactif": true, "clics": 3, "decor": "foret"}
+      ]
+    },
+    {
+      "titre": "Le pont cassé",
+      "titre_en": "The Broken Bridge",
+      "scenes": [
+        {"texte": "Voici les montagnes. Une petite cascade fait plic, ploc.", "texte_en": "Here are the mountains. A little waterfall goes drip, drop.", "action": "rouler", "decor": "montagne", "amis": []},
+        {"texte": "Oh non ! Une rivière coupe la route, et le vieux pont est tombé dans l'eau.", "texte_en": "Oh no! A river crosses the road, and the old bridge has fallen into the water.", "action": "pont", "amis": [], "clics": 0, "humeur": {"arthur": "peur", "papa": "calme"}, "decor": "montagne"},
+        {"texte": "Papa regarde la carte. Il n'y a pas d'autre chemin…", "texte_en": "Daddy looks at the map. There's no other way…", "action": "parler", "amis": [], "bulle": {"qui": "papa", "texte": "Il faut construire un nouveau pont !", "texte_en": "We need to build a new bridge!"}, "decor": "montagne"},
+        {"texte": "{nom} appelle ses copains à la rescousse.", "texte_en": "{nom} calls his friends to the rescue.", "action": "copains", "amis": [], "copains": ["grue", "benne"], "interactif": true, "decor": "montagne"},
+        {"texte": "D'abord, il faut un bon chemin jusqu'à la rivière. Pose les pierres une par une !", "texte_en": "First, we need a good path to the river. Lay the stones one by one!", "action": "route", "amis": [], "interactif": true, "clics": 4, "decor": "montagne"},
+        {"texte": "Tout le monde travaille ensemble. Pose les planches une par une !", "texte_en": "Everyone works together. Lay the planks one by one!", "action": "pont", "amis": [], "interactif": true, "clics": 5, "decor": "montagne"},
+        {"texte": "Le pont est tout neuf ! {nom} traverse doucement… Il tient bien !", "texte_en": "The bridge is brand new! {nom} crosses slowly… It holds!", "action": "rouler", "amis": [], "humeur": {"arthur": "joie", "papa": "joie"}, "decor": "montagne"},
+        {"texte": "De l'autre côté, la route monte, monte… jusqu'en haut de la montagne. Quelle vue !", "texte_en": "On the other side, the road climbs up, up… all the way to the top of the mountain. What a view!", "action": "rouler", "amis": [], "decor": "montagne"},
+        {"texte": "Pour dire merci, les copains font un petit spectacle.", "texte_en": "To say thank you, the friends put on a little show.", "action": "spectacle", "amis": [], "interactif": true, "clics": 4, "decor": "montagne"},
+        {"texte": "Mais le soleil se couche déjà. Il est temps de dormir.", "texte_en": "But the sun is already setting. It's time to sleep.", "action": "parler", "amis": [], "nuit": true, "decor": "montagne"},
+        {"texte": "{prenom} regarde le ciel. Des étoiles filantes passent ! On fait un vœu…", "texte_en": "{prenom} looks at the sky. Shooting stars go by! Let's make a wish…", "action": "dormir", "amis": [], "meteo": "etoiles", "interactif": true, "clics": 4, "decor": "montagne"},
+        {"texte": "Bonne nuit, {nom}. Bonne nuit, {prenom}.", "texte_en": "Good night, {nom}. Good night, {prenom}.", "action": "dormir", "amis": [], "decor": "montagne"}
+      ]
+    },
+    {
+      "titre": "À la ferme",
+      "titre_en": "At the Farm",
+      "scenes": [
+        {"texte": "Le lendemain matin, la route passe devant une jolie ferme avec une grange rouge.", "texte_en": "The next morning, the road goes past a pretty farm with a red barn.", "action": "rouler", "decor": "ferme", "amis": []},
+        {"texte": "Oh, regarde ! Un camion est arrêté sur le bord de la route. Il fait de la fumée.", "texte_en": "Oh, look! A truck is stopped by the side of the road. It's making smoke.", "action": "panne", "vehicule": "toupie", "amis": [], "clics": 0, "decor": "ferme"},
+        {"texte": "C'est Toupie, le camion toupie ! Il est en panne. Vite, on va le réparer !", "texte_en": "It's Toupie, the cement mixer! He has broken down. Quick, let's fix him!", "action": "panne", "vehicule": "toupie", "amis": [], "interactif": true, "clics": 4, "decor": "ferme"},
+        {"texte": "Vroum ! Le moteur marche à nouveau. Toupie est si content qu'il part avec nous !", "texte_en": "Vroom! The engine works again. Toupie is so happy that he comes along with us!", "action": "parler", "amis": [], "decor": "ferme"},
+        {"texte": "Dans le champ, il y a des mûres bien mûres. On en ramasse pour la fête !", "texte_en": "In the field, there are lovely ripe blackberries. Let's pick some for the party!", "action": "cueillir", "amis": [], "interactif": true, "clics": 4, "decor": "ferme"},
+        {"texte": "La fermière est toute triste : son petit chat Moustache a disparu.", "texte_en": "The farmer is very sad: her little cat Whiskers has disappeared.", "action": "parler", "amis": [], "humeur": {"arthur": "calme"}, "decor": "ferme"},
+        {"texte": "Où est Moustache ? Cherche derrière les buissons !", "texte_en": "Where is Whiskers? Look behind the bushes!", "action": "chercher", "objet": "chat", "amis": [], "interactif": true, "clics": 3, "decor": "ferme"},
+        {"texte": "Le voilà ! Moustache jouait à cache-cache. Miaou !", "texte_en": "There he is! Whiskers was playing hide-and-seek. Meow!", "action": "calin", "amis": [], "interactif": true, "clics": 2, "decor": "ferme"},
+        {"texte": "Pour dire merci, la fermière offre un bon goûter à tout le monde.", "texte_en": "To say thank you, the farmer gives everyone a yummy snack.", "action": "manger", "amis": [], "interactif": true, "clics": 3, "decor": "ferme"},
+        {"texte": "Moustache veut venir à la fête, lui aussi ! En route pour la mer.", "texte_en": "Whiskers wants to come to the party too! Off to the sea.", "action": "rouler", "amis": [], "interactif": true, "clics": 3, "decor": "ferme"}
+      ]
+    },
+    {
+      "titre": "La fête du port",
+      "titre_en": "The Harbor Party",
+      "scenes": [
+        {"texte": "Ça sent la mer ! Voici le port, avec ses bateaux et son grand phare rouge et blanc.", "texte_en": "It smells like the sea! Here's the harbor, with its boats and its big red-and-white lighthouse.", "action": "rouler", "decor": "port", "amis": []},
+        {"texte": "Maman et Mamie sont déjà là ! Elles sont venues en train.", "texte_en": "Mommy and Grandma are already here! They came by train.", "action": "parler", "amis": ["maman", "mamie"], "humeur": {"arthur": "joie"}, "bulle": {"qui": "maman", "texte": "Vous avez fait bon voyage ?", "texte_en": "Did you have a good trip?"}, "decor": "port"},
+        {"texte": "{prenom} raconte tout : l'orage, l'arbre, le pont, Toupie et Moustache !", "texte_en": "{prenom} tells them everything: the storm, the tree, the bridge, Toupie and Whiskers!", "action": "parler", "amis": [], "bulle": {"qui": "arthur", "texte": "On a construit un pont !", "texte_en": "We built a bridge!"}, "decor": "port"},
+        {"texte": "Mais pour la fête, il manque une scène. {nom} et ses copains la construisent.", "texte_en": "But the party needs a stage. {nom} and his friends build it.", "action": "construire", "amis": [], "interactif": true, "clics": 4, "decor": "port"},
+        {"texte": "Sur la scène toute neuve, {nom} et ses copains font un grand spectacle !", "texte_en": "On the brand-new stage, {nom} and his friends put on a big show!", "action": "spectacle", "amis": [], "interactif": true, "clics": 4, "decor": "port"},
+        {"texte": "Oh ! Le ballon de la fête s'est envolé… Où est-il ? Cherche-le !", "texte_en": "Oh! The party ball flew away… Where is it? Find it!", "action": "chercher", "objet": "ballon", "amis": [], "interactif": true, "clics": 3, "decor": "port"},
+        {"texte": "Les bateaux font tut-tut, Moustache fait miaou : tout le port est content !", "texte_en": "The boats go toot-toot, Whiskers goes meow: the whole harbor is happy!", "action": "parler", "amis": [], "humeur": {"arthur": "joie"}, "decor": "port"},
+        {"texte": "Tout le monde fait un grand câlin. Quel beau voyage !", "texte_en": "Everyone has a big hug. What a wonderful trip!", "action": "calin", "amis": [], "interactif": true, "clics": 3, "decor": "port"},
+        {"texte": "La nuit tombe doucement sur le port. Le phare s'allume, et les étoiles aussi.", "texte_en": "Night falls gently over the harbor. The lighthouse lights up, and so do the stars.", "action": "parler", "amis": [], "nuit": true, "decor": "port"},
+        {"texte": "{prenom}, Papa, Maman et Mamie mangent une bonne tarte aux mûres. Miam !", "texte_en": "{prenom}, Daddy, Mommy and Grandma eat a yummy blackberry pie. Yum!", "action": "manger", "amis": [], "nuit": true, "interactif": true, "clics": 4, "decor": "port"},
+        {"texte": "Et maintenant… que la fête commence ! Lance les feux d'artifice !", "texte_en": "And now… let the party begin! Launch the fireworks!", "action": "fete", "amis": [], "nuit": true, "interactif": true, "clics": 5, "decor": "port"},
+        {"texte": "Bravo {prenom} ! Grâce à toi, {nom} a réussi sa grande aventure.", "texte_en": "Well done, {prenom}! Thanks to you, {nom} finished his great adventure.", "action": "fete", "amis": [], "nuit": true, "decor": "port"}
+      ]
+    }
+  ]
+}

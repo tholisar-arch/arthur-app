@@ -13,7 +13,25 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
-Règles d'écriture : 3 à 8 scènes, phrases courtes, ton doux, **aucun méchant**,
+## Longues histoires en chapitres (10 minutes et plus)
+Pour une vraie aventure, découper en **parties** (chapitres) : chacune a une page de titre lue à
+voix haute, l'enfant peut commencer à n'importe quel chapitre, et l'appli retient le dernier
+chapitre atteint (`localStorage` `tracto.progression.v1`). Compter **~50 scènes pour ~10-12 min**,
+avec des péripéties variées (orage, arbre tombé, pont cassé, panne, cache-cache) et des décors
+différents par chapitre. **Mettre `decor` sur chaque scène** (les devinettes par mots-clés se
+trompent sur un long texte). Exemple complet : `histoires/11-la-grande-aventure.json`.
+```json
+{"titre": "…", "titre_en": "…", "heros": "tractopelle", "couleur": "jaune", "decor": "jardin",
+ "parties": [
+   {"titre": "Le grand départ", "titre_en": "Off We Go", "scenes": [ … ]},
+   {"titre": "L'orage dans la forêt", "titre_en": "The Storm in the Forest", "scenes": [ … ]}
+ ]}
+```
+(On peut aussi mettre `"partie": "Titre"` / `"partie_en"` sur la 1re scène d'un chapitre dans `scenes`.)
+`"clics": 0` sur une scène non interactive = on montre le problème sans le résoudre (ex. le pont
+cassé), la scène suivante le fait résoudre à l'enfant.
+
+Règles d'écriture (histoire courte) : 3 à 8 scènes, phrases courtes, ton doux, **aucun méchant**,
 des problèmes qu'on résout ensemble. Chaque fois que le parent dit
 **« configuration »**, la scène devient interactive (`"interactif": true`).
 Toujours mettre `decor` sur la 1re scène si le texte cite un autre lieu.
@@ -49,6 +67,8 @@ clé `idHistoire:vid` ; jouée à la place de la voix de synthèse). Jusqu'à 30
 Mode « 📝 Texte libre » : une ligne = une scène, analysée sur place par `etapesDepuisTexte()`
 (lieux, actions, personnages, météo, « touche »/« configuration » = interactif, nuit), puis éditable.
 Une ligne « Papa : On y va ! » devient une bulle de dialogue sur la scène précédente.
+Une ligne « # Titre » (ou « Chapitre 2 : Titre ») commence un nouveau chapitre (champ d'étape
+`partie` {fr, en}, aussi réglable dans l'onglet « Plus »). Jusqu'à 120 scènes ; durée estimée affichée.
 
 Ces champs marchent aussi dans les histoires du dépôt : `"meteo": "pluie"`,
 `"bulle": {"qui": "papa", "texte": "On y va !", "texte_en": "Let's go!"}` (`qui` : un personnage ou `"heros"`).
@@ -71,7 +91,8 @@ Ces champs marchent aussi dans les histoires du dépôt : `"meteo": "pluie"`,
 ```
 - `heros` : tractopelle | benne | toupie | pompier | bulldozer | grue (l'enfant peut changer avant de lancer)
 - `couleur` : jaune | orange | rouge | bleu | vert | violet | rose
-- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison de vacances) | jardin (maison de la famille) | pms (la société PMS de Papi et Mamie)
+- `decor` : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison de vacances) | jardin (maison de la famille) | pms (la société PMS de Papi et Mamie) | foret | montagne (cascade) | ferme (grange, silo) | port (bateaux, phare)
+- `meteo` (par scène) : pluie | orage (éclairs) | neige | arcenciel | etoiles (filantes)
 
 Champs d'une scène : `texte` (lu à voix haute), `action`, `decor`, `interactif`,
 `clics` (1–10), `consigne`, `copains` (engins qui arrivent), `vehicule` (un autre
@@ -130,6 +151,10 @@ ces réglages-là restent sur l'appareil (localStorage) et passent avant `person
 | `velo` | Arthur et Mamie s'envolent sur le vélo jaune (avec `cache_heros`) | coup de pédale |
 | `fete` | confettis, « Bravo Arthur ! » | un feu d'artifice |
 | `dormir` | la nuit, le héros dort | une étoile |
+| `pont` | une rivière coupe la route, pont cassé ; à la fin on traverse | une planche |
+| `arbre` | un arbre tombé bloque la route | le héros pousse |
+| `panne` | un copain en panne qui fume (`"vehicule": "toupie"`) ; réparé, il devient un copain | un coup de clé |
+| `chercher` | 2 à 5 buissons ; derrière le dernier, l'objet (`"objet"`: ballon, doudou, cle, ou un personnage comme `chat`) | on fouille un buisson |
 
 Variables dans les textes (ne pas écrire « le tractopelle » en dur) : `{nom}`
 (Tracto, Benny, Toupie, Pimpon, Bouldo, Grutty), `{vehicule}`/`{Vehicule}`,

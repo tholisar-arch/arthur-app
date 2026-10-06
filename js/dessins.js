@@ -266,7 +266,8 @@ const CIELS = {
   chantier: [[120, 190, 245], [215, 238, 255]], ville: [[110, 175, 240], [205, 232, 255]],
   campagne: [[100, 185, 250], [220, 245, 255]], dinosaures: [[250, 170, 120], [255, 230, 170]],
   plage: [[80, 190, 245], [210, 245, 255]], neige: [[160, 190, 225], [235, 242, 252]],
-  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], pms: [[100, 175, 240], [210, 235, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
+  ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], pms: [[100, 175, 240], [210, 235, 255]],
+  foret: [[110, 185, 235], [215, 240, 250]], montagne: [[115, 180, 240], [225, 240, 255]], ferme: [[100, 185, 250], [225, 245, 255]], port: [[90, 180, 240], [215, 240, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
 };
 const SOLS = {
   chantier: [[140, 200, 90], [205, 170, 125]], ville: [[110, 110, 120], [90, 90, 100]],
@@ -276,6 +277,8 @@ const SOLS = {
   vacances: [[130, 200, 85], [232, 218, 188]],
   jardin: [[130, 200, 85], [150, 210, 100]],
   pms: [[130, 195, 100], [175, 178, 190]],
+  foret: [[95, 165, 80], [190, 155, 110]], montagne: [[140, 195, 110], [185, 178, 168]],
+  ferme: [[140, 205, 90], [215, 185, 135]], port: [[205, 195, 175], [175, 165, 155]],
 };
 
 function soleil(ctx, x, y, t) { // soleil simple, sans visage
@@ -464,6 +467,56 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     }
     for (let k = 0; k < 2; k++) arbre(ctx, boucle(k * 700 + 80, scroll, 0.4, W), horizon + 5, 0.9);
   }
+  else if (nom === "foret") {
+    collines(ctx, W, horizon, scroll, [110, 180, 90], [85, 155, 75], false);
+    for (let k = 0; k < 6; k++) sapinVert(ctx, boucle(k * 210 + 30, scroll, 0.3, W), horizon - 10, 0.75);
+    for (let k = 0; k < 7; k++) arbre(ctx, boucle(k * 180 + 120, scroll, 0.42, W), horizon + 5, 1.15 + 0.2 * (k % 2), [[70, 150, 70], [95, 170, 70], [60, 135, 80]][k % 3]);
+  }
+  else if (nom === "montagne") {
+    for (let k = 0; k < 3; k++) {
+      const x = boucle(k * 420 + 120, scroll, 0.15, W, 300), h = 280 + (k % 2) * 60;
+      poly(ctx, [[x - 260, horizon], [x, horizon - h], [x + 260, horizon]], [[150, 160, 185], [130, 145, 170]][k % 2], 3);
+      poly(ctx, [[x - 62, horizon - h + 66], [x, horizon - h], [x + 62, horizon - h + 66], [x + 25, horizon - h + 52], [x, horizon - h + 70], [x - 25, horizon - h + 52]], [255, 255, 255]);
+    }
+    collines(ctx, W, horizon, scroll, [150, 205, 110], [125, 185, 95], false);
+    const cx = boucle(700, scroll, 0.3, W, 300); // une petite cascade
+    rrect(ctx, cx - 14, horizon - 150, 28, 150, 10, [150, 205, 245], 3);
+    for (let k = 0; k < 4; k++) trait(ctx, [cx - 6 + k * 4, horizon - 140 + mod(t * 90 + k * 30, 120)], [cx - 6 + k * 4, horizon - 125 + mod(t * 90 + k * 30, 120)], 2, [255, 255, 255]);
+    for (let k = 0; k < 5; k++) sapinVert(ctx, boucle(k * 260 + 60, scroll, 0.4, W), horizon + 5, 0.6);
+  }
+  else if (nom === "ferme") {
+    collines(ctx, W, horizon, scroll, [170, 215, 100], [145, 200, 85], false);
+    const x = boucle(560, scroll, 0.3, W, 300); // la grange rouge et le silo
+    rrect(ctx, x - 140, horizon - 170, 280, 170, 0, [210, 70, 60], 3);
+    poly(ctx, [[x - 160, horizon - 170], [x + 160, horizon - 170], [x + 110, horizon - 235], [x - 110, horizon - 235]], [150, 60, 55], 3);
+    rrect(ctx, x - 50, horizon - 110, 100, 110, 4, [245, 235, 220], 3);
+    trait(ctx, [x - 46, horizon - 106], [x + 46, horizon - 4], 6, [210, 70, 60]); trait(ctx, [x + 46, horizon - 106], [x - 46, horizon - 4], 6, [210, 70, 60]);
+    rrect(ctx, x - 25, horizon - 160, 50, 34, 4, [245, 235, 220], 3);
+    rrect(ctx, x + 160, horizon - 230, 70, 230, 0, [200, 205, 215], 3);
+    ovale(ctx, x + 160, horizon - 262, 70, 64, [170, 175, 190], 3);
+    for (const bx of [x - 260, x - 200, x + 290]) { rond(ctx, bx, horizon - 26, 28, [240, 205, 90], 3); rond(ctx, bx, horizon - 26, 14, null, 2, [210, 170, 70]); }
+    for (let k = 0; k < 30; k++) { // la barrière en bois
+      const px = boucle(k * 44, scroll, 0.5, W, 50);
+      rrect(ctx, px, horizon - 40, 8, 40, 2, [190, 140, 90], 2);
+    }
+    trait(ctx, [0, horizon - 30], [W, horizon - 30], 5, [190, 140, 90]); trait(ctx, [0, horizon - 14], [W, horizon - 14], 5, [190, 140, 90]);
+  }
+  else if (nom === "port") {
+    rrect(ctx, 0, horizon - 90, W, 90, 0, [70, 155, 220]); // la mer
+    for (let k = 0; k < 16; k++) { const x = mod(k * 80 + t * 25, W + 80) - 40; arcRect(ctx, x, horizon - 80 + (k % 4) * 18, 40, 14, 0, PI, 3, [220, 240, 255]); }
+    [[200, [240, 90, 80]], [620, [90, 150, 230]], [930, [250, 200, 60]]].forEach(([bx0, c], k) => { // les bateaux
+      const bx = boucle(bx0 + t * 6, scroll, 0.25, W), by = horizon - 72 + 4 * Math.sin(t * 2 + k);
+      poly(ctx, [[bx - 60, by], [bx + 60, by], [bx + 45, by + 26], [bx - 45, by + 26]], c, 3);
+      trait(ctx, [bx, by], [bx, by - 90], 4, [120, 90, 60]);
+      poly(ctx, [[bx + 4, by - 86], [bx + 4, by - 8], [bx + 52, by - 8]], [255, 255, 255], 3);
+    });
+    const px = boucle(1080, scroll, 0.3, W, 300); // le phare
+    poly(ctx, [[px - 30, horizon], [px + 30, horizon], [px + 18, horizon - 200], [px - 18, horizon - 200]], [255, 255, 255], 3);
+    for (let k = 0; k < 3; k++) { const y = horizon - 40 - k * 60; poly(ctx, [[px - 28 + k * 4, y], [px + 28 - k * 4, y], [px + 26 - k * 4, y - 26], [px - 26 + k * 4, y - 26]], [220, 70, 70]); }
+    rrect(ctx, px - 22, horizon - 232, 44, 32, 6, [255, 230, 120], 3);
+    poly(ctx, [[px - 28, horizon - 232], [px + 28, horizon - 232], [px, horizon - 262]], [220, 70, 70], 3);
+    for (let k = 0; k < 3; k++) { const cx = boucle(k * 380 + 380, scroll, 0.6, W); rrect(ctx, cx, horizon - 34, 46, 40, 3, [200, 150, 90], 3); trait(ctx, [cx, horizon - 14], [cx + 46, horizon - 14], 2, [150, 105, 60]); }
+  }
   const [herbe, route] = SOLS[nom];
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
@@ -488,6 +541,10 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     } else if (nom === "ville") { rrect(ctx, x - 3, y - 70, 6, 70, 0, [80, 80, 90]); rond(ctx, x, y - 74, 10, [255, 240, 150]); }
     else if (nom === "dinosaures") { ovale(ctx, x - 13, y - 34, 26, 34, [250, 245, 230]); rond(ctx, x - 4, y - 20, 4, [150, 210, 150]); }
     else if (nom === "plage") rond(ctx, x, y - 8, 9, [250, 150, 160]);
+    else if (nom === "foret") champignon(ctx, x, y, 1 + 0.3 * (k % 2));
+    else if (nom === "montagne") { ovale(ctx, x - 24, y - 26, 48, 30, [160, 160, 170], 3); ovale(ctx, x + 6, y - 18, 30, 20, [180, 180, 190], 3); }
+    else if (nom === "ferme") for (const dx of [-12, -4, 4, 12]) { trait(ctx, [x + dx, y], [x + dx * 1.4, y - 40], 3, [200, 170, 60]); ovale(ctx, x + dx * 1.4 - 4, y - 54, 8, 18, [235, 200, 80]); }
+    else if (nom === "port") { rrect(ctx, x - 9, y - 30, 18, 30, 5, [90, 95, 110], 2); trait(ctx, [x + 9, y - 18], [x + 60, y - 8], 3, [210, 180, 120]); }
     else if (nom === "vacances") for (const dx of [-10, 0, 10]) { trait(ctx, [x + dx, y], [x + dx * 1.3, y - 34], 3, [90, 150, 80]); ovale(ctx, x + dx * 1.3 - 4, y - 50, 8, 18, [170, 120, 220]); }
     else if (nom === "neige") { rond(ctx, x, y - 16, 16, [255, 255, 255]); rond(ctx, x, y - 42, 11, [255, 255, 255]); poly(ctx, [[x, y - 43], [x + 14, y - 40], [x, y - 38]], [255, 140, 30]); }
   }
@@ -930,4 +987,98 @@ function arcEnCiel(ctx, cx, cy, r) {
   ctx.globalAlpha = 0.75;
   cols.forEach((c, i) => { ctx.beginPath(); ctx.arc(cx, cy, r - i * 13, Math.PI, 2 * Math.PI); ctx.lineWidth = 13; ctx.strokeStyle = css(c); ctx.stroke(); });
   ctx.globalAlpha = 1;
+}
+
+// ------------------------------------------------------------ pour les longues histoires : décors et péripéties
+function sapinVert(ctx, x, g, s = 1) { // sapin sans neige
+  rrect(ctx, x - 7 * s, g - 25 * s, 14 * s, 25 * s, 0, [120, 80, 50]);
+  for (let k = 0; k < 3; k++) {
+    const y = g - 25 * s - k * 30 * s, w = (60 - k * 14) * s;
+    poly(ctx, [[x - w, y], [x + w, y], [x, y - 55 * s]], [[45, 125, 75], [55, 140, 80], [65, 150, 85]][k], 3);
+  }
+}
+function champignon(ctx, x, y, s = 1) {
+  rrect(ctx, x - 6 * s, y - 20 * s, 12 * s, 20 * s, 4, [250, 240, 220], 2);
+  ctx.beginPath(); ctx.arc(x, y - 18 * s, 18 * s, PI, 2 * PI); ctx.closePath();
+  ctx.fillStyle = css([225, 70, 60]); ctx.fill(); bordure(ctx, [225, 70, 60], 2, CONTOUR);
+  for (const [dx, dy] of [[-8, -24], [5, -30], [9, -21]]) rond(ctx, x + dx * s, y + dy * s, 3 * s, [255, 255, 255]);
+}
+function riviere(ctx, cx, G, H, t) { // une rivière coupe la route
+  const w = 280, x0 = cx - w / 2, haut = G - 70;
+  rrect(ctx, x0 - 10, haut, w + 20, H - haut, 0, [150, 110, 70]);
+  rrect(ctx, x0, haut, w, H - haut, 0, [80, 160, 225]);
+  for (let k = 0; k < 9; k++) { const y = haut + 18 + k * 22, dx = mod(t * 40 + k * 37, w - 40); arcRect(ctx, x0 + dx, y, 30, 10, 0, PI, 3, [210, 235, 255]); }
+}
+function planche(ctx, x, y, w = 70) { rrect(ctx, x - w / 2, y - 9, w, 18, 4, [190, 130, 75], 3); trait(ctx, [x - w / 2 + 8, y], [x + w / 2 - 8, y], 2, [150, 100, 55]); }
+function pont(ctx, cx, G, poses, total) { // les planches posées une à une
+  const w = 280, pas = w / total;
+  for (let k = 0; k < Math.min(poses, total); k++) planche(ctx, cx - w / 2 + (k + 0.5) * pas, G + 6, pas + 4);
+  if (poses >= total) {
+    for (const dx of [-w / 2 - 6, w / 2 + 6]) rrect(ctx, cx + dx - 6, G - 50, 12, 56, 3, [170, 115, 65], 3);
+    trait(ctx, [cx - w / 2 - 6, G - 44], [cx + w / 2 + 6, G - 44], 5, [170, 115, 65]);
+  }
+}
+function arbreTombe(ctx, x, G, reste) { // un arbre tombé en travers de la route
+  if (reste <= 0.02) return;
+  const L = 60 + 230 * reste;
+  rrect(ctx, x - L / 2, G - 30, L, 34, 14, [150, 100, 60], 3);
+  for (let k = 1; k < 4; k++) trait(ctx, [x - L / 2 + (L * k) / 4, G - 22], [x - L / 2 + (L * k) / 4 + 10, G - 6], 2, [115, 75, 45]);
+  ovale(ctx, x - L / 2 - 14, G - 32, 22, 38, [215, 175, 120], 3);
+  const r = 34 + 40 * reste;
+  for (const [dx, dy, k] of [[0, -20, 1], [-30, 6, 0.8], [26, 10, 0.85]]) rond(ctx, x + L / 2 + dx, G - 14 + dy, r * k, [85, 160, 70], 3);
+}
+function vehiculeEnPanne(ctx, kind, col, x, G, fumee, t, repare) {
+  dessineVehicule(ctx, kind, col, x, G, t, 0, 0, 1, -1, false);
+  if (repare) return;
+  for (let k = 0; k < 4; k++) {
+    const u = mod(t * 0.5 + k / 4, 1);
+    ctx.globalAlpha = Math.max(0, (1 - u) * fumee);
+    rond(ctx, x - 70 + 20 * Math.sin(u * 5 + k), G - 150 - u * 130, 14 + 26 * u, [150, 150, 158]);
+  }
+  ctx.globalAlpha = 1;
+  poly(ctx, [[x + 150, G], [x + 190, G], [x + 170, G - 36]], [255, 210, 60], 3); // le triangle
+  ecrireCentre(ctx, "!", x + 170, G - 12, 22, [200, 60, 40]);
+}
+function cleAMolette(ctx, x, y, a) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  rrect(ctx, -6, -6, 50, 12, 5, [170, 175, 190], 2); rond(ctx, -12, 0, 15, [170, 175, 190], 2); rrect(ctx, -30, -4, 16, 8, 0, [246, 239, 224]);
+  ctx.restore();
+}
+function buissonCachette(ctx, x, G, secoue = 0) {
+  const d = 7 * Math.sin(secoue * 40) * secoue;
+  for (const [dx, dy, r] of [[-40, -30, 36], [0, -54, 44], [40, -30, 36], [0, -22, 40]]) rond(ctx, x + dx + d, G + dy, r, [80, 165, 75], 3);
+  for (const [dx, dy] of [[-30, -42], [16, -70], [32, -26]]) rond(ctx, x + dx + d, G + dy, 5, [255, 230, 120]);
+}
+function objetPerdu(ctx, objet, x, g, t) {
+  if (objet === "doudou") { // un petit ours
+    const y = g - 34;
+    for (const dx of [-18, 18]) rond(ctx, x + dx, y - 34, 11, [190, 130, 80], 3);
+    ovale(ctx, x - 26, y - 6, 52, 46, [190, 130, 80], 3);
+    rond(ctx, x, y - 20, 24, [190, 130, 80], 3);
+    rond(ctx, x - 8, y - 24, 3, CONTOUR); rond(ctx, x + 8, y - 24, 3, CONTOUR); ovale(ctx, x - 8, y - 16, 16, 11, [235, 200, 160]);
+  } else if (objet === "cle") cleAMolette(ctx, x - 20, g - 20, -0.3);
+  else { // un ballon
+    const y = g - 32 - 4 * Math.abs(Math.sin(t * 4));
+    rond(ctx, x, y, 30, [235, 70, 70], 3);
+    trait(ctx, [x - 29, y], [x + 29, y], 4, [255, 255, 255]);
+  }
+}
+function eclair(ctx, x, y, h) {
+  const pts = [[x, y], [x - 22, y + h * 0.45], [x + 8, y + h * 0.45], [x - 16, y + h]];
+  ctx.beginPath(); ctx.moveTo(...pts[0]); for (const p of pts.slice(1)) ctx.lineTo(...p);
+  ctx.lineWidth = 8; ctx.strokeStyle = "rgba(255,245,170,0.95)"; ctx.lineJoin = "round"; ctx.stroke();
+}
+function carteChapitre(ctx, W, H, n, titre, t, mot) { // la page de titre d'un chapitre
+  ctx.fillStyle = "rgba(255,250,235,0.82)"; ctx.fillRect(0, 0, W, H);
+  const r = [W / 2 - 330, H / 2 - 120, 660, 240];
+  rrect(ctx, r[0], r[1] + 8, r[2], r[3], 30, [225, 205, 170]);
+  rrect(ctx, ...r, 30, [255, 255, 255], 4, [255, 170, 60]);
+  for (let k = 0; k < 5; k++) etoile(ctx, r[0] + 60 + k * 135, r[1] + 4 + 6 * Math.sin(t * 3 + k), 16, [[255, 200, 50], [255, 120, 150], [100, 180, 250]][k % 3], t + k);
+  ecrireCentre(ctx, mot + " " + n, W / 2, H / 2 - 50, 34, [235, 130, 40]);
+  ctx.font = `700 46px Fredoka, "Comic Sans MS", sans-serif`;
+  const lignes = [], mots = String(titre).split(/\s+/);
+  let cour = "";
+  for (const m of mots) { const e = (cour + " " + m).trim(); if (ctx.measureText(e).width < 600 || !cour) cour = e; else { lignes.push(cour); cour = m; } }
+  if (cour) lignes.push(cour);
+  lignes.slice(0, 2).forEach((l, i) => ecrireCentre(ctx, l, W / 2, H / 2 + 15 + i * 52 - (lignes.length > 1 ? 20 : 0), 46, [70, 60, 50]));
 }
