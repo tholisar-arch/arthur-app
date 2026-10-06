@@ -508,9 +508,12 @@ class App {
     this.bGo = new Bouton([910, 575, 330, 110], "C'est parti !", [70, 185, 90], 40);
     this.bEncore = new Bouton([VX + VW / 2 - 330, VY + 330, 300, 100], "Encore !", [70, 185, 90], 38);
     this.bAutres = new Bouton([VX + VW / 2 + 30, VY + 330, 300, 100], "Histoires", [110, 140, 220], 38);
+    this.bPerso = new Bouton([W - 240, 16, 222, 54], "Personnages", [150, 100, 210], 24);
+    this.atelier = new Atelier(this);
     this.rechargeHistoires();
   }
   async rechargeHistoires() {
+    this.atelier.local = await chargePersonnages(); // avant les histoires : elles peuvent citer Jean-Eudes, Célestin…
     try { this.histoires = await chargeTout(); } catch (e) { this.histoires = []; this.erreurChargement = String(e); }
     this.charge = true;
     this.prechargeMenu();
@@ -556,7 +559,9 @@ class App {
   boitesVehicules() { return VEHICULES.map((_, k) => [70 + k * 193, 118, 175, 145]); }
   rondsCouleurs() { return Object.keys(COULEURS).map((_, k) => [355 + k * 95, 352]); }
   touche(p) {
+    if (this.etat === "perso") return this.atelier.touche(p);
     if (this.etat === "menu") {
+      if (this.bPerso.touche(p)) { joue("pop"); return this.atelier.ouvre(); }
       const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
       if (pages > 1 && dans([20, 610, 90, 90], p)) { this.page = mod(this.page - 1, pages); joue("clic"); }
       if (pages > 1 && dans([W - 110, 610, 90, 90], p)) { this.page = mod(this.page + 1, pages); joue("clic"); }
@@ -587,12 +592,13 @@ class App {
       if (e.key === "Escape") this.menu();
       else if (e.key === "ArrowRight" && !this.fin) this.sceneSuivante();
       else if (!this.fin) this.scene.clic(); // les petits tapent sur le clavier : ça compte aussi
-    } else if (this.etat === "config" && e.key === "Escape") this.menu();
+    } else if ((this.etat === "config" || this.etat === "perso") && e.key === "Escape") this.menu();
   }
 
   // ------------------------------------------------ boucle
   maj(dt) {
     this.t += dt;
+    this.atelier.messageT -= dt;
     if (this.etat === "histoire") {
       if (!this.fin) { this.scene.maj(dt); if (this.scene.terminee()) this.sceneSuivante(); }
       else {
@@ -610,10 +616,12 @@ class App {
     this.fond(ctx);
     if (this.etat === "menu") this.dessineMenu(ctx);
     else if (this.etat === "config") this.dessineConfig(ctx);
+    else if (this.etat === "perso") this.atelier.dessine(ctx, this.t);
     else this.dessineHistoire(ctx);
   }
   dessineMenu(ctx) {
     ecrit(ctx, `Les aventures de ${this.prenom}`, 54, [255, 200, 40], [W / 2, 58], [200, 80, 40]);
+    this.bPerso.dessine(ctx);
     const liste = this.histoires.slice(this.page * 6, this.page * 6 + 6);
     this.cartes().forEach((r, k) => {
       const h = liste[k];

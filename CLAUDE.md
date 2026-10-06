@@ -45,10 +45,29 @@ engin fait l'action), `amis` (personnages qui arrivent à pied et restent),
 la scène est pour les personnages). Mettre `"amis": []` quand on ne veut pas que
 des personnages soient ajoutés par mots-clés (papa, maman, chat…).
 
-Personnages (`amis`) : `trex` (Rexou), `chat` (Moustache), `dino` (long cou), `stego`,
-`arthur` (blond foncé, yeux verts, tee-shirt tractopelle), `papa`, `maman` (couronne),
-`papi` (cheveux blancs, lunettes, moustache), `mamie` (chignon gris, lunettes, robe lilas),
-`enfant1` / `enfant2` / `enfant3` (copains de classe).
+Personnages (`amis`) : les animaux `trex` (Rexou), `chat` (Moustache), `dino` (long cou),
+`stego`, plus **tous les personnages de `personnages.json`** (par leur identifiant) :
+`arthur`, `papa`, `maman`, `papi`, `mamie`, `jean-eudes`, `celestin`, `enfant1`/`enfant2`/`enfant3`…
+Un prénom de `personnages.json` cité dans un texte (« Jean-Eudes ») ajoute le personnage tout seul.
+
+### Créer ou décrire un personnage (`personnages.json`)
+Quand un parent décrit quelqu'un (« Jean-Eudes est blond aux yeux bleus »), ajouter/modifier
+son entrée dans `personnages.json` (identifiant = prénom sans accents, minuscules, tirets) :
+```json
+"jean-eudes": {"nom": "Jean-Eudes", "age": "enfant", "taille": "moyen", "peau": "clair",
+  "cheveux": "blond", "coiffure": "boucle", "yeux": "bleu", "haut": "rouge", "bas": "marine",
+  "robe": false, "cils": false, "lunettes": false, "couronne": false, "moustache": false,
+  "barbe": false, "muscle": false, "dessin": null}
+```
+- `age` : enfant | adulte — `taille` : petit | moyen | grand
+- `peau` : tres_clair | clair | beige | mat | cuivre | brun | fonce | tres_fonce
+- `cheveux` : noir | brun_fonce | brun | chatain | blond_fonce | blond | blond_clair | roux | gris | blanc
+- `coiffure` : court | herisse | boucle | milong | long | couettes | chignon | chauve
+- `yeux` : marron_fonce | marron | noisette | vert | vert_clair | bleu | bleu_clair | gris
+- `haut` / `bas` : bleu | marine | rouge | rose | orange | jaune | vert | lilas | blanc | noir | beige | jean (`bas: "peau"` = jambes nues, pour une robe)
+- `dessin` (sur le haut) : null | tractopelle | dino | etoile | coeur
+Les parents peuvent aussi tout régler dans l'appli (bouton **Personnages** de l'accueil) ;
+ces réglages-là restent sur l'appareil (localStorage) et passent avant `personnages.json`.
 
 | action | ce qu'on voit | un clic = |
 |---|---|---|

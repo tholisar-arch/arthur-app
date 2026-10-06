@@ -587,22 +587,51 @@ function chat(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) {
   for (const k of [-1, 1]) { pen.line(CONTOUR, [hx + 4, hy + 6], [hx + 26, hy + 2 + 5 * k], 2); pen.line(CONTOUR, [hx - 4, hy + 6], [hx - 26, hy + 2 + 5 * k], 2); }
 }
 
-const PEAU = [[250, 214, 180], [205, 150, 105], [140, 95, 65]], BLOND_FONCE = [175, 130, 65];
-const STYLES = {
-  arthur: { L: 40, T: 42, R: 25, W: 34, peau: PEAU[0], cheveux: BLOND_FONCE, coiffure: "court", yeux: [70, 150, 80], haut: [90, 160, 230], bas: [70, 80, 120], dessin: "tractopelle" },
-  papa: { L: 95, T: 78, R: 24, W: 62, peau: PEAU[0], cheveux: BLOND_FONCE, coiffure: "court", yeux: [70, 130, 220], haut: [240, 240, 245], bas: [60, 90, 150], muscle: true },
-  maman: { L: 92, T: 70, R: 23, W: 44, peau: PEAU[0], cheveux: [110, 65, 35], coiffure: "long", yeux: [120, 75, 40], haut: [230, 90, 140], bas: null, robe: true, couronne: true, cils: true },
-  enfant1: { L: 38, T: 40, R: 24, W: 32, peau: PEAU[1], cheveux: [60, 35, 20], coiffure: "couettes", yeux: [80, 50, 30], haut: [250, 130, 180], bas: [120, 70, 160], robe: true, cils: true },
-  enfant2: { L: 41, T: 42, R: 24, W: 34, peau: PEAU[2], cheveux: [30, 25, 25], coiffure: "court", yeux: [60, 40, 30], haut: [90, 190, 110], bas: [60, 60, 80] },
-  papi: { L: 90, T: 76, R: 24, W: 56, peau: PEAU[0], cheveux: [225, 225, 230], coiffure: "papi", yeux: [90, 120, 160], haut: [110, 180, 140], bas: [200, 180, 140], lunettes: true, moustache: true },
-  mamie: { L: 86, T: 68, R: 23, W: 44, peau: PEAU[0], cheveux: [215, 215, 222], coiffure: "chignon", yeux: [110, 140, 90], haut: [170, 140, 220], bas: null, robe: true, cils: true, lunettes: true },
-  enfant3: { L: 37, T: 40, R: 24, W: 32, peau: PEAU[0], cheveux: [210, 100, 40], coiffure: "court", yeux: [70, 120, 200], haut: [255, 160, 50], bas: [70, 110, 170] },
+// ------------------------------------------------------------ les personnages (configurables)
+// Chaque personnage est un petit « modèle » (voir personnages.json) : couleurs par nom, coiffure, accessoires.
+const PALETTES = {
+  peau: { tres_clair: [255, 228, 205], clair: [250, 214, 180], beige: [235, 192, 152], mat: [212, 163, 118], cuivre: [190, 135, 95], brun: [160, 110, 75], fonce: [125, 85, 60], tres_fonce: [92, 62, 44] },
+  cheveux: { noir: [30, 25, 25], brun_fonce: [60, 35, 20], brun: [110, 65, 35], chatain: [150, 100, 55], blond_fonce: [175, 130, 65], blond: [228, 188, 98], blond_clair: [245, 222, 155], roux: [210, 100, 40], gris: [170, 170, 178], blanc: [228, 228, 234] },
+  yeux: { marron_fonce: [70, 45, 25], marron: [120, 75, 40], noisette: [150, 110, 50], vert: [70, 150, 80], vert_clair: [120, 195, 130], bleu: [70, 130, 220], bleu_clair: [130, 190, 240], gris: [130, 140, 150] },
+  habits: { bleu: [90, 160, 230], marine: [60, 90, 150], rouge: [215, 60, 60], rose: [235, 110, 160], orange: [240, 130, 50], jaune: [250, 200, 40], vert: [90, 190, 110], lilas: [170, 140, 220], blanc: [240, 240, 245], noir: [60, 60, 75], beige: [200, 180, 140], jean: [70, 80, 120] },
 };
+const COIFFURES = ["court", "herisse", "boucle", "milong", "long", "couettes", "chignon", "chauve"];
+const DESSINS_TSHIRT = [null, "tractopelle", "dino", "etoile", "coeur"];
+const PERSONNAGES_DEFAUT = {
+  arthur: { nom: "Arthur", age: "enfant", peau: "clair", cheveux: "blond_fonce", coiffure: "court", yeux: "vert", haut: "bleu", bas: "jean", dessin: "tractopelle" },
+  papa: { nom: "Papa", age: "adulte", taille: "grand", muscle: true, peau: "clair", cheveux: "blond_fonce", coiffure: "court", yeux: "bleu", haut: "blanc", bas: "marine" },
+  maman: { nom: "Maman", age: "adulte", peau: "clair", cheveux: "brun", coiffure: "long", yeux: "marron", haut: "rose", bas: "peau", robe: true, couronne: true, cils: true },
+  papi: { nom: "Papi", age: "adulte", peau: "clair", cheveux: "blanc", coiffure: "chauve", yeux: "gris", haut: "vert", bas: "beige", lunettes: true, moustache: true },
+  mamie: { nom: "Mamie", age: "adulte", taille: "petit", peau: "clair", cheveux: "gris", coiffure: "chignon", yeux: "noisette", haut: "lilas", bas: "peau", robe: true, cils: true, lunettes: true },
+  enfant1: { nom: "Copine", age: "enfant", peau: "cuivre", cheveux: "brun_fonce", coiffure: "couettes", yeux: "marron_fonce", haut: "rose", bas: "lilas", robe: true, cils: true },
+  enfant2: { nom: "Copain", age: "enfant", peau: "fonce", cheveux: "noir", coiffure: "court", yeux: "marron_fonce", haut: "vert", bas: "noir" },
+  enfant3: { nom: "Copain roux", age: "enfant", taille: "petit", peau: "clair", cheveux: "roux", coiffure: "court", yeux: "bleu", haut: "orange", bas: "jean" },
+};
+function couleurDe(pal, v, defaut) {
+  if (Array.isArray(v)) return v;
+  if (pal === "habits" && v === "peau") return null; // jambes nues (robe)
+  return PALETTES[pal][v] || PALETTES[pal][defaut];
+}
+function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
+  const adulte = p.age === "adulte", k = { petit: 0.92, moyen: 1, grand: 1.07 }[p.taille] || 1;
+  const b = adulte ? { L: 92, T: 74, R: 23.5, W: p.muscle ? 62 : 48 } : { L: 39, T: 41, R: 24.5, W: 33 };
+  return {
+    L: b.L * k, T: b.T * k, R: b.R, W: b.W,
+    peau: couleurDe("peau", p.peau, "clair"), cheveux: couleurDe("cheveux", p.cheveux, "brun"),
+    coiffure: COIFFURES.includes(p.coiffure) ? p.coiffure : "court", yeux: couleurDe("yeux", p.yeux, "marron"),
+    haut: couleurDe("habits", p.haut, "bleu"), bas: couleurDe("habits", p.bas, "jean"),
+    robe: !!p.robe, cils: !!p.cils, lunettes: !!p.lunettes, couronne: !!p.couronne, moustache: !!p.moustache,
+    barbe: !!p.barbe, muscle: !!p.muscle, dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
+  };
+}
+let PERSONNAGES = {};
+const STYLES = {};
 
 function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const st = STYLES[style], pen = new Pen(ctx, x, g, s, f);
   const { L, T, R, W } = st, hanche = -L, epaule = -L - T, tx = 0, ty = epaule - R + 6;
   if (st.coiffure === "long") pen.ellipse(st.cheveux, -R * 1.15, ty - R * 1.05, R * 1.15, epaule + T * 0.35);
+  if (st.coiffure === "milong") pen.ellipse(st.cheveux, -R * 1.12, ty - R * 1.05, R * 1.12, ty + R * 0.95);
   [-W * 0.22, W * 0.22].forEach((lx, k) => {
     const sw = Math.sin(marche + k * PI) * L * 0.3;
     pen.bras(st.bas || st.peau, [lx, hanche], [lx + sw, -7], W * 0.26);
@@ -621,11 +650,25 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     pen.poly(st.haut, [[-W * 0.45, epaule], [W * 0.45, epaule], [W * 0.95, hanche + L * 0.4], [-W * 0.95, hanche + L * 0.4]]);
     pen.poly(clair(st.haut, 0.4), [[-W * 0.3, hanche - 4], [W * 0.3, hanche - 4], [W * 0.36, hanche + 4], [-W * 0.36, hanche + 4]], false);
   } else pen.rect(st.haut, -W / 2, epaule, W / 2, hanche + 6, W * 0.25);
-  if (st.dessin) { const c = pen.P(0, epaule + T * 0.62); dessineVehicule(ctx, st.dessin, "jaune", c[0], c[1], t, 0.3, 0, 0.13 * s, f); }
+  if (st.dessin) { // le dessin sur le tee-shirt
+    const c = pen.P(0, epaule + T * 0.62);
+    if (st.dessin === "tractopelle") dessineVehicule(ctx, "tractopelle", "jaune", c[0], c[1], t, 0.3, 0, 0.13 * s, f);
+    else if (st.dessin === "dino") dinoLongCou(ctx, c[0] - 2 * s * f, c[1] + 10 * s, 0.1 * s, undefined, t, f);
+    else if (st.dessin === "etoile") etoile(ctx, c[0], c[1] - 4 * s, 10 * s, [255, 215, 60], 0);
+    else if (st.dessin === "coeur") coeur(ctx, c[0], c[1] - 6 * s, 8 * s, [230, 60, 90]);
+  }
   pen.circle(st.peau, tx, ty, R, true);
-  if (st.coiffure === "papi") { // cheveux blancs sur les côtés, une petite mèche dessus
+  if (st.coiffure === "chauve" || st.coiffure === "papi") { // cheveux sur les côtés, une petite mèche dessus
     for (const sx of [-1, 1]) pen.ellipse(st.cheveux, sx * R * 0.75 - R * 0.35, ty - R * 0.55, sx * R * 0.75 + R * 0.35, ty + R * 0.15);
     pen.ellipse(st.cheveux, -R * 0.25, ty - R * 1.08, R * 0.3, ty - R * 0.82);
+  } else if (st.coiffure === "herisse") { // cheveux en pics
+    const pts = [[-R * 1.02, ty - R * 0.05]];
+    for (let k = 0; k <= 6; k++) { const a = PI + (k / 6) * PI; pts.push([R * 1.05 * Math.cos(a) * (k % 2 ? 1.18 : 0.95), ty + R * (k % 2 ? 1.25 : 0.92) * Math.sin(a)]); }
+    pts.push([R * 1.02, ty - R * 0.3], [R * 0.3, ty - R * 0.6], [-R * 0.6, ty - R * 0.5], [-R * 0.8, ty]);
+    pen.poly(st.cheveux, pts);
+  } else if (st.coiffure === "boucle") { // cheveux bouclés
+    for (let k = 0; k <= 8; k++) { const a = PI * 0.95 + (k / 8) * PI * 1.1; pen.circle(st.cheveux, R * 0.95 * Math.cos(a), ty + R * 0.95 * Math.sin(a), R * 0.34, true); }
+    pen.circle(st.cheveux, 0, ty - R * 0.75, R * 0.45);
   } else pen.poly(st.cheveux, [[-R * 1.02, ty - R * 0.05], [-R * 0.85, ty - R * 0.8], [-R * 0.2, ty - R * 1.12], [R * 0.6, ty - R], [R * 1.02, ty - R * 0.35], [R * 0.9, ty - R * 0.45], [R * 0.3, ty - R * 0.62], [-R * 0.2, ty - R * 0.45], [-R * 0.6, ty - R * 0.5], [-R * 0.8, ty]]);
   if (st.coiffure === "chignon") pen.circle(st.cheveux, R * 0.1, ty - R * 1.15, R * 0.42, true);
   if (st.coiffure === "couettes") for (const sx of [-1, 1]) { pen.circle(st.cheveux, sx * R * 1.15, ty - R * 0.2, R * 0.38, true); pen.circle([250, 90, 120], sx * R * 0.98, ty - R * 0.35, R * 0.13); }
@@ -652,7 +695,8 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   pen.circle([255, 150, 160], tx - R * 0.45, ty + R * 0.38, R * 0.13);
   pen.circle([255, 150, 160], tx + R * 0.65, ty + R * 0.38, R * 0.13);
   const mx = tx + R * 0.12, my = ty + R * 0.42;
-  if (st.moustache) pen.poly([200, 200, 205], [[mx - R * 0.42, my - R * 0.02], [mx, my - R * 0.2], [mx + R * 0.42, my - R * 0.02], [mx, my - R * 0.06]]);
+  if (st.barbe) pen.poly(st.cheveux, [[tx - R * 0.92, ty + R * 0.05], [tx - R * 0.55, ty + R * 0.75], [tx + R * 0.12, ty + R * 1.12], [tx + R * 0.8, ty + R * 0.75], [tx + R * 0.98, ty + R * 0.05], [tx + R * 0.6, ty + R * 0.35], [tx - R * 0.4, ty + R * 0.35]]);
+  if (st.moustache || st.barbe) pen.poly(st.cheveux, [[mx - R * 0.42, my - R * 0.02], [mx, my - R * 0.2], [mx + R * 0.42, my - R * 0.02], [mx, my - R * 0.06]]);
   if (humeur === "peur") pen.ellipse([150, 60, 70], mx - R * 0.1, my - R * 0.06, mx + R * 0.1, my + R * 0.14, false);
   else if (joie || mange > 0.3) pen.poly([170, 60, 70], [[mx - R * 0.3, my - R * 0.08], [mx + R * 0.3, my - R * 0.08], [mx, my + R * 0.3]]);
   else pen.arc(st.cils ? [200, 70, 90] : CONTOUR, mx - R * 0.28, my - R * 0.25, mx + R * 0.28, my + R * 0.15, PI, 2 * PI, 3);
@@ -663,8 +707,16 @@ const AMIS_DESSIN = {
   dino: (ctx, x, g, s, t, f, marche) => dinoLongCou(ctx, x, g + Math.sin(marche) * 2, 0.62 * s, undefined, t, f),
   stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g + Math.sin(marche) * 2, 0.95 * s, undefined, t, f),
 };
-for (const k of Object.keys(STYLES)) AMIS_DESSIN[k] = (ctx, x, g, s, t, f, marche, mange, humeur) => personne(ctx, x, g, s, t, f, marche, mange, humeur, k);
-const LARGEUR_OMBRE = { dino: 0.8, stego: 0.6, papa: 0.45, maman: 0.45, papi: 0.45, mamie: 0.45 };
+function definitPersonnages(liste) { // (re)construit les styles de dessin à partir des modèles
+  for (const k of Object.keys(STYLES)) if (!liste[k]) { delete STYLES[k]; delete AMIS_DESSIN[k]; }
+  PERSONNAGES = liste;
+  for (const [id, p] of Object.entries(liste)) {
+    STYLES[id] = styleDe(p);
+    AMIS_DESSIN[id] = (ctx, x, g, s, t, f, marche, mange, humeur) => personne(ctx, x, g, s, t, f, marche, mange, humeur, id);
+  }
+}
+definitPersonnages(PERSONNAGES_DEFAUT);
+const LARGEUR_OMBRE = { dino: 0.8, stego: 0.6 };
 
 function boucheAmi(kind, x, g, f = 1, s = 1) {
   if (kind === "dino") return [x + f * 112 * 0.62 * s, g - 207 * 0.62 * s];
@@ -674,7 +726,7 @@ function boucheAmi(kind, x, g, f = 1, s = 1) {
   return [x, g - 60 * s];
 }
 function dessineAmi(ctx, kind, x, g, t = 0, f = 1, marche = 0, mange = 0, s = 1, humeur = null) {
-  const k = LARGEUR_OMBRE[kind] ?? (STYLES[kind] ? 0.3 : 0.7);
+  const k = LARGEUR_OMBRE[kind] ?? (STYLES[kind] ? (STYLES[kind].L > 70 ? 0.45 : 0.3) : 0.7);
   ombre(ctx, x, g, 230 * s * k, 16 * s);
   (AMIS_DESSIN[kind] || chat)(ctx, x, g, s, t, f, marche, mange, humeur);
 }

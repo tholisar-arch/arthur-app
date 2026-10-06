@@ -3,7 +3,7 @@
 
 const VEHICULES = ["tractopelle", "benne", "toupie", "pompier", "bulldozer", "grue"];
 const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir"];
-const AMIS = ["trex", "chat", "dino", "stego", "arthur", "papa", "maman", "papi", "mamie", "enfant1", "enfant2", "enfant3"];
+const estAmi = (k) => k in AMIS_DESSIN; // animaux + tous les personnages (y compris ceux du configurateur)
 const INFOS_VEHICULE = {
   tractopelle: ["le tractopelle", "Tracto", "m"], benne: ["le camion benne", "Benny", "m"],
   toupie: ["le camion toupie", "Toupie", "m"], pompier: ["le camion de pompiers", "Pimpon", "m"],
@@ -62,6 +62,11 @@ function amisCites(texte) {
   if (a("\\bmaman\\b", n)) out.push("maman");
   if (a("\\bpap(i|y)\\b", n)) out.push("papi");
   if (a("\\bmam(ie|y)\\b", n)) out.push("mamie");
+  for (const [id, p] of Object.entries(PERSONNAGES)) { // personnages créés dans le configurateur (Jean-Eudes…)
+    if (out.includes(id) || PERSONNAGES_DEFAUT[id] || !p.nom) continue;
+    const nom = sansAccent(p.nom).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (a("(^|[^a-z])" + nom + "([^a-z]|$)", n)) out.push(id);
+  }
   return out;
 }
 const decor = (nom, defaut = "chantier") => ALIAS_DECOR[sansAccent(nom).trim()] || defaut;
@@ -121,12 +126,12 @@ function scene(d, decorCourant, premiere, derniere, heros) {
   if (n === undefined || n === null) n = CLICS_DEFAUT[act] ?? 3;
   const amis = d.amis !== undefined && d.amis !== null ? d.amis : amisCites(texte);
   const positions = {};
-  for (const [k, v] of Object.entries(d.positions || {})) if (AMIS.includes(k)) positions[k] = Number(v);
+  for (const [k, v] of Object.entries(d.positions || {})) if (estAmi(k)) positions[k] = Number(v);
   return {
     texte, action: act, decor: dec, interactif: !!inter, clics: Math.max(1, Math.min(10, Math.floor(n))),
     consigne: d.consigne || CONSIGNES[act] || "Clique !", copains,
     vehicule: d.vehicule ? vehicule(d.vehicule) : null,
-    amis: amis.filter((x) => AMIS.includes(x)), partent: (d.partent || []).filter((x) => AMIS.includes(x)),
+    amis: amis.filter(estAmi), partent: (d.partent || []).filter(estAmi),
     positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros,
   };
 }
