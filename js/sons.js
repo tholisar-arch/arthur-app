@@ -4,13 +4,32 @@
 const Audio_ = {
   ctx: null,
   sons: {},
-  // Safari (iPad) n'autorise le son qu'après un premier toucher : on démarre ici.
+  html: null,
+  // Safari (iPhone/iPad) n'autorise le son qu'après un toucher : on (re)démarre ici à chaque toucher.
   debloque() {
+    // iPhone : par défaut le son « Web Audio » est coupé par l'interrupteur silencieux.
+    // On demande à iOS de jouer comme une vidéo (session « playback »)…
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* ancien iOS */ }
+    // … et, pour les iOS plus anciens, on joue en boucle un petit son muet dans un <audio>,
+    // ce qui fait passer toute la page en mode lecture.
+    if (!this.html) {
+      this.html = new Audio(URL.createObjectURL(wavMuet(1)));
+      this.html.loop = true;
+      this.html.setAttribute("playsinline", "");
+    }
+    if (this.html.paused) this.html.play().catch(() => { /* réessayé au prochain toucher */ });
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.fabrique();
     }
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    if (this.ctx.state !== "running") this.ctx.resume().catch(() => {}); // « suspended » ou « interrupted » (appel, verrouillage)
+    if (!this.reveille) { // iOS : jouer un tampon vide pendant le toucher « réveille » la sortie audio
+      this.reveille = true;
+      const s = this.ctx.createBufferSource();
+      s.buffer = this.ctx.createBuffer(1, 1, 22050);
+      s.connect(this.ctx.destination);
+      s.start(0);
+    }
   },
   fabrique() {
     const R = this.ctx.sampleRate;
@@ -61,3 +80,14 @@ const Audio_ = {
   },
 };
 const joue = (nom) => Audio_.joue(nom);
+
+function wavMuet(secondes) { // un petit fichier WAV silencieux, fabriqué à la volée
+  const rate = 8000, n = Math.floor(rate * secondes), b = new DataView(new ArrayBuffer(44 + n));
+  const ecris = (o, s) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
+  ecris(0, "RIFF"); b.setUint32(4, 36 + n, true); ecris(8, "WAVE"); ecris(12, "fmt ");
+  b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, rate, true); b.setUint32(28, rate, true); b.setUint16(32, 1, true); b.setUint16(34, 8, true);
+  ecris(36, "data"); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128); // 128 = silence en 8 bits
+  return new Blob([b], { type: "audio/wav" });
+}

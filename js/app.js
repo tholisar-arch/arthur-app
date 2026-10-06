@@ -753,6 +753,8 @@ async function demarre() {
     app.touche([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
   });
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
+  // iPhone : selon la version d'iOS, le son n'est autorisé qu'au lever du doigt ou au « clic »
+  for (const ev of ["touchend", "click"]) document.addEventListener(ev, () => Audio_.debloque(), { passive: true });
   document.addEventListener("visibilitychange", () => { if (!document.hidden && app.etat === "menu") app.rechargeHistoires(); });
 
   let avant = performance.now();
