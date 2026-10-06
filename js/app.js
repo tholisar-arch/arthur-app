@@ -45,8 +45,9 @@ class Bouton {
 
 // ================================================================= monde & scènes
 const nouveauVehicule = (kind, col, x, cible, f = 1) => ({ kind, col, x, cible, rot: 0, outil: 0, dx: 0, dy: 0, f });
-function avance(v, dt, vitesse = 260) {
-  const ecart = v.cible - v.x, pas = borne(ecart, -vitesse * dt, vitesse * dt);
+const DOUCEUR = 3.2; // plus c'est grand, plus l'arrivée est rapide
+function avance(v, dt, vitesse = 260) { // pleine vitesse au loin, puis ralentit en douceur en arrivant
+  const ecart = v.cible - v.x, pas = borne(ecart * Math.min(1, dt * DOUCEUR) + Math.sign(ecart) * Math.min(Math.abs(ecart), 12 * dt), -vitesse * dt, vitesse * dt);
   v.x += pas; v.rot += pas / 30;
 }
 
@@ -117,6 +118,7 @@ class Monde { // ce qui reste d'une scène à l'autre
   }
 }
 
+const DUREE_FONDU = 0.75; // fondu entre deux scènes (secondes)
 const RAYON_CIBLE = 100; // taille de la zone à toucher autour de la cible (en pixels de l'image)
 const estimeDuree = (texte) => texte.length / 11 + 1;
 
@@ -404,7 +406,7 @@ class Scene {
       if (Math.random() < dt * 12) m.eclat(m.hero.x - 130, G + m.hero.dy - 60, 1, [[255, 240, 150], [255, 255, 255]], 60, "etoile", 0.9, 0);
     }
     m.amis.forEach((a, i) => {
-      const ecart = a.cible - a.x, pas = borne(ecart, -230 * dt, 230 * dt);
+      const ecart = a.cible - a.x, pas = borne(ecart * Math.min(1, dt * DOUCEUR) + Math.sign(ecart) * Math.min(Math.abs(ecart), 12 * dt), -230 * dt, 230 * dt);
       a.x += pas;
       if (Math.abs(ecart) > 4) { a.f = ecart > 0 ? 1 : -1; a.marche += Math.abs(pas) / 12; }
       else if (defile) { a.f = 1; a.marche += dt * 9; }
@@ -437,9 +439,12 @@ class Scene {
     m.majParticules(dt);
   }
   terminee() {
-    if (this.fini_t === null || this.t < this.duree) return false;
+    if (this.fini_t === null) return false;
+    // avec la voix : on enchaîne dès qu'elle a fini sa phrase ; sans voix : on attend le temps de lecture estimé
+    const vocal = this.app.voix.actif && Audio_.ctx;
+    if (vocal ? this.t < 1 : this.t < this.duree) return false;
     if (this.app.voix.parle()) return false; // on laisse la voix finir sa phrase
-    return this.t - this.fini_t >= (this.inter ? 3 : 0.6);
+    return this.t - this.fini_t >= (this.inter ? 1.3 : 0.3);
   }
   attendClic() { return this.inter && this.fait < this.n && this.p === null && this.pret(); }
   dessine(ctx) {
@@ -522,6 +527,9 @@ class App {
     this.bPerso = new Bouton([W - 240, 16, 222, 54], () => tr("personnages"), [150, 100, 210], 24);
     this.bLangue = new Bouton([18, 16, 170, 54], () => tr("langue"), [60, 160, 160], 24);
     this.atelier = new Atelier(this);
+    this.ancienne = document.createElement("canvas"); // image de la scène précédente, pour le fondu
+    this.ancienne.width = VW; this.ancienne.height = VH;
+    this.fondu = 0; this.ouverture = 0;
     this.rechargeHistoires();
   }
   async rechargeHistoires() {
@@ -550,6 +558,8 @@ class App {
     this.etat = "config";
     this.voix.dire(...this.phraseTitre(h));
     this.prechargeConfig();
+    this.valeurs = textes(this.choixVeh, this.choixCol, this.prenom);
+    this.prechargeHistoire(); // pendant que l'enfant choisit, les phrases se préparent
   }
   lance() {
     const h = this.histoire;
@@ -560,8 +570,15 @@ class App {
     this.prechargeHistoire();
     this.scene = new Scene(this, this.monde, h.scenes[0], this.valeurs);
     this.etat = "histoire";
+    this.fondu = 0; this.ouverture = 0.6; // l'image apparaît en douceur
+  }
+  photoPourFondu() { // garde l'image actuelle : elle s'efface en douceur sur la scène suivante
+    const c = this.ancienne.getContext("2d");
+    c.clearRect(0, 0, VW, VH); c.drawImage(this.video, 0, 0);
+    this.fondu = DUREE_FONDU;
   }
   sceneSuivante() {
+    this.photoPourFondu();
     this.i++;
     if (this.i >= this.histoire.scenes.length) { this.fin = true; joue("bravo"); this.voix.dire(tr("finHistoire", { prenom: this.prenom })); }
     else this.scene = new Scene(this, this.monde, this.histoire.scenes[this.i], this.valeurs);
@@ -616,6 +633,7 @@ class App {
   // ------------------------------------------------ boucle
   maj(dt) {
     this.t += dt;
+    this.fondu = Math.max(0, this.fondu - dt); this.ouverture = Math.max(0, this.ouverture - dt);
     this.atelier.messageT -= dt;
     if (this.etat === "histoire") {
       if (!this.fin) { this.scene.maj(dt); if (this.scene.terminee()) this.sceneSuivante(); }
@@ -707,6 +725,11 @@ class App {
     rrect(ctx, VX - 8, VY - 2, VW + 16, VH + 16, 22, [225, 210, 185]); // ombre douce
     rrect(ctx, VX - 6, VY - 6, VW + 12, VH + 12, 20, [255, 255, 255]); // cadre blanc tout simple
     ctx.drawImage(this.video, VX, VY);
+    if (this.fondu > 0) { // l'ancienne scène s'efface en douceur
+      const k = this.fondu / DUREE_FONDU;
+      ctx.globalAlpha = k * k * (3 - 2 * k); ctx.drawImage(this.ancienne, VX, VY); ctx.globalAlpha = 1;
+    }
+    if (this.ouverture > 0) { ctx.globalAlpha = this.ouverture / 0.6; rrect(ctx, VX, VY, VW, VH, 0, [255, 255, 255]); ctx.globalAlpha = 1; }
     if (this.fin) { this.bEncore.dessine(ctx, t, true); this.bAutres.dessine(ctx); }
     this.bRetour.dessine(ctx);
     ecrit(ctx, titreDe(this.histoire), 32, [255, 200, 40], [W / 2, 34], [200, 80, 40]);
@@ -722,8 +745,10 @@ class App {
     let taille = 24, pas = 31, lignes = coupe(ctx, sc.texte, taille, VW - 40);
     if (lignes.length + (consigne ? 1 : 0) > 3) { taille = 20; pas = 25; lignes = coupe(ctx, sc.texte, taille, VW - 40); }
     let y = by + 8;
+    ctx.globalAlpha = 1 - this.fondu / DUREE_FONDU;
     for (const l of lignes.slice(0, 4 - (consigne ? 1 : 0))) { ecrit(ctx, l, taille, CONTOUR, [bx + 20, y], null, true); y += pas; }
     if (consigne) ecrit(ctx, consigne, taille + 2, [235, 110, 20], [bx + 20, y], null, true);
+    ctx.globalAlpha = 1;
   }
 }
 
