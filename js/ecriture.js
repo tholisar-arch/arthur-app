@@ -6,10 +6,10 @@
 
 const CLE_HISTOIRES = "tracto.histoires.v1";
 const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures", "foret", "montagne", "ferme", "port"];
-const ACTIONS_ECRITURE = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
+const ACTIONS_ECRITURE = ["libre", "rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
   "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher"];
 const ANIMAUX_ECRITURE = ["trex", "chat", "dino", "stego"];
-const MAX_SCENES = 120; // assez pour une histoire de plus de 10 minutes
+const MAX_SCENES = 300; // largement de quoi faire une histoire de plus d'une demi-heure
 const METEOS = ["aucune", "pluie", "orage", "neige", "arcenciel", "etoiles"];
 const OBJETS = ["ballon", "doudou", "cle", "chat"];
 const nouvelId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -17,6 +17,7 @@ const cleVoix = (e, et) => e.id + ":" + et.vid; // la voix enregistrée d'une sc
 
 // le texte automatique de chaque action, en français et en anglais
 const MODELES = {
+  libre: ["Regarde !", "Look!"],
   rouler: ["{nom}, {heros}, part en balade. Vroum, vroum !", "{nom}, {heros}, goes for a ride. Vroom, vroom!"],
   parler: ["Tout le monde se retrouve et discute joyeusement.", "Everyone meets up and has a happy chat."],
   trou: ["Oh ! Un gros trou sur la route. {nom} le remplit avec de la terre.", "Oh! A big hole in the road. {nom} fills it with dirt."],
@@ -90,6 +91,7 @@ function compileHistoire(e) {
       ...(et.voix && et.vid ? { voixPerso: cleVoix(e, et) } : {}),
       ...(et.partie ? { partie: et.partie.fr || "", partie_en: et.partie.en || null } : {}),
       ...(et.objet ? { objet: et.objet } : {}),
+      ...(et.elements && et.elements.length ? { elements: et.elements } : {}),
     };
   });
   return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes };
@@ -158,7 +160,7 @@ function etapesDepuisTexte(lignes, prenom) {
 class Ecriture {
   constructor(app) {
     this.app = app; this.histoires = []; this.id = null; this.sc = 0; this.zones = []; this.message = ""; this.messageT = 0;
-    this.onglet = "lieu"; this.libre = null; this.debut = 0; this.choisi = null;
+    this.onglet = "lieu"; this.libre = null; this.debut = 0; this.choisi = null; this.choixEl = -1; this.drag = null; this.categorie = "perso";
   }
   ouvre() { this.histoires = litHistoiresPerso(); this.app.etat = "ecrire"; if (!this.histoire()) this.id = null; }
   ferme() { this.fermeLibre(); }
@@ -205,9 +207,84 @@ class Ecriture {
     const e = this.histoire();
     if (e.etapes.length >= MAX_SCENES) return this.dit(tr("maxScenes"));
     const prec = e.etapes[e.etapes.length - 1];
-    e.etapes.push({ action: "parler", decor: prec.decor, presents: [...prec.presents], interactif: false, texteLibre: null, nuit: !!prec.nuit, humeur: "auto", copains: [], meteo: prec.meteo, vid: nouvelId() });
-    this.sc = e.etapes.length - 1; this.sauve(); joue("pop");
+    const ici = e.etapes[this.sc] || prec; // le nouvel écran se met juste après celui qu'on regarde
+    e.etapes.splice(this.sc + 1, 0, { action: ici.action === "libre" ? "libre" : "parler", decor: ici.decor, presents: [...ici.presents], interactif: false, texteLibre: null, nuit: !!ici.nuit, humeur: "auto", copains: [], meteo: ici.meteo, vid: nouvelId(),
+      ...(ici.action === "libre" ? { elements: (ici.elements || []).map((x) => ({ ...x, toucher: false })) } : {}) });
+    this.sc++; this.sauve(); joue("pop");
   }
+  dupliqueScene() {
+    const e = this.histoire();
+    if (e.etapes.length >= MAX_SCENES) return this.dit(tr("maxScenes"));
+    const copie = JSON.parse(JSON.stringify(this.etape()));
+    copie.vid = nouvelId(); copie.voix = false; copie.partie = null;
+    e.etapes.splice(this.sc + 1, 0, copie);
+    this.sc++; this.sauve(); joue("pop");
+  }
+  deplaceScene(d) {
+    const e = this.histoire(), j = this.sc + d;
+    if (j < 0 || j >= e.etapes.length) return;
+    [e.etapes[this.sc], e.etapes[j]] = [e.etapes[j], e.etapes[this.sc]];
+    this.sc = j; this.sauve(); joue("clic");
+  }
+  choisitAction(a) {
+    const et = this.etape(), champs = { action: a };
+    if (a === "libre" && !(et.elements && et.elements.length)) { // on part de ce qu'il y avait : le véhicule et les personnages
+      const pres = et.presents.filter(estAmi);
+      champs.elements = [{ type: "heros", id: "", x: 330, y: G, s: 1, f: 1 }].concat(pres.map((id, k) => ({ type: "perso", id, x: 560 + k * 110, y: G, s: 1, f: -1 })));
+    }
+    this.change(champs);
+  }
+  // --- onglet « 🎨 Écran » : on pose des images et on les fait glisser
+  elements() { const et = this.etape(); if (!et.elements) et.elements = []; return et.elements; }
+  ajouteElement(type, id) {
+    const els = this.elements();
+    if (els.length >= 80) return;
+    const el = { type, id, x: VW / 2 + (Math.random() - 0.5) * 200, y: type === "objet" && ["nuage", "soleil", "lune", "etoile", "arcenciel"].includes(id) ? 170 : G, s: 1, f: 1 };
+    if (type === "engin") el.col = COULEUR_DEFAUT[id];
+    if (type === "objet") { els.unshift(el); this.choixEl = 0; } // le décor se met derrière les personnages
+    else { els.push(el); this.choixEl = els.length - 1; }
+    this.sauve();
+    joue(type === "engin" || type === "heros" ? "klaxon" : "pop");
+  }
+  outil(nom) {
+    const els = this.elements(), el = els[this.choixEl];
+    if (!el) return;
+    if (nom === "plus") el.s = Math.min(3, +(el.s * 1.2).toFixed(2));
+    if (nom === "moins") el.s = Math.max(0.3, +(el.s / 1.2).toFixed(2));
+    if (nom === "miroir") el.f = -(el.f || 1);
+    if (nom === "toucher") { el.toucher = !el.toucher; this.dit(tr(el.toucher ? "toucherOui" : "toucherNon", { prenom: this.app.prenom })); if (el.toucher) this.etape().interactif = true; }
+    if (nom === "devant") { // devant tout, ou (s'il y est déjà) derrière tout
+      els.splice(this.choixEl, 1);
+      if (this.choixEl === els.length) { els.unshift(el); this.choixEl = 0; } else { els.push(el); this.choixEl = els.length - 1; }
+    }
+    if (nom === "couleur") { const c = Object.keys(COULEURS); el.col = c[(c.indexOf(el.col) + 1) % c.length]; }
+    if (nom === "efface") { els.splice(this.choixEl, 1); this.choixEl = -1; }
+    this.sauve(); joue("pop");
+  }
+  toucheCadre(p, cadre) { // doigt posé sur l'aperçu : on prend l'image qui est dessous
+    const q = [(p[0] - cadre[0]) / cadre[4], (p[1] - cadre[1]) / cadre[4]], et = this.etape(), els = this.elements();
+    for (let k = els.length - 1; k >= 0; k--) {
+      if (dans(boiteElement(els[k]), q)) { this.choixEl = k; this.drag = { k, dx: q[0] - els[k].x, dy: q[1] - els[k].y, cadre, bouge: false }; return; }
+    }
+    if (et.action !== "libre") { // les personnages présents (placés automatiquement) se déplacent aussi
+      const pos = compileHistoire(this.histoire()).scenes[this.sc].positions || {};
+      for (const id of et.presents.filter(estAmi)) {
+        const x = pos[id] ?? 470;
+        if (Math.abs(q[0] - x) < 50 && q[1] > G - 220 && q[1] < G + 15) { this.choixEl = -1; this.drag = { perso: id, cadre, bouge: false }; return; }
+      }
+    }
+    this.choixEl = -1;
+  }
+  glisse(p) {
+    const d = this.drag;
+    if (!d) return;
+    const q = [(p[0] - d.cadre[0]) / d.cadre[4], (p[1] - d.cadre[1]) / d.cadre[4]];
+    d.bouge = true;
+    if (d.perso) { const et = this.etape(); et.positions = { ...(et.positions || {}), [d.perso]: Math.round(borne(q[0], 70, VW - 70)) }; return; }
+    const el = this.elements()[d.k];
+    if (el) { el.x = Math.round(borne(q[0] - d.dx, 0, VW)); el.y = Math.round(borne(q[1] - d.dy, 30, VH + 40)); }
+  }
+  lache() { if (this.drag && this.drag.bouge) this.sauve(); this.drag = null; }
   enleveScene() {
     const e = this.histoire();
     if (e.etapes.length <= 1) return;
@@ -290,7 +367,7 @@ class Ecriture {
   }
   essaie() {
     const e = this.histoire();
-    try { this.app.ouvreConfig({ ...normalise(compileHistoire(e), "moi-" + e.id, e.date), perso: e.id }); }
+    try { this.app.ouvreConfig({ ...normalise(compileHistoire(e), "moi-" + e.id, e.date), perso: e.id }); this.app.departScene = this.sc; } // on essaie à partir de l'écran en cours
     catch (err) { this.dit(String(err)); }
   }
 
@@ -343,7 +420,7 @@ class Ecriture {
     if (this.libre) return;
     for (const z of this.zones) {
       const ok = z.cercle ? Math.hypot(p[0] - z.cercle[0], p[1] - z.cercle[1]) < z.cercle[2] : dans(z.r, p);
-      if (ok) { if (z.placer) this.place(p, z.placer); else z.action(); if (this.app.etat === "ecrire") this.app.dessine(); return; }
+      if (ok) { if (z.cadre) this.toucheCadre(p, z.cadre); else z.action(); if (this.app.etat === "ecrire") this.app.dessine(); return; }
     }
   }
 
@@ -441,7 +518,7 @@ class Ecriture {
       titre(tr("lieu"), 268, Y);
       LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 9) * 111, Y + 20 + Math.floor(i / 9) * 46, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 16));
       titre(tr("action"), 268, Y + 112);
-      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 132 + Math.floor(i / 9) * 46, 104, 40], tr("actions")[a], et.action === a, () => this.change({ action: a }), [255, 200, 60], 15));
+      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 132 + Math.floor(i / 9) * 46, 104, 40], tr("actions")[a], et.action === a, () => this.choisitAction(a), [255, 200, 60], 15));
       titre(tr("moment"), 268, Y + 276);
       puce([265, Y + 296, 120, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
       puce([395, Y + 296, 120, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
@@ -516,33 +593,51 @@ class Ecriture {
         } else bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
       } else if (e.etapes.some((x) => x.partie)) bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
     } else if (this.onglet === "placer") {
-      const presents = et.presents.filter(estAmi);
-      if (!presents.length) { ecrit(ctx, tr("placerPersonne"), 20, [150, 140, 130], [765, 420]); }
-      else {
-        if (!presents.includes(this.choisi)) this.choisi = presents[0];
-        const sceneC = compileHistoire(e).scenes[Math.min(this.sc, e.etapes.length - 1)];
-        const s = 0.62, cadre = [265, Y + 6, VW * s, VH * s, s];
-        ctx.save(); ctx.translate(cadre[0], cadre[1]);
-        ctx.beginPath(); ctx.rect(0, 0, cadre[2], cadre[3]); ctx.clip(); ctx.scale(s, s);
-        dessineDecor(ctx, VW, VH, et.decor, 0, t, !!et.nuit, G);
-        if (et.meteo === "arcenciel") arcEnCiel(ctx, VW * 0.62, G - 40, 330);
+      const sceneC = compileHistoire(e).scenes[Math.min(this.sc, e.etapes.length - 1)], libre = et.action === "libre", els = this.elements();
+      if (this.choixElSc !== this.sc + ":" + this.id) { this.choixEl = -1; this.choixElSc = this.sc + ":" + this.id; }
+      const sc = 0.62, cadre = [265, Y + 6, VW * sc, VH * sc, sc], heros = { kind: e.heros, col: COULEURS[e.couleur] };
+      ctx.save(); ctx.translate(cadre[0], cadre[1]);
+      ctx.beginPath(); ctx.rect(0, 0, cadre[2], cadre[3]); ctx.clip(); ctx.scale(sc, sc);
+      dessineDecor(ctx, VW, VH, et.decor, 0, t, !!et.nuit, G);
+      if (et.meteo === "arcenciel") arcEnCiel(ctx, VW * 0.62, G - 40, 330);
+      els.forEach((el, k) => {
+        if (k === this.choixEl) { const b = boiteElement(el); ctx.globalAlpha = 0.3; rrect(ctx, b[0] - 8, b[1] - 8, b[2] + 16, b[3] + 16, 16, [255, 200, 60]); ctx.globalAlpha = 1; rrect(ctx, b[0] - 8, b[1] - 8, b[2] + 16, b[3] + 16, 16, null, 5, [255, 150, 30]); }
+        dessineElement(ctx, el, t, heros);
+        if (el.toucher) etoile(ctx, el.x, boiteElement(el)[1] - 12, 20, [255, 210, 50], t);
+      });
+      if (!libre) {
         if (!sceneC.cache_heros) dessineVehicule(ctx, e.heros, COULEURS[e.couleur], 430, G, t);
-        for (const id of presents) {
+        for (const id of et.presents.filter(estAmi)) {
           const x = sceneC.positions[id] ?? 470;
-          if (id === this.choisi) { ctx.globalAlpha = 0.35; rond(ctx, x, G + 8, 46, [255, 200, 60]); ctx.globalAlpha = 1; }
           dessineAmi(ctx, id, x, G, t, x < VW / 2 ? 1 : -1, 0, 0, 1, (sceneC.humeur || {})[id] || null);
         }
-        ctx.restore();
-        rrect(ctx, cadre[0], cadre[1], cadre[2], cadre[3], 10, null, 3, [205, 195, 180]);
-        z.push({ r: cadre.slice(0, 4), placer: cadre }); // touche l'image : le personnage choisi va là
-        const xd = cadre[0] + cadre[2] + 16;
-        coupe(ctx, tr("placerAide"), 17, 1265 - xd).forEach((l, i) => ecrit(ctx, l, 17, [110, 90, 70], [xd, Y + 10 + i * 24], null, true));
-        presents.slice(0, 6).forEach((id, i) => {
-          const nom = nomPerso(id, LANGUE).replace("{prenom}", app.prenom);
-          puce([xd + (i % 2) * 126, Y + 92 + Math.floor(i / 2) * 48, 118, 40], coupe(ctx, nom, 16, 108)[0] || nom, this.choisi === id, () => { this.choisi = id; }, [255, 200, 60], 16);
-        });
-        bouton([xd, Y + 250, 244, 48], tr("placerAuto"), [150, 160, 175], () => this.change({ positions: {} }), 18, !!(et.positions && Object.keys(et.positions).length));
       }
+      ctx.restore();
+      rrect(ctx, cadre[0], cadre[1], cadre[2], cadre[3], 10, null, 3, [205, 195, 180]);
+      z.push({ r: cadre.slice(0, 4), cadre });
+      ecrit(ctx, coupe(ctx, tr(libre ? "composerAide" : "composerLibre"), 15, cadre[2])[0] || "", 15, [150, 140, 130], [cadre[0], cadre[1] + cadre[3] + 8], null, true);
+      // la palette d'images
+      const xd = cadre[0] + cadre[2] + 14;
+      [["perso", tr("catPerso")], ["engin", tr("catEngins")], ["objet", tr("catObjets")]].forEach(([c, nom], k) =>
+        puce([xd + k * 126, Y + 6, 120, 38], nom, this.categorie === c, () => { this.categorie = c; }, [140, 200, 240], 16));
+      const items = this.categorie === "perso" ? Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id }))
+        : this.categorie === "engin" ? [{ type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })))
+        : Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id }));
+      items.slice(0, 24).forEach((it, k) => {
+        const r = [xd + (k % 6) * 62, Y + 52 + Math.floor(k / 6) * 60, 56, 54];
+        rrect(ctx, ...r, 10, it.type === "objet" ? [225, 240, 252] : [255, 255, 255], 2, [205, 195, 180]);
+        const [w, h] = tailleElement(it), ech = Math.min(48 / w, 44 / h);
+        ctx.save(); ctx.beginPath(); ctx.rect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4); ctx.clip();
+        dessineElement(ctx, { ...it, x: r[0] + r[2] / 2, y: r[1] + r[3] - 4, s: ech, f: 1 }, t, heros);
+        ctx.restore();
+        z.push({ r, action: () => this.ajouteElement(it.type, it.id) });
+      });
+      // ce qu'on peut faire avec l'image choisie
+      const el = els[this.choixEl], yo = Y + 296;
+      [["moins", "−"], ["plus", "+"], ["miroir", "↔"], ["toucher", "⭐"], [el && el.type === "engin" ? "couleur" : "devant", el && el.type === "engin" ? "🎨" : "⬆"], ["efface", "🗑"]].forEach(([nom, txt], k) => {
+        const r = [xd + k * 62, yo, 56, 46], on = nom === "toucher" && el && el.toucher;
+        bouton(r, txt, on ? [255, 170, 40] : nom === "efface" ? [210, 90, 80] : [110, 140, 220], () => this.outil(nom), 22, !!el);
+      });
     } else {
       const histoire = compileHistoire(e), sceneC = histoire.scenes[Math.min(this.sc, histoire.scenes.length - 1)];
       const en = LANGUE === "en" && sceneC.texte_en, vals = textes(e.heros, e.couleur, app.prenom, en ? "en" : "fr");
@@ -553,15 +648,18 @@ class Ecriture {
       bouton([475, Y + 186, 200, 50], tr("texteAuto"), [150, 160, 175], () => this.change({ texteLibre: null }), 19, !!et.texteLibre);
       ecrit(ctx, tr("astuceLibre"), 16, [150, 140, 130], [265, Y + 262], null, true);
     }
-    bouton([265, 650, 230, 52], tr("essayer"), [70, 185, 90], () => this.essaie(), 24);
-    bouton([505, 650, 190, 52], tr("supprimerScene"), [210, 120, 90], () => this.enleveScene(), 17, e.etapes.length > 1);
-    bouton([705, 650, 170, 52], tr("supprimerHistoire"), [210, 80, 80], () => this.supprime(), 19);
+    bouton([265, 650, 200, 52], tr("essayer"), [70, 185, 90], () => this.essaie(), 22);
+    bouton([475, 650, 170, 52], tr("dupliquer"), [110, 140, 220], () => this.dupliqueScene(), 18);
+    bouton([655, 650, 56, 52], "◀", [150, 160, 175], () => this.deplaceScene(-1), 20, this.sc > 0);
+    bouton([717, 650, 56, 52], "▶", [150, 160, 175], () => this.deplaceScene(1), 20, this.sc < e.etapes.length - 1);
+    bouton([783, 650, 180, 52], tr("supprimerScene"), [210, 120, 90], () => this.enleveScene(), 17, e.etapes.length > 1);
+    bouton([973, 650, 160, 52], tr("supprimerHistoire"), [210, 80, 80], () => this.supprime(), 18);
     this.messageBas(ctx);
   }
   messageBas(ctx) {
     if (this.messageT > 0) {
-      rrect(ctx, 885, 656, 380, 40, 12, [255, 235, 230], 2, [220, 120, 110]);
-      ecrit(ctx, coupe(ctx, this.message, 15, 360)[0] || "", 15, [170, 60, 50], [1075, 676]);
+      rrect(ctx, 360, 12, 760, 46, 12, [255, 245, 225], 3, [235, 150, 60]);
+      ecrit(ctx, coupe(ctx, this.message, 17, 730)[0] || "", 17, [150, 80, 30], [740, 35]);
     }
   }
 }

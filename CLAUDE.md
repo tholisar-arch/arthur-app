@@ -13,6 +13,31 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
+## Écrans composés à la main (`"action": "libre"` + `elements`)
+Chaque écran peut être composé librement : décor + images posées où l'on veut. Avec l'action
+`libre`, l'écran ne montre QUE ses `elements` (le véhicule n'apparaît que si on pose `"heros"`) ;
+avec une autre action, les `elements` s'ajoutent au décor.
+```json
+{"texte": "Le chat se cache derrière la maison !", "action": "libre", "decor": "jardin", "interactif": true,
+ "consigne": "Touche le chat !",
+ "elements": [
+   {"type": "objet", "id": "maison", "x": 500, "y": 450},
+   {"type": "heros", "x": 220, "y": 450},
+   {"type": "perso", "id": "chat", "x": 700, "y": 450, "f": -1, "toucher": true},
+   {"type": "engin", "id": "grue", "col": "rouge", "x": 880, "y": 450, "s": 0.7}
+ ]}
+```
+- `type` : `perso` (un personnage ou un animal), `engin` (`id` = un véhicule, `col` = couleur), `heros`
+  (le véhicule choisi par l'enfant), `objet` (`id` : maison, maisonFeu, arbre, sapin, buisson, fleurs,
+  champignon, rocher, cadeau, velo, ballon, doudou, cle, coeur, etoile, nuage, soleil, lune, arcenciel,
+  tas, trou, piscine, bateau).
+- `x` 0–980, `y` = le sol sous l'image (450 = la route ; plus petit = plus haut), `s` taille (0.3–3),
+  `f` : -1 = retourné. Ordre de la liste = ordre de dessin (le premier est derrière).
+- `"toucher": true` : l'enfant doit toucher cette image (elle saute, étoiles) ; une par une, dans l'ordre.
+- Dans l'appli : onglet « 🎨 Écran » (palette Personnages / Engins / Objets, glisser au doigt,
+  − + ↔ ⭐ ⬆ 🗑) ; boutons ⧉ Dupliquer et ◀ ▶ pour réordonner les écrans ; « ▶ Essayer » part de
+  l'écran en cours. Pendant une histoire, les boutons ‹ › sur les côtés passent/reviennent d'un écran.
+
 ## Longues histoires en chapitres (10 minutes et plus)
 Pour une vraie aventure, découper en **parties** (chapitres) : chacune a une page de titre lue à
 voix haute, l'enfant peut commencer à n'importe quel chapitre, et l'appli retient le dernier

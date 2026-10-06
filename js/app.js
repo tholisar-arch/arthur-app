@@ -144,7 +144,10 @@ class Scene {
     this.n = aFaire ? d.clics : 0;
     const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420, pont: 300, arbre: 420, panne: 380, chercher: 130 }[this.act];
     this.altitude = 0; this.ouvert = 0; this.veloX = 440; this.pedale = 0;
-    this.cacheHeros = !!d.cache_heros;
+    this.cacheHeros = !!d.cache_heros || this.act === "libre";
+    this.elements = (d.elements || []).map((e) => ({ ...e, saut: 0 }));
+    this.aToucher = this.elements.filter((e) => e.toucher);
+    if (this.act === "libre") { hero.x = -400; if (this.inter && this.aToucher.length) this.n = this.aToucher.length; }
     let kindActeur = this.act === "panne" ? null : d.vehicule;
     if (this.act === "feu" && hero.kind !== "pompier" && !kindActeur) kindActeur = "pompier";
     if (kindActeur && kindActeur !== hero.kind) {
@@ -243,6 +246,11 @@ class Scene {
     if (this.act === "construire") return [this.cx, G - 80];
     if (this.act === "copains") return [VW - 120, G - 120];
     if (this.act === "fete" || this.act === "dormir") return [VW / 2, 150];
+    if (this.act === "libre") {
+      const el = this.aToucher[Math.min(this.fait, this.aToucher.length - 1)];
+      if (!el) return [VW / 2, G - 150];
+      const b = boiteElement(el); return [el.x, b[1] + b[3] / 2];
+    }
     if (this.act === "pont") return [this.cx - 140 + ((Math.min(this.fait, this.total - 1) + 0.5) * 280) / this.total, G + 6];
     if (this.act === "arbre") return [this.cx, G - 40];
     if (this.act === "panne") return [this.cx - 30, G - 90];
@@ -277,6 +285,10 @@ class Scene {
     else if (this.act === "cadeau") { this.dureeEtape = 1.4; joue("magie"); }
     else if (this.act === "fenetres") joue("pop");
     else if (this.act === "pont") joue("pop");
+    else if (this.act === "libre") {
+      const el = this.aToucher[this.fait]; this.elTouche = el || null; this.dureeEtape = 0.9;
+      joue(!el ? "magie" : el.type === "engin" || el.type === "heros" ? "klaxon" : { chat: "miaou", trex: "rugir" }[el.id] || (el.type === "perso" ? "pop" : "magie"));
+    }
     else if (this.act === "arbre") joue("klaxon");
     else if (this.act === "panne") { joue("clic"); this.dureeEtape = 1.0; }
     else if (this.act === "chercher") { joue("pop"); this.ici = this.fait; this.dureeEtape = 1.0; }
@@ -390,6 +402,10 @@ class Scene {
       this.boost = -70 * Math.sin(PI * q);
       if (Math.random() < 0.5) m.eclat(m.hero.x - 120, G + m.hero.dy - 90, 2, [[255, 240, 150], [255, 255, 255]], 120, "etoile", 0.8, 0);
     }
+    if (this.act === "libre" && this.elTouche) {
+      this.elTouche.saut = 70 * Math.abs(Math.sin(PI * q));
+      if (p >= 0.5 && !this.evt) { this.evt = true; const [x, y] = this.cible(); m.eclat(x, y, 18, null, 260, "etoile", 0.8, 100); }
+    }
     if (this.act === "pont") {
       v.outil = Math.sin(PI * q);
       if (p >= 0.5 && !this.evt) {
@@ -436,6 +452,7 @@ class Scene {
     for (const c of this.m.copains) c.dy = c.outil = 0;
     for (const a of this.m.amis) a.dx = 0;
     if (this.sauteur) { this.sauteur.dx = this.sauteur.dy = 0; }
+    if (this.elTouche) { this.elTouche.saut = 0; this.elTouche = null; }
     if (this.fait >= this.n) this.termine(); else if (this.attente) this.debutEtape();
   }
   souffle(a, n, force) {
@@ -525,7 +542,7 @@ class Scene {
     // avec la voix : on enchaîne dès qu'elle a fini sa phrase ; sans voix : on attend le temps de lecture estimé
     const vocal = this.app.voix.actif && Audio_.ctx;
     if (vocal ? this.t < 1 : this.t < this.duree) return false;
-    if (this.app.voix.parle()) return false; // on laisse la voix finir sa phrase
+    if (this.app.voix.parle() && this.t < this.duree + 12) return false; // on laisse la voix finir sa phrase (mais pas indéfiniment)
     return this.t - this.fini_t >= (this.inter ? 1.3 : 0.3);
   }
   attendClic() { return this.inter && this.fait < this.n && this.p === null && this.pret(); }
@@ -540,6 +557,12 @@ class Scene {
     }
     if (this.act === "pont") riviere(ctx, this.cx, G, VH, m.t);
     if (this.d.meteo === "arcenciel") arcEnCiel(ctx, VW * 0.62, G - 40, 330);
+    const heros = { kind: m.hero.kind, col: m.hero.col };
+    for (const el of this.elements) { // les images posées à la main sur l'écran
+      if (this.act === "libre" && el.toucher && this.attendClic() && el === this.aToucher[this.fait]) { ctx.globalAlpha = 0.35 + 0.2 * Math.sin(m.t * 5); const b = boiteElement(el); rrect(ctx, b[0] - 10, b[1] - 10, b[2] + 20, b[3] + 20, 24, [255, 240, 150]); ctx.globalAlpha = 1; }
+      dessineElement(ctx, el, m.t, heros, el.saut);
+    }
+    if (this.act === "libre") { m.dessineParticules(ctx); return this.dessineFin(ctx); }
     if (this.act !== "velo") m.copains.forEach((c, i) => {
       const dy = fete ? -Math.abs(Math.sin(m.t * 5 + i)) * 14 : 0;
       dessineVehicule(ctx, c.kind, c.col, c.x, G - 32 + dy + c.dy, m.t + i, c.outil, c.rot, 0.72, c.f, m.nuit);
@@ -602,6 +625,14 @@ class Scene {
       const a = m.amis.find((x) => x.kind === this.bulle.qui);
       if (this.bulle.qui === "heros" && !this.cacheHeros) bulleDialogue(ctx, m.hero.x - 20, G - 185, this.bulle.texte);
       else if (a) { const [bx, by] = boucheAmi(a.kind, a.x + (a.dx || 0), G + a.dy, a.f); bulleDialogue(ctx, bx, by - 30, this.bulle.texte); }
+    }
+    this.dessineFin(ctx);
+  }
+  dessineFin(ctx) { // bulle, bandeau, main qui montre où toucher
+    const m = this.m, fete = this.act === "fete";
+    if (this.act === "libre" && this.bulle && this.t > 0.6) { // la bulle au-dessus de l'image de celui qui parle
+      const el = this.elements.find((e) => (this.bulle.qui === "heros" ? e.type === "heros" : e.id === this.bulle.qui));
+      if (el) { const b = boiteElement(el); bulleDialogue(ctx, el.x, b[1] - 10, this.bulle.texte); }
     }
     if (fete && this.t > 0.5) ecrit(ctx, tr("bravoBandeau", { prenom: this.valeurs.prenom }), 64, [255, 230, 80], [VW / 2, 70 + 6 * Math.sin(m.t * 3)], [200, 60, 80]);
     if (this.attendClic()) { const [x, y] = this.cible(); mainQuiClique(ctx, x, y, m.t); }
@@ -714,6 +745,18 @@ class App {
     if (this.i >= this.histoire.scenes.length) { this.fin = true; joue("bravo"); this.voix.dire(tr("finHistoire", { prenom: this.prenom })); }
     else this.ouvreScene(this.i);
   }
+  boutonsNav() { return [[14, 600, 120, 104], [W - 134, 600, 120, 104]]; } // ‹ écran précédent, › écran suivant
+  passeEcran() {
+    if (this.carte) { this.photoPourFondu(); this.carte.vue = this.carte.i; return this.ouvreScene(this.carte.i); }
+    this.sceneSuivante();
+  }
+  ecranPrecedent() {
+    if (this.i <= 0 && !this.carte) return;
+    this.photoPourFondu();
+    this.fin = false; this.carte = null;
+    this.i = Math.max(0, this.i - 1);
+    this.scene = new Scene(this, this.monde, this.histoire.scenes[this.i], this.valeurs);
+  }
   ouvreScene(i) { // au début d'un chapitre : d'abord sa page de titre
     const h = this.histoire, d = h.scenes[i];
     if (h.chapitres.length > 1 && h.chapitres[d.chap] && h.chapitres[d.chap].debut === i && !(this.carte && this.carte.vue === i)) {
@@ -742,7 +785,7 @@ class App {
     this.page = Math.min(this.page, Math.max(0, Math.ceil(this.histoires.length / 6) - 1));
   }
   menu() {
-    this.modeSuppr = false;
+    this.modeSuppr = false; this.departScene = null;
     this.ecriture.ferme(); this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
 
   // ------------------------------------------------ événements
@@ -781,7 +824,12 @@ class App {
       });
     } else if (this.etat === "config") {
       if (this.bRetour.touche(p)) return this.menu();
-      if (this.bGo.touche(p)) { joue("klaxon"); return this.lance(this.chapDepart ? this.histoire.chapitres[this.chapDepart].debut : 0); }
+      if (this.bGo.touche(p)) {
+        joue("klaxon");
+        const depart = this.departScene != null ? this.departScene : this.chapDepart ? this.histoire.chapitres[this.chapDepart].debut : 0;
+        this.departScene = null;
+        return this.lance(Math.min(depart, this.histoire.scenes.length - 1));
+      }
       this.puceChapitres().forEach((r, k) => {
         if (dans(r, p)) { this.chapDepart = k; joue("pop"); this.voix.dire(this.phraseChapitre(k)); }
       });
@@ -794,6 +842,8 @@ class App {
     } else {
       if (this.bRetour.touche(p)) this.menu();
       else if (this.fin) { if (this.bEncore.touche(p)) this.lance(); else if (this.bAutres.touche(p)) this.menu(); }
+      else if (dans(this.boutonsNav()[1], p)) { joue("clic"); this.passeEcran(); }
+      else if (dans(this.boutonsNav()[0], p)) { joue("clic"); this.ecranPrecedent(); }
       else if (this.scene && !this.carte) this.scene.clic([p[0] - VX, p[1] - VY]); // position dans l'image
     }
   }
@@ -934,6 +984,12 @@ class App {
     }
     if (this.ouverture > 0) { ctx.globalAlpha = this.ouverture / 0.6; rrect(ctx, VX, VY, VW, VH, 0, [255, 255, 255]); ctx.globalAlpha = 1; }
     if (this.fin) { this.bEncore.dessine(ctx, t, true); this.bAutres.dessine(ctx); }
+    else this.boutonsNav().forEach((r, k) => { // discrets, pour les parents
+      rrect(ctx, ...r, 22, [255, 255, 255], 2, [215, 205, 190]);
+      if (k === 0 && this.i === 0 && !this.carte) return;
+      const x = r[0] + r[2] / 2, y = r[1] + r[3] / 2, d = k ? 1 : -1;
+      poly(ctx, [[x - 14 * d, y - 22], [x + 16 * d, y], [x - 14 * d, y + 22]], [190, 175, 155]);
+    });
     this.bRetour.dessine(ctx);
     ecrit(ctx, titreDe(this.histoire), 32, [255, 200, 40], [W / 2, 34], [200, 80, 40]);
     const n = this.histoire.scenes.length;
@@ -991,6 +1047,12 @@ async function demarre() {
     app.touche([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
     app.dessine(); // redessine tout de suite : les zones à toucher sont à jour pour le toucher suivant
   });
+  canvas.addEventListener("pointermove", (e) => {
+    if (app.etat !== "ecrire" || !app.ecriture.drag) return;
+    const b = canvas.getBoundingClientRect();
+    app.ecriture.glisse([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
+  });
+  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => app.ecriture.lache());
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
   // iPhone : selon la version d'iOS, le son n'est autorisé qu'au lever du doigt ou au « clic »
   for (const ev of ["touchend", "click"]) document.addEventListener(ev, () => Audio_.debloque(), { passive: true });

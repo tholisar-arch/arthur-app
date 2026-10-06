@@ -1082,3 +1082,53 @@ function carteChapitre(ctx, W, H, n, titre, t, mot) { // la page de titre d'un c
   if (cour) lignes.push(cour);
   lignes.slice(0, 2).forEach((l, i) => ecrireCentre(ctx, l, W / 2, H / 2 + 15 + i * 52 - (lignes.length > 1 ? 20 : 0), 46, [70, 60, 50]));
 }
+
+// ------------------------------------------------------------ « écran libre » : des images posées où l'on veut
+// Chaque élément : {type: "perso" | "engin" | "heros" | "objet", id, x, y (le sol sous l'image), s (taille), f (1 ou -1), col, toucher}
+const OBJETS_DECOR = {
+  maison: [210, 235, (ctx, t) => maisonFeu(ctx, 0, 0, 0, t, false)],
+  maisonFeu: [210, 380, (ctx, t) => maisonFeu(ctx, 0, 0, 1, t, false)],
+  arbre: [90, 150, (ctx) => arbre(ctx, 0, 0, 1.1)],
+  sapin: [120, 150, (ctx) => sapinVert(ctx, 0, 0, 0.9)],
+  buisson: [130, 100, (ctx) => buissonCachette(ctx, 0, 0)],
+  fleurs: [70, 40, (ctx) => { for (const [dx, c] of [[-20, [255, 90, 120]], [0, [255, 220, 60]], [20, [180, 120, 255]]]) { trait(ctx, [dx, 0], [dx, -26], 3, [60, 140, 60]); rond(ctx, dx, -28, 9, c); } }],
+  champignon: [60, 55, (ctx) => champignon(ctx, 0, 0, 1.6)],
+  rocher: [100, 60, (ctx) => { ovale(ctx, -48, -50, 96, 56, [160, 160, 170], 3); ovale(ctx, 6, -34, 46, 36, [180, 180, 190], 3); }],
+  cadeau: [150, 150, (ctx, t) => cadeau(ctx, 0, 0, 0, t)],
+  velo: [200, 110, (ctx, t) => velo(ctx, 0, 0, 1, t, 0)],
+  ballon: [70, 70, (ctx, t) => objetPerdu(ctx, "ballon", 0, 0, t)],
+  doudou: [60, 80, (ctx, t) => objetPerdu(ctx, "doudou", 0, 0, t)],
+  cle: [70, 40, (ctx, t) => objetPerdu(ctx, "cle", 0, 0, t)],
+  coeur: [70, 80, (ctx) => coeur(ctx, 0, -45, 30, [240, 80, 110])],
+  etoile: [80, 80, (ctx, t) => etoile(ctx, 0, -40, 36, [255, 210, 50], t * 0.3)],
+  nuage: [160, 90, (ctx) => nuage(ctx, -45, -40, 1.3)],
+  soleil: [120, 120, (ctx, t) => soleil(ctx, 0, -60, t)],
+  lune: [90, 90, (ctx) => lune(ctx, 0, -45)],
+  arcenciel: [420, 220, (ctx) => arcEnCiel(ctx, 0, 0, 200)],
+  tas: [250, 170, (ctx) => tas(ctx, 0, 0, 1)],
+  trou: [200, 60, (ctx) => trou(ctx, 0, -18, 0)],
+  piscine: [330, 70, (ctx, t) => { piscineFond(ctx, 0, -50, t); piscineDevant(ctx, 0, -50, t); }],
+  bateau: [130, 130, (ctx) => {
+    poly(ctx, [[-60, -26], [60, -26], [45, 0], [-45, 0]], [240, 90, 80], 3);
+    trait(ctx, [0, -26], [0, -116], 4, [120, 90, 60]);
+    poly(ctx, [[4, -112], [4, -34], [52, -34]], [255, 255, 255], 3);
+  }],
+};
+const TAILLE_AMI = { trex: [230, 230], chat: [90, 80], dino: [300, 330], stego: [260, 170] };
+function tailleElement(el) { // largeur et hauteur à la taille 1 (pour toucher l'image)
+  if (el.type === "objet") return (OBJETS_DECOR[el.id] || [80, 80]).slice(0, 2);
+  if (el.type === "engin" || el.type === "heros") return [300, 200];
+  if (TAILLE_AMI[el.id]) return TAILLE_AMI[el.id];
+  return STYLES[el.id] && STYLES[el.id].L > 70 ? [90, 235] : [80, 165];
+}
+function boiteElement(el) { const [w, h] = tailleElement(el), s = el.s || 1; return [el.x - (w * s) / 2, el.y - h * s, w * s, h * s + 12]; }
+function dessineElement(ctx, el, t, heros, saut = 0) {
+  ctx.save();
+  ctx.translate(el.x, el.y - saut);
+  ctx.scale((el.f || 1) * (el.s || 1), el.s || 1);
+  if (el.type === "objet") { const o = OBJETS_DECOR[el.id]; if (o) o[2](ctx, t); }
+  else if (el.type === "heros") dessineVehicule(ctx, heros.kind, heros.col, 0, 0, t);
+  else if (el.type === "engin") dessineVehicule(ctx, el.id, COULEURS[el.col] || COULEURS[COULEUR_DEFAUT[el.id]], 0, 0, t);
+  else if (el.id in AMIS_DESSIN) dessineAmi(ctx, el.id, 0, 0, t, 1, 0, 0, 1, el.humeur || null);
+  ctx.restore();
+}
