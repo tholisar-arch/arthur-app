@@ -25,28 +25,36 @@ function hasard(graine) { // générateur pseudo-aléatoire reproductible
 }
 
 // ------------------------------------------------------------ primitives (coordonnées écran)
+// Style « à plat » (entre notre dessin et un dessin animé pour tout-petits) : contours fins,
+// dans une teinte plus foncée de la couleur de l'objet plutôt qu'un trait noir.
+const TRAIT = 0.62;
+function bordure(ctx, fill, bord, colBord) {
+  ctx.lineWidth = Math.max(1, bord * TRAIT);
+  ctx.strokeStyle = css(colBord === CONTOUR && fill ? fonce(fill, 0.7) : colBord);
+  ctx.stroke();
+}
 function rrect(ctx, x, y, w, h, rad, fill, bord, colBord = CONTOUR) {
   ctx.beginPath();
   if (rad > 0) ctx.roundRect(x, y, w, h, Math.min(rad, w / 2, h / 2)); else ctx.rect(x, y, w, h);
   if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
-  if (bord) { ctx.lineWidth = bord; ctx.strokeStyle = css(colBord); ctx.stroke(); }
+  if (bord) bordure(ctx, fill, bord, colBord);
 }
 function ovale(ctx, x, y, w, h, fill, bord, colBord = CONTOUR) {
   ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * PI);
   if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
-  if (bord) { ctx.lineWidth = bord; ctx.strokeStyle = css(colBord); ctx.stroke(); }
+  if (bord) bordure(ctx, fill, bord, colBord);
 }
 function rond(ctx, x, y, r, fill, bord, colBord = CONTOUR) {
   ctx.beginPath(); ctx.arc(x, y, Math.max(0.5, r), 0, 2 * PI);
   if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
-  if (bord) { ctx.lineWidth = bord; ctx.strokeStyle = css(colBord); ctx.stroke(); }
+  if (bord) bordure(ctx, fill, bord, colBord);
 }
 function poly(ctx, pts, fill, bord, colBord = CONTOUR) {
   ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
   ctx.closePath(); ctx.lineJoin = "round";
   if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
-  if (bord) { ctx.lineWidth = bord; ctx.strokeStyle = css(colBord); ctx.stroke(); }
+  if (bord) bordure(ctx, fill, bord, colBord);
 }
 function trait(ctx, a, b, w, col, cap = "butt") {
   ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
@@ -71,7 +79,7 @@ class Pen {
   line(c, a, b, w = 3) { trait(this.ctx, this.P(...a), this.P(...b), this.w(w), c); }
   bras(c, a, b, w) { // trait épais aux bouts arrondis, avec contour
     const pa = this.P(...a), pb = this.P(...b), ww = this.w(w);
-    trait(this.ctx, pa, pb, ww + this.w(5), CONTOUR, "round");
+    trait(this.ctx, pa, pb, ww + this.w(2.5), fonce(c, 0.7), "round");
     trait(this.ctx, pa, pb, ww, c, "round");
   }
   arc(c, x1, y1, x2, y2, a0, a1, w = 3) { const r = this.R(x1, y1, x2, y2); arcRect(this.ctx, ...r, a0, a1, this.w(w), c); }
@@ -95,12 +103,11 @@ function visage(pen, cx, cy, sz, t, dort = false) {
     if (dort || cligne) pen.arc(CONTOUR, x - 0.25 * sz, cy - 0.15 * sz, x + 0.25 * sz, cy + 0.2 * sz, PI, 2 * PI, 3);
     else {
       pen.ellipse([255, 255, 255], x - 0.26 * sz, cy - 0.34 * sz, x + 0.26 * sz, cy + 0.34 * sz);
-      pen.circle([30, 30, 40], x + 0.07 * sz, cy + 0.04 * sz, 0.14 * sz);
-      pen.circle([255, 255, 255], x + 0.11 * sz, cy - 0.03 * sz, 0.05 * sz);
+      pen.circle([30, 30, 40], x + 0.06 * sz, cy + 0.04 * sz, 0.15 * sz);
     }
   }
-  pen.circle([255, 150, 160], cx - 0.75 * sz, cy + 0.32 * sz, 0.12 * sz);
-  pen.circle([255, 150, 160], cx + 0.75 * sz, cy + 0.32 * sz, 0.12 * sz);
+  pen.circle([255, 140, 155], cx - 0.75 * sz, cy + 0.32 * sz, 0.16 * sz);
+  pen.circle([255, 140, 155], cx + 0.75 * sz, cy + 0.32 * sz, 0.16 * sz);
   if (dort) pen.circle(CONTOUR, cx, cy + 0.45 * sz, 0.09 * sz);
   else pen.arc(CONTOUR, cx - 0.32 * sz, cy + 0.05 * sz, cx + 0.32 * sz, cy + 0.55 * sz, PI, 2 * PI, 3);
 }
@@ -264,12 +271,12 @@ const CIELS = {
   ecole: [[110, 190, 250], [215, 240, 255]], vacances: [[70, 175, 245], [205, 240, 255]], jardin: [[95, 180, 245], [215, 240, 255]], pms: [[100, 175, 240], [210, 235, 255]], nuit: [[15, 20, 60], [60, 60, 120]],
 };
 const SOLS = {
-  chantier: [[185, 140, 90], [160, 115, 70]], ville: [[110, 110, 120], [90, 90, 100]],
-  campagne: [[120, 195, 90], [100, 100, 110]], dinosaures: [[215, 180, 110], [190, 150, 90]],
+  chantier: [[140, 200, 90], [205, 170, 125]], ville: [[110, 110, 120], [90, 90, 100]],
+  campagne: [[130, 200, 85], [215, 195, 150]], dinosaures: [[215, 180, 110], [190, 150, 90]],
   plage: [[240, 215, 150], [225, 195, 130]], neige: [[245, 248, 255], [215, 225, 240]],
   ecole: [[130, 200, 100], [190, 195, 210]],
-  vacances: [[135, 200, 100], [230, 215, 185]],
-  jardin: [[120, 195, 90], [145, 210, 105]],
+  vacances: [[130, 200, 85], [232, 218, 188]],
+  jardin: [[130, 200, 85], [150, 210, 100]],
   pms: [[130, 195, 100], [175, 178, 190]],
 };
 
@@ -295,9 +302,14 @@ function etoile(ctx, x, y, r, col, a = 0) {
 }
 const boucle = (base, scroll, k, w, marge = 200) => mod(base - scroll * k, w + 2 * marge) - marge;
 
-function arbre(ctx, x, g, s = 1, col = [70, 160, 70]) {
-  rrect(ctx, x - 8 * s, g - 60 * s, 16 * s, 60 * s, 0, [130, 90, 50]);
-  for (const [dx, dy, r] of [[0, -90, 38], [-25, -70, 28], [25, -70, 28]]) rond(ctx, x + dx * s, g + dy * s, r * s, col);
+function arbre(ctx, x, g, s = 1, col = [95, 175, 70]) { // arbre « sucette »
+  rrect(ctx, x - 5 * s, g - 72 * s, 10 * s, 72 * s, 3 * s, [150, 105, 65], 3);
+  rond(ctx, x, g - 98 * s, 40 * s, col, 4);
+}
+function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [120, 190, 80]) { // collines toutes rondes
+  ovale(ctx, boucle(-250, scroll, 0.12, W, 700), horizon - 150, 900, 340, foncee);
+  ovale(ctx, boucle(450, scroll, 0.12, W, 700), horizon - 120, 1000, 300, claire);
+  ovale(ctx, boucle(150, scroll, 0.18, W, 700), horizon - 75, 800, 230, foncee);
 }
 function sapin(ctx, x, g, s = 1) {
   rrect(ctx, x - 7 * s, g - 25 * s, 14 * s, 25 * s, 0, [120, 80, 50]);
@@ -321,9 +333,8 @@ function ecrireCentre(ctx, txt, x, y, taille, col) {
 function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   if (!SOLS[nom]) nom = "chantier";
   const [haut, bas] = CIELS[nuit ? "nuit" : nom];
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, css(haut)); grad.addColorStop(1, css(bas));
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], 0.45))); // ciel uni
+  ctx.fillRect(0, 0, W, H);
   const rng = hasard(7);
   if (nuit) {
     for (let k = 0; k < 40; k++) {
@@ -336,8 +347,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
 
   const horizon = G - 45;
   if (nom === "chantier") {
-    ovale(ctx, -200, horizon - 120, 800, 260, [150, 200, 140]);
-    ovale(ctx, 400, horizon - 90, 900, 220, [130, 190, 130]);
+    collines(ctx, W, horizon, scroll, [165, 210, 130], [140, 195, 115]);
     for (let k = 0; k < 3; k++) {
       const x = boucle(k * 420 + 100, scroll, 0.3, W);
       rrect(ctx, x, horizon - 230, 12, 230, 0, [230, 160, 40]);
@@ -355,8 +365,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
         for (const xx of [x + 15, x + 50, x + 85]) rrect(ctx, xx, yy, 20, 18, 0, nuit ? [255, 230, 120] : [255, 250, 210]);
     }
   } else if (nom === "campagne") {
-    ovale(ctx, -300, horizon - 140, 900, 300, [110, 190, 90]);
-    ovale(ctx, 350, horizon - 110, 1000, 280, [90, 175, 80]);
+    collines(ctx, W, horizon, scroll);
     for (let k = 0; k < 7; k++) arbre(ctx, boucle(k * 170 + 40, scroll, 0.4, W), horizon + 5, 0.9);
   } else if (nom === "dinosaures") {
     const x = boucle(600, scroll, 0.2, W);
@@ -384,7 +393,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     }
     for (let k = 0; k < 7; k++) sapin(ctx, boucle(k * 160 + 60, scroll, 0.4, W), horizon + 5, 0.9);
   } else if (nom === "ecole") {
-    ovale(ctx, -200, horizon - 90, 700, 220, [120, 195, 100]);
+    collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300);
     rrect(ctx, x - 230, horizon - 200, 460, 200, 0, [250, 232, 195], 3);
     poly(ctx, [[x - 255, horizon - 200], [x + 255, horizon - 200], [x, horizon - 290]], [210, 85, 70], 3);
@@ -404,8 +413,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   }
 
   else if (nom === "vacances") {
-    ovale(ctx, -250, horizon - 130, 900, 300, [150, 200, 110]);
-    ovale(ctx, 450, horizon - 100, 900, 260, [130, 190, 100]);
+    collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300); // la maison de vacances (x = 260 au début)
     rrect(ctx, x - 170, horizon - 170, 340, 170, 0, [252, 248, 235], 3);
     poly(ctx, [[x - 195, horizon - 170], [x + 195, horizon - 170], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 3);
@@ -420,6 +428,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     for (let k = 0; k < 9; k++) rond(ctx, x - 185 + k * 46, horizon - 14, 8, [[255, 90, 140], [255, 210, 60], [190, 120, 240]][k % 3]);
   }
   else if (nom === "jardin") {
+    collines(ctx, W, horizon, scroll);
     const x = boucle(470, scroll, 0.3, W, 300); // la maison de la famille
     rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [250, 225, 190], 3);
     poly(ctx, [[x - 175, horizon - 190], [x + 175, horizon - 190], [x, horizon - 280]], [180, 80, 70], 3);
@@ -462,7 +471,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     const r2 = hasard(3);
     for (let k = 0; k < 30; k++) {
       const x = boucle(r2() * 1400, scroll, 1, W, 100);
-      rond(ctx, x, horizon + 25 + r2() * (G - horizon + 30), 3 + r2.int(0, 3), [140, 100, 60]);
+      if (k % 3 === 0) rond(ctx, x, horizon + 25 + r2() * (G - horizon + 30), 3 + r2.int(0, 3), [180, 145, 105]);
     }
   }
   for (let k = 0; k < 6; k++) {
@@ -624,7 +633,7 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
   const typeHaut = HAUTS.includes(p.haut_type) ? p.haut_type : p.robe ? "robe" : "teeshirt";
   const typeBas = typeHaut === "salopette" ? "pantalon" : BAS.includes(p.bas_type) ? p.bas_type : "pantalon";
   return {
-    L: b.L * k, T: b.T * k, R: b.R, W: b.W * kW, corpulence: corp, typeHaut, typeBas,
+    L: b.L * k, T: b.T * k, R: b.R * 1.16, W: b.W * kW, corpulence: corp, typeHaut, typeBas,
     peau: couleurDe("peau", p.peau, "clair"), cheveux: couleurDe("cheveux", p.cheveux, "brun"),
     coiffure: COIFFURES.includes(p.coiffure) ? p.coiffure : "court", yeux: couleurDe("yeux", p.yeux, "marron"),
     haut: couleurDe("habits", p.haut, "bleu"), bas: couleurDe("habits", p.bas, "jean"),
@@ -643,7 +652,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   if (st.coiffure === "milong") pen.ellipse(st.cheveux, -R * 1.12, ty - R * 1.05, R * 1.12, ty + R * 0.95);
   // jambes (pantalon, short ou jupe) et chaussures
   const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
-  const largJambe = Math.min(W * 0.26, 14 + (st.L > 70 ? 6 : 0)) * (st.rond ? 1.15 : 1);
+  const largJambe = Math.min(W * 0.26, 14 + (st.L > 70 ? 6 : 0)) * (st.rond ? 1.15 : 1) * 0.72; // jambes fines
   [-W * 0.22, W * 0.22].forEach((lx, k) => {
     const sw = Math.sin(marche + k * PI) * L * 0.3;
     pen.bras(jambeNue ? st.peau : st.typeBas === "short" ? st.peau : st.bas, [lx, hanche], [lx + sw, -7], largJambe);
@@ -677,7 +686,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const demiCorps = st.rond ? W * 0.6 : st.robe ? W * 0.45 : W * 0.5;
   [-1, 1].forEach((sx, k) => {
     const sw = Math.sin(marche + k * PI) * 10;
-    const larg = Math.min(W * (st.muscle ? 0.3 : 0.22), st.L > 70 ? 18 : 9) * (st.muscle ? 1.1 : st.rond ? 1.15 : 1);
+    const larg = Math.min(W * (st.muscle ? 0.3 : 0.22), st.L > 70 ? 18 : 9) * (st.muscle ? 1.1 : st.rond ? 1.15 : 1) * 0.78; // bras fins
     const ep = [sx * (demiCorps - larg * 0.2), epaule + 8];
     const main = joie ? [sx * (demiCorps + 20), epaule - 32 - 6 * Math.sin(t * 8 + k)] : [sx * (demiCorps + larg * 0.55 + 2) + sw * 0.3, hanche - 4 + sw * 0.4];
     pen.bras(st.peau, ep, main, larg);
@@ -718,7 +727,6 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     pen.ellipse([255, 255, 255], cxe - R * 0.16, ey - R * 0.2, cxe + R * 0.16, ey + R * 0.2);
     pen.circle(st.yeux, cxe + R * 0.03, ey + R * 0.02, R * 0.12);
     pen.circle([20, 20, 30], cxe + R * 0.04, ey + R * 0.03, R * 0.06);
-    pen.circle([255, 255, 255], cxe + R * 0.07, ey - R * 0.04, R * 0.035);
     if (st.cils) pen.line(CONTOUR, [cxe + R * 0.12, ey - R * 0.18], [cxe + R * 0.2, ey - R * 0.28], 2);
     if (humeur === "peur") { const hi = ex > 0 ? R * 0.08 : 0; pen.line(CONTOUR, [cxe - R * 0.15, ey - R * 0.25 - hi], [cxe + R * 0.15, ey - R * 0.25 - (R * 0.08 - hi)], 2); }
   }
@@ -727,8 +735,8 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     for (const ex of [-0.36, 0.36]) { const cxe = tx + R * (ex + 0.12); pen.circle(st.yeux, cxe + R * 0.03, ey + R * 0.02, R * 0.11); pen.circle([20, 20, 30], cxe + R * 0.04, ey + R * 0.03, R * 0.05); }
     pen.line(CONTOUR, [tx - R * 0.03, ey], [tx + R * 0.21, ey], 2);
   }
-  pen.circle([255, 150, 160], tx - R * 0.45, ty + R * 0.38, R * 0.13);
-  pen.circle([255, 150, 160], tx + R * 0.65, ty + R * 0.38, R * 0.13);
+  pen.circle([255, 140, 155], tx - R * 0.48, ty + R * 0.38, R * 0.18);
+  pen.circle([255, 140, 155], tx + R * 0.68, ty + R * 0.38, R * 0.18);
   const mx = tx + R * 0.12, my = ty + R * 0.42;
   if (st.barbe) pen.poly(st.cheveux, [[tx - R * 0.92, ty + R * 0.05], [tx - R * 0.55, ty + R * 0.75], [tx + R * 0.12, ty + R * 1.12], [tx + R * 0.8, ty + R * 0.75], [tx + R * 0.98, ty + R * 0.05], [tx + R * 0.6, ty + R * 0.35], [tx - R * 0.4, ty + R * 0.35]]);
   if (st.moustache || st.barbe) pen.poly(st.cheveux, [[mx - R * 0.42, my - R * 0.02], [mx, my - R * 0.2], [mx + R * 0.42, my - R * 0.02], [mx, my - R * 0.06]]);
