@@ -127,8 +127,8 @@ function etapesDepuisTexte(lignes, prenom) {
   let decor = null, partie = null;
   const pousse = (et) => { if (partie !== null) { et.partie = { fr: partie, en: null }; partie = null; } etapes.push(et); };
   lignes.forEach((brut, i) => {
-    const chap = brut.trim().match(/^(?:#+\s*(.*)|(?:chapitre|partie|chapter)\s*\d+\s*[:.\-–]?\s*(.*))$/i);
-    if (chap) { partie = (chap[1] ?? chap[2] ?? "").trim(); return; } // « # L'orage » ou « Chapitre 2 : L'orage »
+    const chap = brut.trim().match(/^(?:#+\s*(.*)|📖\s*(.*)|(?:chapitre|partie|chapter)\s*\d+\s*[:.\-–]?\s*(.*))$/iu);
+    if (chap) { partie = (chap[1] ?? chap[2] ?? chap[3] ?? "").trim(); return; } // « 📖 L'orage », « # L'orage » ou « Chapitre 2 : L'orage »
     const texte = brut.replace(/\bconfiguration\b\s*[:,.!\-–]*\s*/gi, "").trim().replace(/(^|[.!?]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
     const dialogue = texte.match(/^([^:]{1,30}?)\s*:\s*(.+)$/), qui = dialogue && quiParle(dialogue[1], prenom);
     if (qui) { // « Papa : On y va ! » -> une bulle sur la scène d'avant (ou une scène pour parler)
@@ -297,6 +297,42 @@ class Ecriture {
     this.histoires = this.histoires.filter((x) => x !== e); this.id = null; this.sauve();
     effaceVoixHistoire(e);
   }
+  debutsChapitres() { // les écrans où commence un chapitre (vide s'il n'y a pas de chapitres)
+    const e = this.histoire();
+    if (!e.etapes.some((x) => x.partie)) return [];
+    return [0].concat(e.etapes.map((x, i) => (i > 0 && x.partie ? i : -1)).filter((i) => i > 0));
+  }
+  nouveauChapitre() { // un nouvel écran, qui commence un chapitre, juste après le chapitre en cours
+    const e = this.histoire(), debuts = this.debutsChapitres();
+    if (e.etapes.length >= MAX_SCENES) return this.dit(tr("maxScenes"));
+    const titre = this.demandeTitre({});
+    if (!titre) return;
+    const cc = debuts.filter((i) => i <= this.sc).length - 1, ou = debuts[cc + 1] ?? e.etapes.length;
+    const ici = e.etapes[ou - 1];
+    e.etapes.splice(ou, 0, { action: ici.action === "libre" ? "libre" : "parler", decor: ici.decor, presents: [...ici.presents], interactif: false, texteLibre: null,
+      nuit: false, humeur: "auto", copains: [], meteo: "aucune", vid: nouvelId(), partie: titre });
+    this.sc = ou; this.sauve(); joue("magie");
+  }
+  chapitreIci() { // l'écran en cours devient le début d'un chapitre
+    if (this.sc === 0 || this.etape().partie) return;
+    const titre = this.demandeTitre({});
+    if (titre) { this.etape().partie = titre; this.sauve(); joue("magie"); }
+  }
+  retireChapitre(i) { const e = this.histoire(); delete e.etapes[i].partie; this.sauve(); joue("clic"); }
+  demandeTitre(p) {
+    const fr = window.prompt(tr("promptChapitre"), p.fr || "");
+    if (fr === null) return null;
+    const refus = texteRefuse(fr, 80);
+    if (refus) { this.dit(tr("refuse", { raison: refus })); return null; }
+    const en = window.prompt(tr("promptChapitreEn"), p.en || "") || "";
+    const refusEn = texteRefuse(en, 80);
+    if (refusEn) { this.dit(tr("refuse", { raison: refusEn })); return null; }
+    return { fr: fr.trim(), en: en.trim() || null };
+  }
+  renommeChapitre(i) {
+    const e = this.histoire(), titre = this.demandeTitre(e.etapes[i].partie || {});
+    if (titre) { e.etapes[i].partie = titre; this.sauve(); }
+  }
   ecritChapitre() {
     const et = this.etape(), p = et.partie || {};
     const fr = window.prompt(tr("promptChapitre"), p.fr || "");
@@ -381,6 +417,9 @@ class Ecriture {
         <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr("libreTitre")}</div>
         <div style="font-size:15px;color:#7a6a58;line-height:1.35">${tr("libreAide", { prenom: this.app.prenom })}</div>
         <input id="libreTitre" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="font:inherit;font-size:20px;padding:10px 14px;border:2px solid #e6d8c2;border-radius:12px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="libreChapitre" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#eb8246;color:#fff">${tr("chapNouveau")}</button>
+        </div>
         <textarea id="libreTexte" rows="12" placeholder="${tr("libreExemple")}" style="font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
         <div id="libreErreur" style="color:#b23c32;font-size:16px;min-height:20px"></div>
         <div style="display:flex;gap:12px;justify-content:flex-end">
@@ -393,6 +432,14 @@ class Ecriture {
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
+    d.querySelector("#libreChapitre").onclick = () => { // insère « 📖 Titre » sur sa propre ligne, là où est le curseur
+      const zone = d.querySelector("#libreTexte"), titre = window.prompt(tr("promptChapitre"), "");
+      if (titre === null) return zone.focus();
+      const debut = zone.selectionStart ?? zone.value.length, avant = zone.value.slice(0, debut), apres = zone.value.slice(zone.selectionEnd ?? debut);
+      const ligne = (avant && !avant.endsWith("\n") ? "\n" : "") + "📖 " + (titre.trim() || tr("chapitre")) + "\n";
+      zone.value = avant + ligne + apres.replace(/^\n/, "");
+      zone.focus(); zone.selectionStart = zone.selectionEnd = (avant + ligne).length;
+    };
     setTimeout(() => d.querySelector("#libreTexte").focus(), 50);
   }
   fermeLibre() { if (this.libre) { this.libre.remove(); this.libre = null; } }
@@ -504,16 +551,36 @@ class Ecriture {
     ecrit(ctx, `${this.sc + 1} / ${nb}`, 15, [150, 140, 130], [1243, 166]);
     ecrit(ctx, "≈ " + tr("minutes", { n: this.duree() }), 14, [150, 140, 130], [1243, 188]);
 
+    // --- la barre des chapitres
+    const debuts = this.debutsChapitres(), cc = debuts.filter((i) => i <= this.sc).length - 1;
+    bouton([1045, 214, 220, 36], tr("chapNouveau"), [235, 130, 40], () => this.nouveauChapitre(), 17);
+    bouton([879, 214, 158, 36], tr("chapIci"), [235, 165, 90], () => this.chapitreIci(), 16, this.sc > 0 && !this.etape().partie);
+    if (!debuts.length) ecrit(ctx, tr("chapPas"), 16, [150, 140, 130], [270, 223], null, true);
+    else {
+      const larg = Math.min(190, (554 - 6 * debuts.length) / debuts.length + 6);
+      debuts.forEach((i, k) => {
+        const r = [265 + k * larg, 214, larg - 6, 36], on = k === cc, p = e.etapes[i].partie || {};
+        const titreC = (LANGUE === "en" && p.en) || p.fr || `${tr("chapitre")} ${k + 1}`;
+        rrect(ctx, ...r, 10, on ? [255, 225, 170] : [255, 250, 240], on ? 4 : 2, on ? [235, 130, 40] : [220, 200, 175]);
+        const txt = r[2] < 70 ? String(k + 1) : coupe(ctx, `${k + 1}. ${titreC}`, 15, r[2] - 14)[0] || "";
+        ecrit(ctx, txt, 15, [150, 80, 30], [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+        // toucher un chapitre : on y va ; toucher le chapitre en cours : on change son titre
+        z.push({ r, action: () => { if (on) this.renommeChapitre(i); else { this.sc = i; joue("clic"); } } });
+      });
+      const iRetire = cc >= 1 ? debuts[cc] : debuts.length === 1 ? 0 : -1;
+      if (iRetire >= 0) bouton([829, 214, 44, 36], "✕", [150, 160, 175], () => this.retireChapitre(iRetire), 18);
+    }
+
     // --- les onglets de la scène
     const et = this.etape();
     [["lieu", tr("ongletOuQuoi")], ["qui", tr("ongletQui")], ["toucher", tr("ongletToucher")], ["texte", tr("ongletTexte")],
       ["plus", tr("ongletPlus")], ["placer", tr("ongletPlacer")]].forEach(([o, nom], k) => {
-      const r = [265 + k * 166, 222, 160, 42], on = this.onglet === o;
+      const r = [265 + k * 166, 258, 160, 38], on = this.onglet === o;
       rrect(ctx, ...r, 12, on ? [255, 200, 60] : [255, 255, 255], 3, on ? [200, 120, 30] : [205, 195, 180]);
       ecrit(ctx, nom, 19, on ? [120, 60, 20] : CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
       z.push({ r, action: () => { this.onglet = o; joue("clic"); } });
     });
-    const Y = 282;
+    const Y = 306;
     if (this.onglet === "lieu") {
       titre(tr("lieu"), 268, Y);
       LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 9) * 111, Y + 20 + Math.floor(i / 9) * 46, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 16));
@@ -583,19 +650,10 @@ class Ecriture {
         titre(tr("objetMot"), 848, Y + 222);
         OBJETS.forEach((o, i) => puce([845 + i * 104, Y + 244, 98, 50], tr("objets")[o], (et.objet || "ballon") === o, () => this.change({ objet: o }), [255, 200, 60], 16));
       }
-      if (et.partie || this.sc > 0) {
-        if (et.partie) {
-          const rp = [265, Y + 308, 560, 44];
-          rrect(ctx, ...rp, 12, [255, 245, 225], 3, [235, 130, 40]);
-          ecrit(ctx, coupe(ctx, tr("chapitreNom", { n: this.numeroChapitre(this.sc), titre: (LANGUE === "en" && et.partie.en) || et.partie.fr }), 18, 530)[0] || "", 18, [180, 90, 30], [rp[0] + 14, rp[1] + 12], null, true);
-          bouton([835, Y + 308, 60, 44], "✎", [110, 140, 220], () => this.ecritChapitre(), 20);
-          bouton([905, Y + 308, 60, 44], "✕", [150, 160, 175], () => this.change({ partie: null }), 20);
-        } else bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
-      } else if (e.etapes.some((x) => x.partie)) bouton([265, Y + 308, 320, 44], tr("chapitreIci"), [235, 130, 40], () => this.ecritChapitre(), 18);
     } else if (this.onglet === "placer") {
       const sceneC = compileHistoire(e).scenes[Math.min(this.sc, e.etapes.length - 1)], libre = et.action === "libre", els = this.elements();
       if (this.choixElSc !== this.sc + ":" + this.id) { this.choixEl = -1; this.choixElSc = this.sc + ":" + this.id; }
-      const sc = 0.62, cadre = [265, Y + 6, VW * sc, VH * sc, sc], heros = { kind: e.heros, col: COULEURS[e.couleur] };
+      const sc = 0.6, cadre = [265, Y + 2, VW * sc, VH * sc, sc], heros = { kind: e.heros, col: COULEURS[e.couleur] };
       ctx.save(); ctx.translate(cadre[0], cadre[1]);
       ctx.beginPath(); ctx.rect(0, 0, cadre[2], cadre[3]); ctx.clip(); ctx.scale(sc, sc);
       dessineDecor(ctx, VW, VH, et.decor, 0, t, !!et.nuit, G);
@@ -619,12 +677,12 @@ class Ecriture {
       // la palette d'images
       const xd = cadre[0] + cadre[2] + 14;
       [["perso", tr("catPerso")], ["engin", tr("catEngins")], ["objet", tr("catObjets")]].forEach(([c, nom], k) =>
-        puce([xd + k * 126, Y + 6, 120, 38], nom, this.categorie === c, () => { this.categorie = c; }, [140, 200, 240], 16));
+        puce([xd + k * 126, Y + 2, 120, 38], nom, this.categorie === c, () => { this.categorie = c; }, [140, 200, 240], 16));
       const items = this.categorie === "perso" ? Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id }))
         : this.categorie === "engin" ? [{ type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })))
         : Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id }));
       items.slice(0, 24).forEach((it, k) => {
-        const r = [xd + (k % 6) * 62, Y + 52 + Math.floor(k / 6) * 60, 56, 54];
+        const r = [xd + (k % 6) * 62, Y + 48 + Math.floor(k / 6) * 59, 56, 54];
         rrect(ctx, ...r, 10, it.type === "objet" ? [225, 240, 252] : [255, 255, 255], 2, [205, 195, 180]);
         const [w, h] = tailleElement(it), ech = Math.min(48 / w, 44 / h);
         ctx.save(); ctx.beginPath(); ctx.rect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4); ctx.clip();
@@ -633,7 +691,7 @@ class Ecriture {
         z.push({ r, action: () => this.ajouteElement(it.type, it.id) });
       });
       // ce qu'on peut faire avec l'image choisie
-      const el = els[this.choixEl], yo = Y + 296;
+      const el = els[this.choixEl], yo = Y + 290;
       [["moins", "−"], ["plus", "+"], ["miroir", "↔"], ["toucher", "⭐"], [el && el.type === "engin" ? "couleur" : "devant", el && el.type === "engin" ? "🎨" : "⬆"], ["efface", "🗑"]].forEach(([nom, txt], k) => {
         const r = [xd + k * 62, yo, 56, 46], on = nom === "toucher" && el && el.toucher;
         bouton(r, txt, on ? [255, 170, 40] : nom === "efface" ? [210, 90, 80] : [110, 140, 220], () => this.outil(nom), 22, !!el);

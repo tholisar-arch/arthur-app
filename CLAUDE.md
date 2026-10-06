@@ -92,8 +92,9 @@ clé `idHistoire:vid` ; jouée à la place de la voix de synthèse). Jusqu'à 30
 Mode « 📝 Texte libre » : une ligne = une scène, analysée sur place par `etapesDepuisTexte()`
 (lieux, actions, personnages, météo, « touche »/« configuration » = interactif, nuit), puis éditable.
 Une ligne « Papa : On y va ! » devient une bulle de dialogue sur la scène précédente.
-Une ligne « # Titre » (ou « Chapitre 2 : Titre ») commence un nouveau chapitre (champ d'étape
-`partie` {fr, en}, aussi réglable dans l'onglet « Plus »). Jusqu'à 120 scènes ; durée estimée affichée.
+Chapitres : bouton « 📖 Nouveau chapitre » du texte libre (insère une ligne « 📖 Titre » ; « # Titre »
+marche aussi), et dans l'éditeur la barre des chapitres (aller à un chapitre, le renommer en le
+touchant à nouveau, « + 📖 Nouveau chapitre », « ✂ Chapitre ici », ✕). Champ d'étape `partie` {fr, en}. Jusqu'à 120 scènes ; durée estimée affichée.
 
 Ces champs marchent aussi dans les histoires du dépôt : `"meteo": "pluie"`,
 `"bulle": {"qui": "papa", "texte": "On y va !", "texte_en": "Let's go!"}` (`qui` : un personnage ou `"heros"`).
