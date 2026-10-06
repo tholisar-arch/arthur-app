@@ -134,6 +134,8 @@ function scene(d, decorCourant, premiere, derniere, heros) {
     vehicule: d.vehicule ? vehicule(d.vehicule) : null,
     amis: amis.filter(estAmi), partent: (d.partent || []).filter(estAmi),
     positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros, nuit: !!d.nuit,
+    bulle: d.bulle && d.bulle.texte ? { qui: d.bulle.qui, texte: String(d.bulle.texte), texte_en: d.bulle.texte_en || null } : null,
+    meteo: ["pluie", "neige", "arcenciel", "etoiles"].includes(d.meteo) ? d.meteo : null, voixPerso: d.voixPerso || null,
   };
 }
 

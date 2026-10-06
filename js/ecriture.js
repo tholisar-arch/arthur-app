@@ -9,7 +9,10 @@ const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vac
 const ACTIONS_ECRITURE = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
   "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir"];
 const ANIMAUX_ECRITURE = ["trex", "chat", "dino", "stego"];
-const MAX_SCENES = 10;
+const MAX_SCENES = 30;
+const METEOS = ["aucune", "pluie", "neige", "arcenciel", "etoiles"];
+const nouvelId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const cleVoix = (e, et) => e.id + ":" + et.vid; // la voix enregistrée d'une scène (IndexedDB)
 
 // le texte automatique de chaque action, en français et en anglais
 const MODELES = {
@@ -61,6 +64,7 @@ function compileHistoire(e) {
       for (const id of presents) positions[id] = id === adulte ? 690 : id === "arthur" ? 380 : 70 + 90 * k++;
     } else if (cache) presents.forEach((id, k) => { positions[id] = Math.round(200 + (presents.length > 1 ? (580 * k) / (presents.length - 1) : 290)); });
     else presents.forEach((id, k) => { positions[id] = k < 3 ? 70 + 95 * k : 900 - 95 * (k - 3); });
+    for (const id of presents) if (et.positions && et.positions[id] != null) positions[id] = et.positions[id]; // placés à la main
     const humeur = {}, h = et.humeur || "auto";
     if (h === "joie" || h === "peur" || (h === "auto" && ACTIONS_JOYEUSES.includes(et.action))) for (const id of presents) humeur[id] = h === "peur" ? "peur" : "joie";
     const textes = [0, 1].map((n) => {
@@ -76,6 +80,9 @@ function compileHistoire(e) {
       nuit: !!et.nuit, copains: (et.copains || []).filter((k) => k !== e.heros),
       ...(et.clics ? { clics: et.clics } : {}),
       ...(et.consigne ? { consigne: et.consigne.fr, consigne_en: et.consigne.en || null } : {}),
+      ...(et.meteo && et.meteo !== "aucune" ? { meteo: et.meteo } : {}),
+      ...(et.bulle && et.bulle.fr ? { bulle: { qui: et.bulle.qui, texte: et.bulle.fr, texte_en: et.bulle.en || null } } : {}),
+      ...(et.voix && et.vid ? { voixPerso: cleVoix(e, et) } : {}),
     };
   });
   return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes };
@@ -84,7 +91,12 @@ function litHistoiresPerso() {
   try { return JSON.parse(localStorage.getItem(CLE_HISTOIRES) || "[]"); } catch (e) { return []; }
 }
 function supprimeHistoirePerso(id) { // supprime pour de bon une histoire écrite dans l'appli
-  try { localStorage.setItem(CLE_HISTOIRES, JSON.stringify(litHistoiresPerso().filter((e) => e.id !== id))); } catch (e) { /* stockage indisponible */ }
+  const toutes = litHistoiresPerso(), e = toutes.find((x) => x.id === id);
+  if (e) effaceVoixHistoire(e);
+  try { localStorage.setItem(CLE_HISTOIRES, JSON.stringify(toutes.filter((x) => x.id !== id))); } catch (err) { /* stockage indisponible */ }
+}
+function effaceVoixHistoire(e) { // les voix enregistrées d'une histoire qu'on supprime
+  for (const et of e.etapes || []) if (et.voix && et.vid) Memoire.efface(cleVoix(e, et));
 }
 function histoiresPerso() { // pour l'accueil : les histoires écrites dans l'appli, prêtes à jouer
   return litHistoiresPerso().filter((e) => e.etapes && e.etapes.length).map((e) => {
@@ -94,27 +106,48 @@ function histoiresPerso() { // pour l'accueil : les histoires écrites dans l'ap
 
 // ------------------------------------------------ « texte libre » : toute l'histoire d'un coup -> des scènes
 const MOTS_TOUCHER = /\b(configuration|touche|touches|toucher|clique|cliquer|appuie|appuyer)\b/i;
+function quiParle(nom, prenom) { // « Papa », « Tracto », « Arthur »… -> l'identifiant du personnage (ou null)
+  const n = sansAccent(nom).trim();
+  if (!n || n.split(/\s+/).length > 3) return null;
+  if (prenom && n === sansAccent(prenom)) return "arthur";
+  if (Object.values(INFOS_VEHICULE).some((v) => sansAccent(v[1]) === n) || vehiculesCites(nom).length) return "heros";
+  return amisCites(nom)[0] || null;
+}
 function etapesDepuisTexte(lignes, prenom) {
-  const presents = new Set(), n = lignes.length;
+  const presents = new Set(), etapes = [];
   let decor = null;
-  return lignes.map((brut, i) => {
+  lignes.forEach((brut, i) => {
     const texte = brut.replace(/\bconfiguration\b\s*[:,.!\-–]*\s*/gi, "").trim().replace(/(^|[.!?]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+    const dialogue = texte.match(/^([^:]{1,30}?)\s*:\s*(.+)$/), qui = dialogue && quiParle(dialogue[1], prenom);
+    if (qui) { // « Papa : On y va ! » -> une bulle sur la scène d'avant (ou une scène pour parler)
+      if (qui !== "heros") presents.add(qui);
+      let et = etapes[etapes.length - 1];
+      if (!et || et.bulle) {
+        et = { action: "parler", decor: decor || "campagne", presents: [], interactif: false, texteLibre: { fr: "", en: null }, humeur: "auto", nuit: et ? et.nuit : false, copains: [], clics: null, consigne: null };
+        etapes.push(et);
+      }
+      et.presents = [...presents];
+      et.bulle = { qui, fr: dialogue[2].trim(), en: null };
+      return;
+    }
     const sa = sansAccent(texte);
     for (const id of amisCites(texte)) presents.add(id);
     if (prenom && new RegExp("(^|[^a-z])" + sansAccent(prenom) + "([^a-z]|$)").test(sa)) presents.add("arthur");
     decor = devineDecor(texte) || decor || "campagne";
-    return {
-      action: devineAction(texte, i === 0, i === n - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
+    etapes.push({
+      action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
       texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: [], clics: null, consigne: null,
-    };
+      meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
+    });
   });
+  return etapes;
 }
 
 // ------------------------------------------------ l'écran
 class Ecriture {
   constructor(app) {
     this.app = app; this.histoires = []; this.id = null; this.sc = 0; this.zones = []; this.message = ""; this.messageT = 0;
-    this.onglet = "lieu"; this.libre = null;
+    this.onglet = "lieu"; this.libre = null; this.debut = 0; this.choisi = null;
   }
   ouvre() { this.histoires = litHistoiresPerso(); this.app.etat = "ecrire"; if (!this.histoire()) this.id = null; }
   ferme() { this.fermeLibre(); }
@@ -128,14 +161,14 @@ class Ecriture {
   ajoute(e) { this.histoires.unshift(e); this.id = e.id; this.sc = 0; this.onglet = "lieu"; this.sauve(); joue("magie"); }
   nouvelle() {
     this.ajoute({ id: Date.now().toString(36), date: new Date().toISOString(), titre: tr("titreDefaut") + " " + (this.histoires.length + 1),
-      heros: "tractopelle", couleur: "jaune", etapes: [{ action: "rouler", decor: "campagne", presents: ["arthur"], interactif: false, texteLibre: null }] });
+      heros: "tractopelle", couleur: "jaune", etapes: [{ action: "rouler", decor: "campagne", presents: ["arthur"], interactif: false, texteLibre: null, vid: nouvelId() }] });
   }
   etape() { const e = this.histoire(); return e ? e.etapes[Math.min(this.sc, e.etapes.length - 1)] : null; }
   change(champs) { Object.assign(this.etape(), champs); this.sauve(); joue("pop"); }
   renomme() {
     const e = this.histoire(), t = (window.prompt(tr("promptTitre"), e.titre) || "").trim();
     if (!t) return;
-    const refus = texteRefuse(t, 60);
+    const refus = texteRefuse(t, 80);
     if (refus) return this.dit(tr("refuse", { raison: refus }));
     e.titre = t; this.sauve();
   }
@@ -153,7 +186,7 @@ class Ecriture {
   ecritConsigne() {
     const et = this.etape(), t = window.prompt(tr("promptConsigne"), (et.consigne && et.consigne.fr) || "");
     if (t === null) return;
-    const refus = texteRefuse(t, 90);
+    const refus = texteRefuse(t, 140);
     if (refus) return this.dit(tr("refuse", { raison: refus }));
     this.change({ consigne: t.trim() ? { fr: t.trim(), en: null } : null });
   }
@@ -161,18 +194,67 @@ class Ecriture {
     const e = this.histoire();
     if (e.etapes.length >= MAX_SCENES) return this.dit(tr("maxScenes"));
     const prec = e.etapes[e.etapes.length - 1];
-    e.etapes.push({ action: "parler", decor: prec.decor, presents: [...prec.presents], interactif: false, texteLibre: null, nuit: !!prec.nuit, humeur: "auto", copains: [] });
+    e.etapes.push({ action: "parler", decor: prec.decor, presents: [...prec.presents], interactif: false, texteLibre: null, nuit: !!prec.nuit, humeur: "auto", copains: [], meteo: prec.meteo, vid: nouvelId() });
     this.sc = e.etapes.length - 1; this.sauve(); joue("pop");
   }
   enleveScene() {
     const e = this.histoire();
     if (e.etapes.length <= 1) return;
-    e.etapes.splice(this.sc, 1); this.sc = Math.max(0, this.sc - 1); this.sauve(); joue("clic");
+    const [partie] = e.etapes.splice(this.sc, 1);
+    if (partie.voix) Memoire.efface(cleVoix(e, partie)); this.sc = Math.max(0, this.sc - 1); this.sauve(); joue("clic");
   }
   supprime() {
     const e = this.histoire();
     if (!window.confirm(tr("confirmeSupprimerHistoire", { titre: e.titre }))) return;
     this.histoires = this.histoires.filter((x) => x !== e); this.id = null; this.sauve();
+    effaceVoixHistoire(e);
+  }
+  ecritBulle() {
+    const et = this.etape(), b = et.bulle;
+    if (!b || !b.qui) return;
+    const qui = b.qui === "heros" ? INFOS_VEHICULE[this.histoire().heros][1] : nomPerso(b.qui, "fr").replace("{prenom}", this.app.prenom);
+    const fr = window.prompt(tr("promptBulle", { qui }), b.fr || "");
+    if (fr === null) return;
+    const refus = texteRefuse(fr, 140);
+    if (refus) return this.dit(tr("refuse", { raison: refus }));
+    const en = fr.trim() ? window.prompt(tr("promptBulleEn"), b.en || "") || "" : "";
+    const refusEn = texteRefuse(en, 140);
+    if (refusEn) return this.dit(tr("refuse", { raison: refusEn }));
+    this.change({ bulle: { qui: b.qui, fr: fr.trim(), en: en.trim() || null } });
+  }
+  // --- la voix des parents, enregistrée au micro (gardée sur l'appareil)
+  async enregistre() {
+    const e = this.histoire(), et = this.etape();
+    if (Micro.enCours()) return Micro.arrete();
+    if (!et.vid) { et.vid = nouvelId(); this.sauve(); }
+    const cle = cleVoix(e, et);
+    this.app.voix.stop();
+    try {
+      await Micro.demarre(async (blob) => {
+        await Memoire.met(cle, blob);
+        this.app.voixPerso.delete(cle);
+        et.voix = true; this.sauve(); this.dit(tr("voixOk")); joue("magie");
+      });
+    } catch (err) { this.dit(tr("microRefuse")); }
+  }
+  async ecoute() {
+    const blob = await Memoire.lit(cleVoix(this.histoire(), this.etape()));
+    if (!blob || !Audio_.ctx) return;
+    try {
+      const buf = await new Promise((ok, ko) => blob.arrayBuffer().then((ab) => Audio_.ctx.decodeAudioData(ab, ok, ko)));
+      this.app.voix.joueBuffer(buf);
+    } catch (err) { this.dit(String(err)); }
+  }
+  effaceVoix() {
+    const e = this.histoire(), et = this.etape(), cle = cleVoix(e, et);
+    Memoire.efface(cle); this.app.voixPerso.delete(cle);
+    this.change({ voix: false });
+  }
+  place(p, cadre) { // onglet « Placer » : touche l'image -> le personnage choisi y va
+    const et = this.etape();
+    if (!this.choisi || !et.presents.includes(this.choisi)) return;
+    const x = Math.round(borne((p[0] - cadre[0]) / cadre[4], 70, VW - 70));
+    this.change({ positions: { ...(et.positions || {}), [this.choisi]: x } });
   }
   essaie() {
     const e = this.histoire();
@@ -189,8 +271,8 @@ class Ecriture {
       <div style="background:#fffaf0;border-radius:22px;padding:22px;width:min(760px,92vw);max-height:94vh;overflow:auto;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px">
         <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr("libreTitre")}</div>
         <div style="font-size:15px;color:#7a6a58;line-height:1.35">${tr("libreAide", { prenom: this.app.prenom })}</div>
-        <input id="libreTitre" maxlength="60" placeholder="${tr("libreTitrePlace")}" style="font:inherit;font-size:20px;padding:10px 14px;border:2px solid #e6d8c2;border-radius:12px">
-        <textarea id="libreTexte" rows="9" placeholder="${tr("libreExemple")}" style="font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
+        <input id="libreTitre" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="font:inherit;font-size:20px;padding:10px 14px;border:2px solid #e6d8c2;border-radius:12px">
+        <textarea id="libreTexte" rows="12" placeholder="${tr("libreExemple")}" style="font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
         <div id="libreErreur" style="color:#b23c32;font-size:16px;min-height:20px"></div>
         <div style="display:flex;gap:12px;justify-content:flex-end">
           <button id="libreAnnuler" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#b8b2a8;color:#fff">${tr("libreAnnuler")}</button>
@@ -210,7 +292,7 @@ class Ecriture {
     const titre = d.querySelector("#libreTitre").value.trim() || tr("titreDefaut");
     let lignes = d.querySelector("#libreTexte").value.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     if (!lignes.length) return erreur(tr("libreVide"));
-    const refusTitre = texteRefuse(titre, 60);
+    const refusTitre = texteRefuse(titre, 80);
     if (refusTitre) return erreur(tr("refuse", { raison: refusTitre }));
     for (let i = 0; i < lignes.length; i++) {
       const refus = texteRefuse(lignes[i]);
@@ -229,7 +311,7 @@ class Ecriture {
     if (this.libre) return;
     for (const z of this.zones) {
       const ok = z.cercle ? Math.hypot(p[0] - z.cercle[0], p[1] - z.cercle[1]) < z.cercle[2] : dans(z.r, p);
-      if (ok) { z.action(); if (this.app.etat === "ecrire") this.app.dessine(); return; }
+      if (ok) { if (z.placer) this.place(p, z.placer); else z.action(); if (this.app.etat === "ecrire") this.app.dessine(); return; }
     }
   }
 
@@ -290,21 +372,32 @@ class Ecriture {
     });
 
     // --- les scènes
+    const VUES = 8, nb = e.etapes.length; // 8 scènes visibles, des flèches pour les autres
+    if (this.sc < this.debut) this.debut = this.sc;
+    if (this.sc >= this.debut + VUES) this.debut = this.sc - VUES + 1;
+    this.debut = borne(this.debut, 0, Math.max(0, nb - VUES));
+    bouton([265, 144, 40, 64], "‹", [150, 160, 175], () => { this.debut = Math.max(0, this.debut - VUES); this.sc = this.debut; joue("clic"); }, 30, this.debut > 0);
+    bouton([311 + VUES * 98, 144, 40, 64], "›", [150, 160, 175], () => { this.debut = Math.min(nb - 1, this.debut + VUES); this.sc = this.debut; joue("clic"); }, 30, this.debut + VUES < nb);
     e.etapes.forEach((et, i) => {
-      const r = [265 + i * 98, 144, 92, 64], on = i === this.sc, sol = SOLS[et.decor] || SOLS.campagne;
+      if (i < this.debut || i >= this.debut + VUES) return;
+      const r = [311 + (i - this.debut) * 98, 144, 92, 64], on = i === this.sc, sol = SOLS[et.decor] || SOLS.campagne;
       rrect(ctx, ...r, 10, et.nuit ? CIELS.nuit[0] : (CIELS[et.decor] || CIELS.campagne)[0], on ? 5 : 2, on ? [255, 140, 30] : [205, 195, 180]);
       rrect(ctx, r[0] + 3, r[1] + 42, r[2] - 6, 19, 6, sol[0]);
       ecrit(ctx, String(i + 1), 18, [255, 255, 255], [r[0] + 14, r[1] + 14], [90, 90, 110]);
       ecrit(ctx, tr("actions")[et.action] || et.action, 15, CONTOUR, [r[0] + r[2] / 2, r[1] + 51]);
       if (et.interactif) rond(ctx, r[0] + r[2] - 14, r[1] + 14, 8, [255, 210, 60], 2);
+      if (et.bulle && et.bulle.fr) ecrit(ctx, "💬", 14, [0, 0, 0], [r[0] + r[2] - 34, r[1] + 15]);
+      if (et.voix) ecrit(ctx, "🎤", 14, [0, 0, 0], [r[0] + r[2] - 14, r[1] + 34]);
       z.push({ r, action: () => { this.sc = i; joue("clic"); } });
     });
-    if (e.etapes.length < MAX_SCENES) bouton([265 + e.etapes.length * 98, 144, 64, 64], tr("ajouterScene"), [70, 185, 90], () => this.ajouteScene(), 30);
+    if (nb < MAX_SCENES) bouton([357 + VUES * 98, 144, 64, 64], tr("ajouterScene"), [70, 185, 90], () => this.ajouteScene(), 30);
+    ecrit(ctx, `${this.sc + 1} / ${nb}`, 15, [150, 140, 130], [1253, 176]);
 
     // --- les onglets de la scène
     const et = this.etape();
-    [["lieu", tr("ongletOuQuoi")], ["qui", tr("ongletQui")], ["toucher", tr("ongletToucher")], ["texte", tr("ongletTexte")]].forEach(([o, nom], k) => {
-      const r = [265 + k * 175, 222, 168, 42], on = this.onglet === o;
+    [["lieu", tr("ongletOuQuoi")], ["qui", tr("ongletQui")], ["toucher", tr("ongletToucher")], ["texte", tr("ongletTexte")],
+      ["plus", tr("ongletPlus")], ["placer", tr("ongletPlacer")]].forEach(([o, nom], k) => {
+      const r = [265 + k * 166, 222, 160, 42], on = this.onglet === o;
       rrect(ctx, ...r, 12, on ? [255, 200, 60] : [255, 255, 255], 3, on ? [200, 120, 30] : [205, 195, 180]);
       ecrit(ctx, nom, 19, on ? [120, 60, 20] : CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
       z.push({ r, action: () => { this.onglet = o; joue("clic"); } });
@@ -351,6 +444,57 @@ class Ecriture {
         ecrit(ctx, coupe(ctx, consigne, 18, 610)[0] || "", 18, [235, 110, 20], [rc[0] + 14, rc[1] + 15], null, true);
         bouton([920, Y + 188, 160, 52], tr("maPhrase"), [110, 140, 220], () => this.ecritConsigne(), 18);
         bouton([1090, Y + 188, 160, 52], tr("phraseAuto"), [150, 160, 175], () => this.change({ consigne: null }), 17, !!et.consigne);
+      }
+    } else if (this.onglet === "plus") {
+      titre(tr("meteo"), 268, Y);
+      METEOS.forEach((m, i) => puce([265 + i * 176, Y + 20, 168, 40], tr("meteos")[m], (et.meteo || "aucune") === m, () => this.change({ meteo: m }), [140, 200, 240]));
+      titre(tr("bulleMot"), 268, Y + 80);
+      const parleurs = ["heros"].concat(et.presents.filter(estAmi)), b = et.bulle || {};
+      puce([265, Y + 100, 130, 40], tr("bulleAucune"), !b.qui, () => this.change({ bulle: null }), [255, 200, 60], 16);
+      parleurs.slice(0, 6).forEach((id, i) => {
+        const nom = id === "heros" ? INFOS_VEHICULE[e.heros][1] : nomPerso(id, LANGUE).replace("{prenom}", app.prenom);
+        puce([403 + i * 138, Y + 100, 130, 40], coupe(ctx, nom, 16, 120)[0] || nom, b.qui === id, () => this.change({ bulle: { qui: id, fr: b.fr || "", en: b.en || null } }), [255, 200, 60], 16);
+      });
+      if (b.qui) {
+        const rb = [265, Y + 152, 640, 48];
+        rrect(ctx, ...rb, 12, [255, 255, 255], 2, [205, 195, 180]);
+        const phrase = (LANGUE === "en" && b.en) || b.fr;
+        ecrit(ctx, coupe(ctx, phrase ? "« " + phrase + " »" : "…", 18, 610)[0] || "", 18, [60, 110, 190], [rb[0] + 14, rb[1] + 13], null, true);
+        bouton([920, Y + 152, 160, 48], tr("bulleEcrire"), [110, 140, 220], () => this.ecritBulle(), 18);
+      }
+      titre(tr("voixMot"), 268, Y + 222);
+      const rec = Micro.enCours();
+      bouton([265, Y + 244, 220, 50], rec ? tr("arreter", { s: Micro.secondes() }) : tr("enregistrer"), rec ? [220, 80, 80] : [235, 130, 70], () => this.enregistre(), 19);
+      bouton([495, Y + 244, 160, 50], tr("ecouter"), [70, 185, 90], () => this.ecoute(), 19, !!et.voix && !rec);
+      bouton([665, Y + 244, 160, 50], tr("effacerVoix"), [150, 160, 175], () => this.effaceVoix(), 19, !!et.voix && !rec);
+      if (rec) rond(ctx, 465, Y + 256, 6 + 2 * Math.sin(t * 8), [255, 255, 255]);
+    } else if (this.onglet === "placer") {
+      const presents = et.presents.filter(estAmi);
+      if (!presents.length) { ecrit(ctx, tr("placerPersonne"), 20, [150, 140, 130], [765, 420]); }
+      else {
+        if (!presents.includes(this.choisi)) this.choisi = presents[0];
+        const sceneC = compileHistoire(e).scenes[Math.min(this.sc, e.etapes.length - 1)];
+        const s = 0.62, cadre = [265, Y + 6, VW * s, VH * s, s];
+        ctx.save(); ctx.translate(cadre[0], cadre[1]);
+        ctx.beginPath(); ctx.rect(0, 0, cadre[2], cadre[3]); ctx.clip(); ctx.scale(s, s);
+        dessineDecor(ctx, VW, VH, et.decor, 0, t, !!et.nuit, G);
+        if (et.meteo === "arcenciel") arcEnCiel(ctx, VW * 0.62, G - 40, 330);
+        if (!sceneC.cache_heros) dessineVehicule(ctx, e.heros, COULEURS[e.couleur], 430, G, t);
+        for (const id of presents) {
+          const x = sceneC.positions[id] ?? 470;
+          if (id === this.choisi) { ctx.globalAlpha = 0.35; rond(ctx, x, G + 8, 46, [255, 200, 60]); ctx.globalAlpha = 1; }
+          dessineAmi(ctx, id, x, G, t, x < VW / 2 ? 1 : -1, 0, 0, 1, (sceneC.humeur || {})[id] || null);
+        }
+        ctx.restore();
+        rrect(ctx, cadre[0], cadre[1], cadre[2], cadre[3], 10, null, 3, [205, 195, 180]);
+        z.push({ r: cadre.slice(0, 4), placer: cadre }); // touche l'image : le personnage choisi va là
+        const xd = cadre[0] + cadre[2] + 16;
+        coupe(ctx, tr("placerAide"), 17, 1265 - xd).forEach((l, i) => ecrit(ctx, l, 17, [110, 90, 70], [xd, Y + 10 + i * 24], null, true));
+        presents.slice(0, 6).forEach((id, i) => {
+          const nom = nomPerso(id, LANGUE).replace("{prenom}", app.prenom);
+          puce([xd + (i % 2) * 126, Y + 92 + Math.floor(i / 2) * 48, 118, 40], coupe(ctx, nom, 16, 108)[0] || nom, this.choisi === id, () => { this.choisi = id; }, [255, 200, 60], 16);
+        });
+        bouton([xd, Y + 250, 244, 48], tr("placerAuto"), [150, 160, 175], () => this.change({ positions: {} }), 18, !!(et.positions && Object.keys(et.positions).length));
       }
     } else {
       const histoire = compileHistoire(e), sceneC = histoire.scenes[Math.min(this.sc, histoire.scenes.length - 1)];

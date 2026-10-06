@@ -108,6 +108,9 @@ class Monde { // ce qui reste d'une scène à l'autre
       else if (p.type === "fusee") { rond(ctx, p.x, p.y, 5, [255, 240, 200]); trait(ctx, [p.x, p.y], [p.x - p.vx * 0.05, p.y - p.vy * 0.05], 3, [255, 180, 80]); }
       else if (p.type === "bulle") bulle(ctx, p.x + 6 * Math.sin(p.a), p.y, p.r);
       else if (p.type === "coeur") coeur(ctx, p.x, p.y, p.r * (0.6 + 0.4 * k) + 4, p.col);
+      else if (p.type === "goutte") trait(ctx, [p.x, p.y], [p.x - p.vx * 0.03, p.y - p.vy * 0.03], 2, p.col, "round");
+      else if (p.type === "flocon") rond(ctx, p.x + 8 * Math.sin(p.a), p.y, p.r, p.col);
+      else if (p.type === "filante") { ctx.globalAlpha = k; trait(ctx, [p.x, p.y], [p.x - p.vx * 0.14, p.y - p.vy * 0.14], 3, p.col, "round"); rond(ctx, p.x, p.y, 4, [255, 255, 255]); ctx.globalAlpha = 1; }
       else if (p.type === "anneau") { ctx.globalAlpha = k; rond(ctx, p.x, p.y, 10 + (1 - k) * 26, null, 5, [255, 255, 255]); ctx.globalAlpha = 1; }
       else if (p.type === "note" || p.type === "zzz") {
         ctx.globalAlpha = Math.min(1, k * 2);
@@ -174,7 +177,17 @@ class Scene {
     if (this.act === "manger") { this.mangeurs = [hero, ...m.amis]; this.n = this.mangeurs.length; this.qte = this.mangeurs.map(() => 1); }
     this.espacement = Math.max(1.3, (this.duree - 2) / Math.max(1, this.n));
     this.prochainAuto = 1.4;
-    app.voix.dire((this.texte + " " + this.consigne).trim(), this.langue);
+    // bulle de dialogue : un personnage « dit » une phrase (affichée au-dessus de lui et lue à voix haute)
+    const b = d.bulle, texteBulle = b && ((this.langue === "en" && b.texte_en) || b.texte);
+    this.bulle = texteBulle ? { qui: b.qui, texte: rendu(texteBulle, valeurs) } : null;
+    let parole = this.texte;
+    if (this.bulle) {
+      const qui = b.qui === "heros" ? valeurs.nom : nomPerso(b.qui, this.langue).replace("{prenom}", valeurs.prenom);
+      parole += " " + (this.langue === "en" ? `${qui} says: ` : `${qui} dit : `) + this.bulle.texte;
+    }
+    const enregistree = d.voixPerso && app.voixPerso.get(d.voixPerso);
+    if (enregistree) app.voix.joueBuffer(enregistree); // la voix de la famille, enregistrée au micro
+    else app.voix.dire((parole + " " + this.consigne).trim(), this.langue);
   }
   faiseur() { return this.acteur || this.m.hero; }
   pret() { if (this.cacheHeros && !this.acteur) return true; const f = this.faiseur(); return Math.abs(f.x - f.cible) < 6; }
@@ -434,6 +447,10 @@ class Scene {
     }
     if (this.act === "fete" && Math.random() < dt * 25)
       m.parts.push({ x: rnd(0, VW), y: -10, vx: rnd(-30, 30), vy: 80, g: 40, vie: 5, max: 5, type: "confetti", r: 5, a: rnd(0, 6), va: rnd(-8, 8), col: choix([[255, 90, 90], [255, 210, 60], [90, 170, 250], [120, 220, 120], [220, 130, 240]]) });
+    const meteo = this.d.meteo;
+    if (meteo === "pluie") for (let k = 0; k < 2; k++) if (Math.random() < dt * 45) m.parts.push({ x: rnd(-40, VW + 60), y: -10, vx: -60, vy: 650, g: 0, vie: 1, max: 1, col: [120, 165, 225], r: 2, type: "goutte", a: 0, va: 0 });
+    if (meteo === "neige" && Math.random() < dt * 25) m.parts.push({ x: rnd(0, VW), y: -10, vx: rnd(-15, 15), vy: rnd(40, 80), g: 0, vie: 8, max: 8, col: [255, 255, 255], r: rnd(2, 5), type: "flocon", a: rnd(0, 6), va: 2 });
+    if (meteo === "etoiles" && Math.random() < dt * 0.9) m.parts.push({ x: rnd(250, VW + 100), y: rnd(10, 140), vx: -430, vy: 160, g: 0, vie: 0.9, max: 0.9, col: [255, 250, 210], r: 3, type: "filante", a: 0, va: 0 });
     if (this.act === "dormir" && Math.random() < dt * 1.2)
       m.parts.push({ x: m.hero.x - 30, y: G - 170, vx: 25, vy: -45, g: 0, vie: 2.5, max: 2.5, col: [255, 255, 255], r: rnd(4, 9), type: "zzz", a: 0, va: 0 });
     m.majParticules(dt);
@@ -451,6 +468,8 @@ class Scene {
     const m = this.m, fete = this.act === "fete";
     dessineDecor(ctx, VW, VH, m.decor, m.scroll, m.t, m.nuit, G);
     for (const [x, y] of this.etoiles) etoile(ctx, x, y, 16 + 3 * Math.sin(m.t * 4 + x), [255, 240, 150], m.t * 0.5);
+    if (this.d.meteo === "pluie") { ctx.fillStyle = "rgba(70,85,110,0.18)"; ctx.fillRect(0, 0, VW, VH); }
+    if (this.d.meteo === "arcenciel") arcEnCiel(ctx, VW * 0.62, G - 40, 330);
     if (this.act !== "velo") m.copains.forEach((c, i) => {
       const dy = fete ? -Math.abs(Math.sin(m.t * 5 + i)) * 14 : 0;
       dessineVehicule(ctx, c.kind, c.col, c.x, G - 32 + dy + c.dy, m.t + i, c.outil, c.rot, 0.72, c.f, m.nuit);
@@ -500,6 +519,11 @@ class Scene {
       else piece(ctx, x, y, this.vol.toit, this.vol.k);
     }
     m.dessineParticules(ctx);
+    if (this.bulle && this.t > 0.6) { // bulle de dialogue au-dessus de celui qui parle
+      const a = m.amis.find((x) => x.kind === this.bulle.qui);
+      if (this.bulle.qui === "heros" && !this.cacheHeros) bulleDialogue(ctx, m.hero.x - 20, G - 185, this.bulle.texte);
+      else if (a) { const [bx, by] = boucheAmi(a.kind, a.x + (a.dx || 0), G + a.dy, a.f); bulleDialogue(ctx, bx, by - 30, this.bulle.texte); }
+    }
     if (fete && this.t > 0.5) ecrit(ctx, tr("bravoBandeau", { prenom: this.valeurs.prenom }), 64, [255, 230, 80], [VW / 2, 70 + 6 * Math.sin(m.t * 3)], [200, 60, 80]);
     if (this.attendClic()) { const [x, y] = this.cible(); mainQuiClique(ctx, x, y, m.t); }
   }
@@ -532,6 +556,7 @@ class App {
     this.bSuppr = new Bouton([W - 350, 626, 210, 48], () => (this.modeSuppr ? tr("termine") : tr("supprimerBouton")), [200, 90, 80], 20);
     this.bRemettre = new Bouton([130, 626, 330, 48], () => tr("remettre", { n: histoiresCachees().length }), [110, 140, 220], 17);
     this.atelier = new Atelier(this);
+    this.voixPerso = new Map(); // voix enregistrées au micro, prêtes à jouer
     this.ancienne = document.createElement("canvas"); // image de la scène précédente, pour le fondu
     this.ancienne.width = VW; this.ancienne.height = VH;
     this.fondu = 0; this.ouverture = 0;
@@ -556,7 +581,16 @@ class App {
     for (const d of this.histoire.scenes) this.voix.precharge([(rendu(texteDe(d), v) + " " + (d.interactif ? rendu(consigneDe(d), v) : "")).trim()], langueDe(d));
     this.voix.precharge(tr("bravos").map((b) => rendu(b, v)).concat([tr("finHistoire", { prenom: this.prenom })]));
   }
+  prechargeVoixPerso(h) { // les voix enregistrées au micro pour cette histoire
+    for (const d of h.scenes) {
+      if (!d.voixPerso || this.voixPerso.has(d.voixPerso)) continue;
+      Memoire.lit(d.voixPerso).then((blob) => blob && blob.arrayBuffer())
+        .then((ab) => ab && Audio_.ctx && new Promise((ok, ko) => Audio_.ctx.decodeAudioData(ab, ok, ko)))
+        .then((buf) => { if (buf) this.voixPerso.set(d.voixPerso, buf); }).catch(() => {});
+    }
+  }
   ouvreConfig(h) {
+    this.prechargeVoixPerso(h);
     this.histoire = h;
     this.choixVeh = h.heros;
     this.choixCol = COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros];

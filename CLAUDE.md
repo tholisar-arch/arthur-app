@@ -42,8 +42,16 @@ transformées en histoires jouables par `compileHistoire()` et ajoutées à l'ac
 Pour en faire une histoire du dépôt (visible partout), le parent peut la recopier à Claude.
 Champs d'une étape de l'éditeur : `action`, `decor`, `presents`, `interactif`, `texteLibre` ({fr, en}),
 `nuit`, `humeur` (auto | joie | calme | peur), `copains` (engins), `clics`, `consigne` ({fr, en}).
+Autres champs : `meteo` (aucune | pluie | neige | arcenciel | etoiles), `bulle` ({qui, fr, en} :
+`qui` = un personnage présent ou `"heros"`), `positions` (placés à la main, onglet « Placer »),
+`vid` + `voix` (voix des parents enregistrée au micro, gardée dans IndexedDB par `js/memoire.js`,
+clé `idHistoire:vid` ; jouée à la place de la voix de synthèse). Jusqu'à 30 scènes, textes de 400 caractères.
 Mode « 📝 Texte libre » : une ligne = une scène, analysée sur place par `etapesDepuisTexte()`
-(lieux, actions, personnages, « touche »/« configuration » = interactif, nuit), puis éditable.
+(lieux, actions, personnages, météo, « touche »/« configuration » = interactif, nuit), puis éditable.
+Une ligne « Papa : On y va ! » devient une bulle de dialogue sur la scène précédente.
+
+Ces champs marchent aussi dans les histoires du dépôt : `"meteo": "pluie"`,
+`"bulle": {"qui": "papa", "texte": "On y va !", "texte_en": "Let's go!"}` (`qui` : un personnage ou `"heros"`).
 
 ## Format d'une histoire
 ```json

@@ -81,6 +81,14 @@ class Voix {
     setTimeout(() => { if (this.jeton === jeton) this.secoursParle = false; }, (texte.length / 9 + 3) * 1000);
     speechSynthesis.speak(u);
   }
+  joueBuffer(buf) { // joue une voix enregistrée au micro (à la place de la voix de synthèse)
+    this.stop();
+    if (!Audio_.ctx || !buf) return;
+    const s = Audio_.ctx.createBufferSource();
+    s.buffer = buf; s.connect(Audio_.ctx.destination);
+    s.onended = () => { if (this.source === s) this.source = null; };
+    this.source = s; s.start();
+  }
   parle() { return !!(this.attente || this.source || this.secoursParle); }
   stop() {
     this.jeton++;

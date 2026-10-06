@@ -7,19 +7,19 @@ const MOTS_INTERDITS = [
   // gros mots / insultes (fr)
   "merde", "putain", "pute", "connard", "connasse", "con", "conne", "salope", "salaud", "encule", "enculer", "batard",
   "bite", "couille", "cul", "nique", "niquer", "ntm", "fdp", "pd", "chier", "chiotte", "bordel", "debile", "abruti",
-  "idiot", "idiote", "imbecile", "cretin", "stupide", "nul", "nulle", "moche", "gros nul", "ta gueule", "tg", "ferme la",
+  "imbecile", "cretin", "ta gueule", "tg", "ferme la",
   // violence / peur (fr)
   "tuer", "tue", "tuent", "meurtre", "mort", "morte", "mourir", "meurt", "sang", "saigne", "arme", "armes", "pistolet",
-  "fusil", "couteau", "epee", "bombe", "exploser", "explose", "guerre", "frapper", "frappe", "gifle",
-  "blesser", "blesse", "cogner", "torturer", "egorger", "bruler vif", "kidnapper", "voleur", "prison",
+  "fusil", "couteau", "epee", "bombe", "guerre", "gifle",
+  "torturer", "egorger", "bruler vif", "kidnapper",
   "zombie", "demon", "diable", "cauchemar", "horreur", "terrifiant", "cadavre", "squelette", "suicide",
   // adultes / alcool / drogue (fr)
   "sexe", "sexy", "nu", "nue", "nus", "nues", "porno", "baiser", "seins", "alcool", "biere", "vin", "vodka", "whisky",
   "ivre", "saoul", "drogue", "cannabis", "joint", "cocaine", "cigarette", "fumer", "clope", "pari", "casino",
   // anglais
   "fuck", "fucking", "shit", "bitch", "bastard", "asshole", "ass", "dick", "cock", "pussy", "cunt", "damn", "crap",
-  "stupid", "idiot", "dumb", "ugly", "shut up", "kill", "killed", "kills", "murder", "dead", "die", "dies", "death",
-  "blood", "gun", "guns", "knife", "sword", "bomb", "war", "hit", "punch", "kick", "hurt", "stab", "shoot", "weapon",
+  "shut up", "kill", "killed", "kills", "murder", "dead", "die", "dies", "death",
+  "blood", "gun", "guns", "knife", "sword", "bomb", "war", "stab", "shoot", "weapon",
   "zombie", "demon", "devil", "nightmare", "horror", "corpse", "suicide", "sex", "sexy", "naked", "nude", "porn",
   "kiss on the mouth", "boobs", "beer", "wine", "alcohol", "drunk", "drug", "drugs", "weed", "cocaine", "cigarette", "smoke",
 ];
@@ -33,7 +33,7 @@ function normaliseFiltre(t) {
 }
 
 // renvoie null si le texte est correct, sinon la raison (à montrer au parent)
-function texteRefuse(texte, max = 220) {
+function texteRefuse(texte, max = 400) {
   const brut = String(texte || "").trim();
   if (!brut) return null;
   if (brut.length > max) return tr("filtreLong", { n: max });

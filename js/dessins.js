@@ -906,3 +906,28 @@ function bulle(ctx, x, y, r) {
   rond(ctx, x - r * 0.35, y - r * 0.35, Math.max(2, r * 0.22), [255, 255, 255]);
   arcRect(ctx, x - r + 3, y - r + 3, 2 * r - 6, 2 * r - 6, 3.6, 4.6, 2, [255, 190, 230]);
 }
+
+// ------------------------------------------------------------ bulle de dialogue, arc-en-ciel
+function bulleDialogue(ctx, x, y, texte, largeurMax = 300) { // (x, y) = la tête de celui qui parle
+  ctx.font = `700 19px Fredoka, "Comic Sans MS", sans-serif`;
+  const lignes = [];
+  let cour = "";
+  for (const mot of texte.split(/\s+/)) {
+    const essai = (cour + " " + mot).trim();
+    if (ctx.measureText(essai).width > largeurMax && cour) { lignes.push(cour); cour = mot; } else cour = essai;
+  }
+  if (cour) lignes.push(cour);
+  const l = Math.min(largeurMax, Math.max(...lignes.map((s) => ctx.measureText(s).width))) + 28, h = lignes.length * 24 + 18;
+  const bx = Math.max(8, Math.min(980 - l - 8, x - l / 2)), by = Math.max(8, y - h - 30);
+  poly(ctx, [[x - 10, by + h - 2], [x + 12, by + h - 2], [x + 2, Math.min(y - 6, by + h + 22)]], [255, 255, 255], 3, [120, 120, 130]);
+  rrect(ctx, bx, by, l, h, 16, [255, 255, 255], 3, [120, 120, 130]);
+  rrect(ctx, x - 9, by + h - 6, 20, 8, 0, [255, 255, 255]);
+  ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = css(CONTOUR);
+  lignes.forEach((s, i) => ctx.fillText(s, bx + 14, by + 10 + i * 24));
+}
+function arcEnCiel(ctx, cx, cy, r) {
+  const cols = [[235, 80, 80], [245, 150, 60], [250, 215, 70], [110, 195, 90], [80, 150, 230], [140, 100, 200]];
+  ctx.globalAlpha = 0.75;
+  cols.forEach((c, i) => { ctx.beginPath(); ctx.arc(cx, cy, r - i * 13, Math.PI, 2 * Math.PI); ctx.lineWidth = 13; ctx.strokeStyle = css(c); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+}
