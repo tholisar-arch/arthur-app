@@ -605,7 +605,7 @@ const PERSONNAGES_DEFAUT = {
   arthur: { nom: "Arthur", age: "enfant", peau: "clair", cheveux: "blond_fonce", coiffure: "court", yeux: "vert", haut: "bleu", bas: "jean", dessin: "tractopelle" },
   papa: { nom: "Papa", age: "adulte", taille: "grand", muscle: true, peau: "clair", cheveux: "blond_fonce", coiffure: "court", yeux: "bleu", haut: "blanc", bas: "marine" },
   maman: { nom: "Maman", age: "adulte", peau: "clair", cheveux: "brun", coiffure: "long", yeux: "marron", haut: "rose", bas: "peau", robe: true, couronne: true, cils: true },
-  papi: { nom: "Papi", age: "adulte", peau: "clair", cheveux: "blanc", coiffure: "chauve", yeux: "gris", haut: "vert", bas: "beige", lunettes: true, moustache: true },
+  papi: { nom: "Papy", age: "adulte", peau: "clair", cheveux: "blanc", coiffure: "chauve", yeux: "gris", haut: "vert", bas: "beige", lunettes: true, moustache: true },
   mamie: { nom: "Mamie", age: "adulte", taille: "petit", peau: "clair", cheveux: "gris", coiffure: "chignon", yeux: "noisette", haut: "lilas", bas: "peau", robe: true, cils: true, lunettes: true },
   enfant1: { nom: "Copine", age: "enfant", peau: "cuivre", cheveux: "brun_fonce", coiffure: "couettes", yeux: "marron_fonce", haut: "rose", bas: "lilas", robe: true, cils: true },
   enfant2: { nom: "Copain", age: "enfant", peau: "fonce", cheveux: "noir", coiffure: "court", yeux: "marron_fonce", haut: "vert", bas: "noir" },

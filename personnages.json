@@ -2,7 +2,7 @@
   "arthur": {"nom": "Arthur", "age": "enfant", "peau": "clair", "cheveux": "blond_fonce", "coiffure": "court", "yeux": "vert", "haut": "bleu", "bas": "jean", "dessin": "tractopelle", "chaussures": "rouge"},
   "papa": {"nom": "Papa", "age": "adulte", "taille": "grand", "peau": "clair", "cheveux": "blond_fonce", "coiffure": "court", "yeux": "bleu", "haut": "blanc", "bas": "marine", "corpulence": "costaud"},
   "maman": {"nom": "Maman", "age": "adulte", "peau": "clair", "cheveux": "brun", "coiffure": "long", "yeux": "marron", "haut": "rose", "bas": "peau", "couronne": true, "cils": true, "haut_type": "robe"},
-  "papi": {"nom": "Papi", "age": "adulte", "peau": "clair", "cheveux": "blanc", "coiffure": "chauve", "yeux": "gris", "haut": "vert", "bas": "beige", "lunettes": true, "moustache": true, "haut_type": "chemise"},
+  "papi": {"nom": "Papy", "age": "adulte", "peau": "clair", "cheveux": "blanc", "coiffure": "chauve", "yeux": "gris", "haut": "vert", "bas": "beige", "lunettes": true, "moustache": true, "haut_type": "chemise"},
   "mamie": {"nom": "Mamie", "age": "adulte", "taille": "petit", "peau": "clair", "cheveux": "gris", "coiffure": "chignon", "yeux": "noisette", "haut": "lilas", "bas": "peau", "cils": true, "lunettes": true, "haut_type": "robe"},
   "jean-eudes": {"nom": "Jean-Eudes", "age": "enfant", "peau": "clair", "cheveux": "blond", "coiffure": "boucle", "yeux": "bleu", "haut": "rouge", "bas": "marine"},
   "celestin": {"nom": "Célestin", "age": "enfant", "peau": "mat", "cheveux": "brun", "coiffure": "herisse", "yeux": "bleu", "haut": "jaune", "bas": "jean", "dessin": "dino"},
