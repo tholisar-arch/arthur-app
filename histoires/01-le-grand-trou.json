@@ -1,13 +1,14 @@
 {
   "titre": "Le grand trou",
+  "titre_en": "The Big Hole",
   "heros": "tractopelle",
   "couleur": "jaune",
   "decor": "chantier",
   "scenes": [
-    {"texte": "Ce matin, {nom}, {heros}, part au chantier. Vroum, vroum !", "action": "rouler"},
-    {"texte": "Oh ! Un énorme trou bloque la route. Les voitures ne peuvent plus passer. {nom} appelle ses copains !", "action": "copains", "copains": ["benne", "toupie"], "interactif": true},
-    {"texte": "Tous ensemble, ils remplissent le trou avec de la terre.", "action": "trou", "interactif": true, "clics": 4},
-    {"texte": "Le trou est rempli ! Les voitures peuvent passer. Merci les copains !", "action": "rouler"},
-    {"texte": "Quelle belle journée de travail. Hourra !", "action": "fete", "interactif": true, "clics": 4}
+    {"texte": "Ce matin, {nom}, {heros}, part au chantier. Vroum, vroum !", "action": "rouler", "texte_en": "This morning, {nom}, {heros}, is off to the building site. Vroom, vroom!"},
+    {"texte": "Oh ! Un énorme trou bloque la route. Les voitures ne peuvent plus passer. {nom} appelle ses copains !", "action": "copains", "copains": ["benne", "toupie"], "interactif": true, "texte_en": "Oh! A huge hole is blocking the road. The cars can't get past. {nom} calls his friends!"},
+    {"texte": "Tous ensemble, ils remplissent le trou avec de la terre.", "action": "trou", "interactif": true, "clics": 4, "texte_en": "All together, they fill the hole with dirt."},
+    {"texte": "Le trou est rempli ! Les voitures peuvent passer. Merci les copains !", "action": "rouler", "texte_en": "The hole is filled! The cars can get past. Thank you, friends!"},
+    {"texte": "Quelle belle journée de travail. Hourra !", "action": "fete", "interactif": true, "clics": 4, "texte_en": "What a great day's work. Hooray!"}
   ]
 }

@@ -1,13 +1,14 @@
 // Narration à voix haute.
-// Voix principale : la voix « neuronale » Microsoft (Vivienne), fabriquée par la fonction /api/voix
-// et gardée en cache par Vercel. Secours : la voix française de l'iPad (synthèse du navigateur).
+// Voix principale : une voix « neuronale » Microsoft fabriquée par la fonction /api/voix et gardée en
+// cache par Vercel — une voix 100 % française (Denise) et une 100 % anglaise (Ava) : les voix
+// « multilingues » changent parfois d'accent toutes seules sur les prénoms. Secours : la voix de l'iPad.
 "use strict";
 
 class Voix {
   constructor(cfg) {
     this.actif = cfg.voix !== false;
-    this.nom = cfg.voix_neuronale || "fr-FR-VivienneMultilingualNeural";
-    this.debit = cfg.vitesse_neuronale || "-8%";
+    this.noms = { fr: cfg.voix_fr || "fr-FR-DeniseNeural", en: cfg.voix_en || "en-US-AvaNeural" };
+    this.debit = cfg.vitesse_neuronale || "-6%";
     this.cache = new Map();   // texte -> Promise<AudioBuffer|null>
     this.source = null;       // son en cours
     this.attente = null;      // texte demandé, pas encore prêt
@@ -16,46 +17,47 @@ class Voix {
     this.file = [];
     this.enCours = 0;
   }
-  url(texte) {
-    return `/api/voix?v=${encodeURIComponent(this.nom)}&r=${encodeURIComponent(this.debit)}&t=${encodeURIComponent(texte)}`;
+  url(texte, langue) {
+    return `/api/voix?v=${encodeURIComponent(this.noms[langue] || this.noms.fr)}&r=${encodeURIComponent(this.debit)}&t=${encodeURIComponent(texte)}`;
   }
-  charge(texte) {
-    if (!this.cache.has(texte)) {
-      const p = fetch(this.url(texte))
+  charge(texte, langue = LANGUE) {
+    const cle = langue + "|" + texte;
+    if (!this.cache.has(cle)) {
+      const p = fetch(this.url(texte, langue))
         .then((r) => { if (!r.ok) throw new Error("voix " + r.status); return r.arrayBuffer(); })
         .then((b) => new Promise((ok, ko) => Audio_.ctx.decodeAudioData(b, ok, ko)))
-        .catch(() => { this.cache.delete(texte); return null; });
-      this.cache.set(texte, p);
+        .catch(() => { this.cache.delete(cle); return null; });
+      this.cache.set(cle, p);
     }
-    return this.cache.get(texte);
+    return this.cache.get(cle);
   }
-  precharge(textes) { // prépare les phrases à l'avance, 2 à la fois
+  precharge(textes, langue = LANGUE) { // prépare les phrases à l'avance, 2 à la fois
     if (!this.actif || !Audio_.ctx) return;
-    for (const t of textes) if (t && t.trim()) this.file.push(t.trim());
+    for (const t of textes) if (t && t.trim()) this.file.push([t.trim(), langue]);
     const suivant = () => {
       while (this.enCours < 2 && this.file.length) {
-        const t = this.file.shift();
-        if (this.cache.has(t)) continue;
+        const [t, l] = this.file.shift();
+        if (this.cache.has(l + "|" + t)) continue;
         this.enCours++;
-        this.charge(t).finally(() => { this.enCours--; suivant(); });
+        this.charge(t, l).finally(() => { this.enCours--; suivant(); });
       }
     };
     suivant();
   }
-  dire(texte) {
+  dire(texte, langue = LANGUE) {
     texte = (texte || "").trim();
     if (!texte || !this.actif) return;
     this.stop();
-    if (!Audio_.ctx) return this.secours(texte);
+    if (!Audio_.ctx) return this.secours(texte, langue);
     const jeton = ++this.jeton;
     this.attente = texte;
-    const minuteur = setTimeout(() => { if (this.jeton === jeton && this.attente) { this.attente = null; this.secours(texte); } }, 8000);
-    this.charge(texte).then((buf) => {
+    const minuteur = setTimeout(() => { if (this.jeton === jeton && this.attente) { this.attente = null; this.secours(texte, langue); } }, 8000);
+    this.charge(texte, langue).then((buf) => {
       if (this.jeton !== jeton) return;
       clearTimeout(minuteur);
       if (!this.attente) return; // le secours a déjà parlé
       this.attente = null;
-      if (!buf) return this.secours(texte);
+      if (!buf) return this.secours(texte, langue);
       const s = Audio_.ctx.createBufferSource();
       s.buffer = buf;
       s.connect(Audio_.ctx.destination);
@@ -64,13 +66,13 @@ class Voix {
       s.start();
     });
   }
-  secours(texte) {
+  secours(texte, langue = LANGUE) { // voix de l'appareil, dans la bonne langue
     if (!("speechSynthesis" in window)) return;
     const u = new SpeechSynthesisUtterance(texte);
-    const voix = speechSynthesis.getVoices().filter((v) => v.lang && v.lang.startsWith("fr"));
-    const pref = ["Audrey", "Amélie", "Marie", "Aurélie", "Thomas"];
+    const voix = speechSynthesis.getVoices().filter((v) => v.lang && v.lang.startsWith(langue));
+    const pref = langue === "en" ? ["Samantha", "Ava", "Karen", "Daniel", "Serena"] : ["Audrey", "Amélie", "Marie", "Aurélie", "Thomas"];
     u.voice = voix.find((v) => /premium|enhanced|amélior/i.test(v.name)) || pref.map((p) => voix.find((v) => v.name.includes(p))).find(Boolean) || voix[0] || null;
-    u.lang = "fr-FR";
+    u.lang = langue === "en" ? "en-US" : "fr-FR";
     u.rate = 0.92;
     const jeton = this.jeton;
     u.onend = () => { this.secoursParle = false; };

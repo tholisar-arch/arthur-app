@@ -1,6 +1,8 @@
 {
   "prenom": "Arthur",
   "voix": true,
-  "voix_neuronale": "fr-FR-VivienneMultilingualNeural",
-  "vitesse_neuronale": "-8%"
+  "vitesse_neuronale": "-6%",
+  "voix_fr": "fr-FR-DeniseNeural",
+  "voix_en": "en-US-AvaNeural",
+  "langue": "fr"
 }

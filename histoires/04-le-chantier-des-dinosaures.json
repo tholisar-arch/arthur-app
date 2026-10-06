@@ -1,12 +1,13 @@
 {
   "titre": "La maison des bébés dinosaures",
+  "titre_en": "The Baby Dinosaurs' House",
   "heros": "grue",
   "couleur": "violet",
   "decor": "dinosaures",
   "scenes": [
-    {"texte": "{nom}, {heros}, arrive au pays des dinosaures. Bonjour les dinos !", "action": "rouler"},
-    {"texte": "Les bébés dinosaures n'ont pas de maison. {nom} appelle les copains du chantier.", "action": "copains", "copains": ["bulldozer", "benne"]},
-    {"texte": "On construit une jolie maison, brique par brique.", "action": "construire", "interactif": true, "clics": 5},
-    {"texte": "La maison est finie ! Les bébés dinosaures sont tout contents. On fait la fête !", "action": "fete", "interactif": true, "clics": 5}
+    {"texte": "{nom}, {heros}, arrive au pays des dinosaures. Bonjour les dinos !", "action": "rouler", "texte_en": "{nom}, {heros}, arrives in the land of the dinosaurs. Hello, dinos!"},
+    {"texte": "Les bébés dinosaures n'ont pas de maison. {nom} appelle les copains du chantier.", "action": "copains", "copains": ["bulldozer", "benne"], "texte_en": "The baby dinosaurs have no house. {nom} calls his friends from the building site."},
+    {"texte": "On construit une jolie maison, brique par brique.", "action": "construire", "interactif": true, "clics": 5, "texte_en": "We build a lovely house, brick by brick."},
+    {"texte": "La maison est finie ! Les bébés dinosaures sont tout contents. On fait la fête !", "action": "fete", "interactif": true, "clics": 5, "texte_en": "The house is finished! The baby dinosaurs are so happy. Let's have a party!"}
   ]
 }

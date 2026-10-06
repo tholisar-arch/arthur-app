@@ -130,6 +130,7 @@ function scene(d, decorCourant, premiere, derniere, heros) {
   return {
     texte, action: act, decor: dec, interactif: !!inter, clics: Math.max(1, Math.min(10, Math.floor(n))),
     consigne: d.consigne || CONSIGNES[act] || "Clique !", copains,
+    texte_en: d.texte_en ? String(d.texte_en).trim() : null, consigne_en: d.consigne_en || null,
     vehicule: d.vehicule ? vehicule(d.vehicule) : null,
     amis: amis.filter(estAmi), partent: (d.partent || []).filter(estAmi),
     positions, humeur: { ...(d.humeur || {}) }, cache_heros: !!d.cache_heros,
@@ -147,7 +148,7 @@ function normalise(brut, fichier, date) {
     return sc;
   });
   return {
-    titre: String(brut.titre || fichier.replace(/\.[^.]+$/, "")), heros,
+    titre: String(brut.titre || fichier.replace(/\.[^.]+$/, "")), titre_en: brut.titre_en || null, heros,
     couleur: String(brut.couleur || "").toLowerCase() || null,
     copains: (brut.copains || []).map((c) => vehicule(c)), scenes, fichier, date,
   };
@@ -201,10 +202,18 @@ async function chargeTout() {
 
 function estNouvelle(h) { return h.date && Date.now() - new Date(h.date).getTime() < 3 * 24 * 3600 * 1000; }
 
-function textes(heros, couleur, prenom) {
-  const [nomV, petit, genre] = INFOS_VEHICULE[heros];
-  const adj = genre === "f" ? COULEUR_FEMININ[couleur] || couleur : couleur;
-  const maj = nomV[0].toUpperCase() + nomV.slice(1);
-  return { vehicule: nomV, Vehicule: maj, heros: `${nomV} ${adj}`, Heros: `${maj} ${adj}`, nom: petit, prenom, couleur: adj };
+function textes(heros, couleur, prenom, langue = LANGUE) { // {vehicule}, {heros}, {couleur}… dans une langue
+  const L = TEXTES[langue], petit = INFOS_VEHICULE[heros][1], [nomV, genre] = L.vehicules[heros];
+  const c = L.couleurs[couleur] || couleur, adj = genre === "f" ? L.couleursF[couleur] || c : c;
+  const maj = (s) => s[0].toUpperCase() + s.slice(1);
+  // français : « le tractopelle jaune » ; anglais : « the yellow backhoe »
+  const heroS = langue === "en" ? nomV.replace(/^the /, `the ${adj} `) : `${nomV} ${adj}`;
+  return { vehicule: nomV, Vehicule: maj(nomV), heros: heroS, Heros: maj(heroS), nom: petit, prenom, couleur: adj };
 }
+// textes d'une histoire dans la langue choisie (repli sur le français s'il manque la traduction)
+const titreDe = (h) => (LANGUE === "en" && h.titre_en) || h.titre;
+const traduite = (h) => LANGUE === "fr" || !!h.titre_en;
+const texteDe = (d) => (LANGUE === "en" && d.texte_en) || d.texte;
+const langueDe = (d) => (LANGUE === "en" && d.texte_en ? "en" : "fr");
+const consigneDe = (d) => (langueDe(d) === "en" ? d.consigne_en || CONSIGNES_EN[d.action] || "Tap!" : d.consigne);
 const rendu = (texte, valeurs) => String(texte).replace(/\{(\w+)\}/g, (m, k) => (k in valeurs ? valeurs[k] : m));

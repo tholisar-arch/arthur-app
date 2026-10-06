@@ -11,10 +11,14 @@ from urllib.parse import parse_qs, urlparse
 import edge_tts
 
 VOIX_PERMISES = {
-    "fr-FR-VivienneMultilingualNeural", "fr-FR-DeniseNeural", "fr-FR-EloiseNeural",
-    "fr-FR-RemyMultilingualNeural", "fr-FR-HenriNeural",
+    # voix d'une seule langue : pas de changement d'accent sur les prénoms
+    "fr-FR-DeniseNeural", "fr-FR-EloiseNeural", "fr-FR-HenriNeural",
+    "en-US-AvaNeural", "en-US-JennyNeural", "en-US-EmmaNeural", "en-US-AnaNeural", "en-US-AndrewNeural",
+    "en-GB-SoniaNeural", "en-GB-LibbyNeural", "en-GB-MaisieNeural", "en-GB-RyanNeural",
+    # anciennes voix multilingues (gardées pour compatibilité)
+    "fr-FR-VivienneMultilingualNeural", "fr-FR-RemyMultilingualNeural",
 }
-DEFAUT = "fr-FR-VivienneMultilingualNeural"
+DEFAUT = "fr-FR-DeniseNeural"
 
 
 async def fabrique(texte, voix, debit):

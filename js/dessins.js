@@ -389,7 +389,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     rrect(ctx, x - 230, horizon - 200, 460, 200, 0, [250, 232, 195], 3);
     poly(ctx, [[x - 255, horizon - 200], [x + 255, horizon - 200], [x, horizon - 290]], [210, 85, 70], 3);
     rrect(ctx, x - 85, horizon - 192, 170, 40, 10, [90, 150, 230]);
-    ecrireCentre(ctx, "ÉCOLE", x, horizon - 171, 30, [255, 255, 255]);
+    ecrireCentre(ctx, tr("ecole"), x, horizon - 171, 30, [255, 255, 255]);
     const vitres = [[255, 210, 60], [255, 120, 150], [120, 200, 120], [160, 120, 230]];
     [-190, -120, 70, 140].forEach((wx, k) => {
       rrect(ctx, x + wx, horizon - 135, 50, 50, 4, VITRE, 3);

@@ -18,18 +18,33 @@ des problèmes qu'on résout ensemble. Chaque fois que le parent dit
 **« configuration »**, la scène devient interactive (`"interactif": true`).
 Toujours mettre `decor` sur la 1re scène si le texte cite un autre lieu.
 
+## Deux langues : français ET anglais (obligatoire)
+L'appli est bilingue (bouton Français/English sur l'accueil). **Chaque nouvelle histoire doit
+avoir sa version anglaise** (anglais américain : Mommy, Daddy, Grandpa, Grandma, color…) :
+`"titre_en"` à côté de `"titre"`, et dans chaque scène `"texte_en"` (et `"consigne_en"` si la scène
+a une `"consigne"` française personnalisée). Mêmes variables `{nom}`, `{heros}`, `{Vehicule}`, `{prenom}`
+(en anglais elles donnent « the yellow backhoe », « The backhoe »…). Sans traduction, l'histoire
+reste jouable en français (marquée « (FR) » sur l'accueil en anglais).
+Textes de l'interface : `js/langues.js` (`TEXTES.fr` / `TEXTES.en`, consignes par défaut `CONSIGNES_EN`).
+
+## Voix
+Une voix **d'une seule langue** par langue : `fr-FR-DeniseNeural` et `en-US-AvaNeural` (config.json :
+`voix_fr`, `voix_en`, `vitesse_neuronale`). Ne pas remettre de voix « Multilingual » : elles prennent
+un accent anglais ou allemand sur les prénoms (Jean-Eudes, Tracto, PMS…).
+
 ## Format d'une histoire
 ```json
 {
   "titre": "Le grand trou",
+  "titre_en": "The Big Hole",
   "heros": "tractopelle",
   "couleur": "jaune",
   "decor": "chantier",
   "copains": [],
   "scenes": [
-    {"texte": "{nom}, {heros}, part au chantier.", "action": "rouler"},
-    {"texte": "Un gros trou !", "action": "trou", "interactif": true, "clics": 4,
-     "consigne": "Clique pour remplir le trou !"}
+    {"texte": "{nom}, {heros}, part au chantier.", "texte_en": "{nom}, {heros}, is off to the building site.", "action": "rouler"},
+    {"texte": "Un gros trou !", "texte_en": "A big hole!", "action": "trou", "interactif": true, "clics": 4,
+     "consigne": "Clique pour remplir le trou !", "consigne_en": "Tap to fill the hole!"}
   ]
 }
 ```

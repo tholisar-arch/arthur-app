@@ -4,9 +4,6 @@
 "use strict";
 
 const CLE_LOCALE = "tracto.personnages.v1";
-const NOMS_COIFFURES = { court: "Court", herisse: "En pics", boucle: "Bouclés", milong: "Mi-longs", long: "Longs", couettes: "Couettes", chignon: "Chignon", chauve: "Dégarni" };
-const NOMS_DESSINS = { tractopelle: "Tractopelle", dino: "Dinosaure", etoile: "Étoile", coeur: "Cœur" };
-const NOMS_HAUTS = { teeshirt: "Tee-shirt", pull: "Pull", chemise: "Chemise", debardeur: "Débardeur", salopette: "Salopette", robe: "Robe" };
 
 async function chargePersonnages() {
   let fichier = {}, local = { modifies: {}, supprimes: [] };
@@ -40,7 +37,7 @@ class Atelier {
   ouvre() {
     if (!PERSONNAGES[this.sel]) this.sel = Object.keys(PERSONNAGES)[0];
     this.app.etat = "perso";
-    this.app.voix.dire("L'atelier des personnages ! Choisis qui tu veux habiller.");
+    this.app.voix.dire(tr("atelierBienvenue"));
   }
   sauve() {
     try { localStorage.setItem(CLE_LOCALE, JSON.stringify(this.local)); this.messageT = 2.5; } catch (e) { /* stockage indisponible */ }
@@ -53,7 +50,7 @@ class Atelier {
     joue("pop");
   }
   nouveau() {
-    const nom = (window.prompt("Prénom du nouveau personnage ?") || "").trim();
+    const nom = (window.prompt(tr("promptPrenom")) || "").trim();
     if (!nom) return;
     let id = sansAccent(nom).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "perso", base = id, n = 2;
     while (PERSONNAGES[id]) id = `${base}-${n++}`;
@@ -64,15 +61,15 @@ class Atelier {
     this.sel = id;
     this.page = Math.floor(Object.keys(PERSONNAGES).indexOf(id) / 8);
     this.sauve(); joue("magie");
-    this.app.voix.dire(`Bonjour ${nom} !`);
+    this.app.voix.dire(tr("bonjour", { nom }));
   }
   renomme() {
-    const nom = (window.prompt("Nouveau prénom ?", PERSONNAGES[this.sel].nom) || "").trim();
+    const nom = (window.prompt(tr("promptRenommer"), PERSONNAGES[this.sel].nom) || "").trim();
     if (nom) this.modifie({ nom });
   }
   supprime() {
     const p = PERSONNAGES[this.sel];
-    if (PERSONNAGES_DEFAUT[this.sel] || !window.confirm(`Supprimer ${p.nom} ?`)) return;
+    if (PERSONNAGES_DEFAUT[this.sel] || !window.confirm(tr("confirmeSupprimer", { nom: p.nom }))) return;
     const reste = { ...PERSONNAGES };
     delete reste[this.sel];
     delete this.local.modifies[this.sel];
@@ -104,8 +101,8 @@ class Atelier {
     };
     app.bRetour.dessine(ctx);
     z.push({ r: app.bRetour.r, action: () => app.menu() });
-    ecrit(ctx, "L'atelier des personnages", 40, [255, 200, 40], [W / 2, 40], [200, 80, 40]);
-    bouton([W - 200, 14, 182, 52], "Au hasard !", [240, 130, 50], () => this.hasard(), 22);
+    ecrit(ctx, tr("atelier"), 40, [255, 200, 40], [W / 2, 40], [200, 80, 40]);
+    bouton([W - 200, 14, 182, 52], tr("auHasard"), [240, 130, 50], () => this.hasard(), 22);
 
     // --- la liste à gauche
     const ids = Object.keys(PERSONNAGES), pages = Math.max(1, Math.ceil(ids.length / 8));
@@ -120,7 +117,7 @@ class Atelier {
       ecrit(ctx, PERSONNAGES[id].nom, 24, CONTOUR, [r[0] + 78, r[1] + 14], null, true);
       z.push({ r, action: () => { this.sel = id; joue("clic"); app.voix.dire(PERSONNAGES[id].nom); } });
     });
-    bouton([20, 84 + 8 * 64, 275, 56], "+ Nouveau", [70, 185, 90], () => this.nouveau(), 24);
+    bouton([20, 84 + 8 * 64, 275, 56], tr("nouveauPerso"), [70, 185, 90], () => this.nouveau(), 24);
     if (pages > 1) {
       bouton([20, 664, 80, 44], "◀", [110, 140, 220], () => { this.page = mod(this.page - 1, pages); }, 22);
       ecrit(ctx, `${this.page + 1}/${pages}`, 20, CONTOUR, [157, 686]);
@@ -133,11 +130,11 @@ class Atelier {
     ecrit(ctx, p.nom, 34, [255, 255, 255], [510, 116], [90, 120, 200]);
     const ech = 380 / (st.L + st.T + 2 * st.R), salut = Math.sin(t * 1.4) > 0.6;
     dessineAmi(ctx, this.sel, 510, 590, t, 1, 0, 0, ech, salut ? "joie" : null);
-    bouton([318, 648, 186, 52], "Renommer", [110, 140, 220], () => this.renomme(), 22);
-    bouton([516, 648, 186, 52], "Supprimer", [210, 80, 80], () => this.supprime(), 22, !PERSONNAGES_DEFAUT[this.sel]);
+    bouton([318, 648, 186, 52], tr("renommer"), [110, 140, 220], () => this.renomme(), 22);
+    bouton([516, 648, 186, 52], tr("supprimer"), [210, 80, 80], () => this.supprime(), 22, !PERSONNAGES_DEFAUT[this.sel]);
 
     // --- les réglages à droite
-    [["visage", "Visage"], ["corps", "Corps"], ["haut", "Haut"], ["bas", "Bas"], ["plus", "Plus"]].forEach(([o, nom], k) => {
+    [["visage", tr("ongletVisage")], ["corps", tr("ongletCorps")], ["haut", tr("ongletHaut")], ["bas", tr("ongletBas")], ["plus", tr("ongletPlus")]].forEach(([o, nom], k) => {
       const r = [725 + k * 107, 82, 100, 50], actif = this.onglet === o;
       rrect(ctx, ...r, 14, actif ? [255, 200, 60] : [255, 255, 255], 3);
       ecrit(ctx, nom, 21, actif ? [120, 60, 20] : CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
@@ -150,7 +147,7 @@ class Atelier {
         const x = 755 + i * pas, cy = y + 52, col = nom === "peau" ? st.peau : PALETTES[pal][nom], choisi = (p[champ] || "") === nom;
         if (choisi) rond(ctx, x, cy, r + 7, [255, 255, 255], 3);
         rond(ctx, x, cy, r, col, 3);
-        if (nom === "peau") ecrit(ctx, "nu", 13, CONTOUR, [x, cy]);
+        if (nom === "peau") ecrit(ctx, tr("nu"), 13, CONTOUR, [x, cy]);
         z.push({ cercle: [x, cy, r + 6], action: () => this.modifie({ [champ]: nom }) });
       });
     };
@@ -173,54 +170,54 @@ class Atelier {
       });
     };
     if (this.onglet === "visage") {
-      titre("Peau", 148); nuancier(148, "peau", "peau");
-      titre("Yeux", 266); nuancier(266, "yeux", "yeux");
-      titre("Cheveux", 384); nuancier(384, "cheveux", "cheveux");
-      titre(`Coiffure : ${NOMS_COIFFURES[st.coiffure]}`, 502);
+      titre(tr("peau"), 148); nuancier(148, "peau", "peau");
+      titre(tr("yeux"), 266); nuancier(266, "yeux", "yeux");
+      titre(tr("cheveux"), 384); nuancier(384, "cheveux", "cheveux");
+      titre(tr("coiffure", { x: tr("coiffures")[st.coiffure] }), 502);
       vignettes(502, COIFFURES, (c) => st.coiffure === c, (c, cx, cy) => {
         STYLES.__apercu = styleDe({ ...p, coiffure: c, age: "enfant", taille: "moyen" });
         const s3 = STYLES.__apercu, e3 = 0.95;
         personne(ctx, cx, cy + (s3.L + s3.T + s3.R - 6) * e3 + 6, e3, 0.5, 1, 0, 0, null, "__apercu");
       }, (c) => this.modifie({ coiffure: c }));
     } else if (this.onglet === "corps") {
-      titre("Âge", 148); choix(148, [["enfant", "Enfant"], ["adulte", "Adulte"]], (v) => (p.age || "enfant") === v, (v) => this.modifie({ age: v }));
-      titre("Taille", 266); choix(266, [["petit", "Petit"], ["moyen", "Moyen"], ["grand", "Grand"]], (v) => (p.taille || "moyen") === v, (v) => this.modifie({ taille: v }));
-      titre("Corpulence", 384);
+      titre(tr("age"), 148); choix(148, [["enfant", tr("enfant")], ["adulte", tr("adulte")]], (v) => (p.age || "enfant") === v, (v) => this.modifie({ age: v }));
+      titre(tr("taille"), 266); choix(266, [["petit", tr("petit")], ["moyen", tr("moyen")], ["grand", tr("grand")]], (v) => (p.taille || "moyen") === v, (v) => this.modifie({ taille: v }));
+      titre(tr("corpulence"), 384);
       vignettes(384, CORPULENCES, (c) => st.corpulence === c, (c, cx, cy) => { // le personnage en petit, avec chaque silhouette
         STYLES.__apercu = styleDe({ ...p, corpulence: c, muscle: false, age: "enfant", taille: "moyen" });
         const s3 = STYLES.__apercu, e3 = 0.4;
         personne(ctx, cx, cy + (s3.L + s3.T + s3.R * 2) * e3 / 2, e3, 0.5, 1, 0, 0, null, "__apercu");
       }, (c) => this.modifie({ corpulence: c, muscle: false }));
-      choix(470, [["mince", "Mince"], ["moyen", "Moyen"], ["costaud", "Costaud"], ["rond", "Rond"]], (v) => st.corpulence === v, (v) => this.modifie({ corpulence: v, muscle: false }), 120);
+      choix(470, [["mince", tr("mince")], ["moyen", tr("moyen")], ["costaud", tr("costaud")], ["rond", tr("rond")]], (v) => st.corpulence === v, (v) => this.modifie({ corpulence: v, muscle: false }), 120);
     } else if (this.onglet === "haut") {
-      titre(`Haut : ${NOMS_HAUTS[st.typeHaut]}`, 148);
+      titre(tr("haut", { x: tr("hauts")[st.typeHaut] }), 148);
       vignettes(148, HAUTS, (h) => st.typeHaut === h, (h, cx, cy) => {
         STYLES.__apercu = styleDe({ ...p, haut_type: h, robe: false, age: "enfant", taille: "moyen" });
         const s3 = STYLES.__apercu, e3 = 0.4;
         personne(ctx, cx, cy + (s3.L + s3.T + s3.R * 2) * e3 / 2, e3, 0.5, 1, 0, 0, null, "__apercu");
       }, (h) => this.modifie({ haut_type: h, robe: false }));
-      titre("Couleur du haut", 266); nuancier(266, "habits", "haut");
-      titre(`Dessin sur le haut : ${NOMS_DESSINS[st.dessin] || "aucun"}`, 384);
+      titre(tr("couleurHaut"), 266); nuancier(266, "habits", "haut");
+      titre(tr("dessinHaut", { x: tr("dessins")[st.dessin] || tr("aucun") }), 384);
       vignettes(384, DESSINS_TSHIRT, (d) => (st.dessin || null) === d, (d, cx, cy) => {
         if (d === "tractopelle") dessineVehicule(ctx, "tractopelle", "jaune", cx + 4, cy + 20, 0.5, 0.3, 0, 0.21);
         else if (d === "dino") dinoLongCou(ctx, cx - 4, cy + 24, 0.2, undefined, 0.5);
         else if (d === "etoile") etoile(ctx, cx, cy, 20, [255, 215, 60]);
         else if (d === "coeur") coeur(ctx, cx, cy - 4, 17, [230, 60, 90]);
-        else ecrit(ctx, "Aucun", 15, [150, 140, 130], [cx, cy]);
+        else ecrit(ctx, tr("aucunMaj"), 15, [150, 140, 130], [cx, cy]);
       }, (d) => this.modifie({ dessin: d }));
     } else if (this.onglet === "bas") {
       const sansBas = st.typeHaut === "robe" || st.typeHaut === "salopette";
-      titre(sansBas ? `Bas : avec une ${NOMS_HAUTS[st.typeHaut].toLowerCase()}, la couleur suffit` : "Bas", 148);
-      if (!sansBas) choix(148, [["pantalon", "Pantalon"], ["short", "Short"], ["jupe", "Jupe"]], (v) => st.typeBas === v, (v) => this.modifie({ bas_type: v }));
-      titre(st.typeHaut === "robe" ? "Collant (ou jambes nues)" : "Couleur du bas", 266); nuancier(266, "habits", "bas", ["peau"]);
-      titre("Chaussures", 384); nuancier(384, "chaussures", "chaussures");
+      titre(sansBas ? tr("basAvec", { x: tr("hauts")[st.typeHaut].toLowerCase() }) : tr("bas"), 148);
+      if (!sansBas) choix(148, [["pantalon", tr("pantalon")], ["short", tr("short")], ["jupe", tr("jupe")]], (v) => st.typeBas === v, (v) => this.modifie({ bas_type: v }));
+      titre(st.typeHaut === "robe" ? tr("collant") : tr("couleurBas"), 266); nuancier(266, "habits", "bas", ["peau"]);
+      titre(tr("chaussures"), 384); nuancier(384, "chaussures", "chaussures");
     } else {
       const bascule = (champ) => this.modifie({ [champ]: !p[champ] });
-      titre("Accessoires", 148);
-      choix(148, [["lunettes", "Lunettes"], ["couronne", "Couronne"], ["cils", "Cils"]], (v) => !!p[v], bascule);
-      choix(234, [["moustache", "Moustache"], ["barbe", "Barbe"]], (v) => !!p[v], bascule);
+      titre(tr("accessoires"), 148);
+      choix(148, [["lunettes", tr("lunettes")], ["couronne", tr("couronne")], ["cils", tr("cils")]], (v) => !!p[v], bascule);
+      choix(234, [["moustache", tr("moustache")], ["barbe", tr("barbe")]], (v) => !!p[v], bascule);
     }
-    ecrit(ctx, this.messageT > 0 ? "✓ Enregistré sur cet appareil" : "Les changements sont gardés sur cet appareil", 17,
+    ecrit(ctx, this.messageT > 0 ? tr("enregistre") : tr("gardes"), 17,
       this.messageT > 0 ? [60, 150, 70] : [150, 140, 130], [995, 700]);
   }
 }
