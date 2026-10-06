@@ -197,6 +197,7 @@ async function chargeTout() {
       return { titre: fichier, erreur: String(e.message || e), fichier, date, heros: "tractopelle" };
     }
   }));
+  out.push(...histoiresPerso()); // + les histoires écrites dans l'appli (gardées sur l'appareil)
   return out.sort((x, y) => (y.date || "").localeCompare(x.date || "") || y.fichier.localeCompare(x.fichier));
 }
 

@@ -526,6 +526,8 @@ class App {
     this.bAutres = new Bouton([VX + VW / 2 + 30, VY + 330, 300, 100], () => tr("histoires"), [110, 140, 220], 38);
     this.bPerso = new Bouton([W - 240, 16, 222, 54], () => tr("personnages"), [150, 100, 210], 24);
     this.bLangue = new Bouton([18, 16, 170, 54], () => tr("langue"), [60, 160, 160], 24);
+    this.bEcrire = new Bouton([198, 16, 150, 54], () => "✎ " + tr("ecrire"), [235, 130, 70], 24);
+    this.ecriture = new Ecriture(this);
     this.atelier = new Atelier(this);
     this.ancienne = document.createElement("canvas"); // image de la scène précédente, pour le fondu
     this.ancienne.width = VW; this.ancienne.height = VH;
@@ -591,8 +593,10 @@ class App {
   rondsCouleurs() { return Object.keys(COULEURS).map((_, k) => [355 + k * 95, 352]); }
   touche(p) {
     if (this.etat === "perso") return this.atelier.touche(p);
+    if (this.etat === "ecrire") return this.ecriture.touche(p);
     if (this.etat === "menu") {
       if (this.bPerso.touche(p)) { joue("pop"); return this.atelier.ouvre(); }
+      if (this.bEcrire.touche(p)) { joue("pop"); return this.ecriture.ouvre(); }
       if (this.bLangue.touche(p)) { // français <-> anglais
         changeLangue(LANGUE === "fr" ? "en" : "fr"); joue("pop"); this.voix.stop();
         this.voix.dire(tr("titreAccueil", { prenom: this.prenom }));
@@ -627,7 +631,7 @@ class App {
     if (this.etat === "histoire") {
       if (e.key === "Escape") this.menu();
       else if (e.key === "ArrowRight" && !this.fin) this.sceneSuivante();
-    } else if ((this.etat === "config" || this.etat === "perso") && e.key === "Escape") this.menu();
+    } else if (["config", "perso", "ecrire"].includes(this.etat) && e.key === "Escape") this.menu();
   }
 
   // ------------------------------------------------ boucle
@@ -652,12 +656,14 @@ class App {
     if (this.etat === "menu") this.dessineMenu(ctx);
     else if (this.etat === "config") this.dessineConfig(ctx);
     else if (this.etat === "perso") this.atelier.dessine(ctx, this.t);
+    else if (this.etat === "ecrire") this.ecriture.dessine(ctx, this.t);
     else this.dessineHistoire(ctx);
   }
   dessineMenu(ctx) {
-    ecrit(ctx, tr("titreAccueil", { prenom: this.prenom }), 54, [255, 200, 40], [W / 2, 58], [200, 80, 40]);
+    ecrit(ctx, tr("titreAccueil", { prenom: this.prenom }), 46, [255, 200, 40], [W / 2 + 70, 52], [200, 80, 40]);
     this.bPerso.dessine(ctx);
     this.bLangue.dessine(ctx);
+    this.bEcrire.dessine(ctx);
     const liste = this.histoires.slice(this.page * 6, this.page * 6 + 6);
     this.cartes().forEach((r, k) => {
       const h = liste[k];
@@ -673,6 +679,7 @@ class App {
       lignes.forEach((l, i) => ecrit(ctx, l, 26, CONTOUR, [x + 165, y0 + i * 34], null, true));
       if (erreur) ecrit(ctx, tr("illisible"), 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);
       else ecrit(ctx, tr("images", { n: h.scenes.length }) + (traduite(h) ? "" : "  (FR)"), 18, [150, 140, 130], [x + 165, y + hh - 32], null, true);
+      if (h.perso) { rrect(ctx, x + 10, y + 30, 64, 24, 8, [235, 130, 70]); ecrit(ctx, "✎ " + tr("moi"), 14, [255, 255, 255], [x + 42, y + 42]); }
       if (!erreur && estNouvelle(h)) { etoile(ctx, x + w - 4, y - 2, 34, [255, 210, 50], 0.2); ecrit(ctx, tr("nouveau"), 15, CONTOUR, [x + w - 4, y]); }
     });
     if (this.charge && !this.histoires.length) ecrit(ctx, tr("aucune"), 30, CONTOUR, [W / 2, 330]);
@@ -779,6 +786,7 @@ async function demarre() {
     if (premier) { premier = false; app.prechargeMenu(); }
     const b = canvas.getBoundingClientRect();
     app.touche([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
+    app.dessine(); // redessine tout de suite : les zones à toucher sont à jour pour le toucher suivant
   });
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
   // iPhone : selon la version d'iOS, le son n'est autorisé qu'au lever du doigt ou au « clic »

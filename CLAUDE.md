@@ -32,6 +32,15 @@ Une voix **d'une seule langue** par langue : `fr-FR-DeniseNeural` et `en-US-AvaN
 `voix_fr`, `voix_en`, `vitesse_neuronale`). Ne pas remettre de voix « Multilingual » : elles prennent
 un accent anglais ou allemand sur les prénoms (Jean-Eudes, Tracto, PMS…).
 
+## Histoires écrites dans l'appli (sans Claude)
+Bouton « ✎ Écrire » de l'accueil (`js/ecriture.js`) : les parents composent une histoire par
+choix guidés (lieu, action, qui est là, l'enfant touche ou non) ; le texte est généré en FR + EN
+(`MODELES`), ou écrit à la main et alors filtré par `texteRefuse()` (`js/filtre.js` : gros mots,
+violence, adultes, alcool/drogue, liens, e-mails, numéros de téléphone). Ces histoires sont gardées
+dans le `localStorage` de l'appareil (clé `tracto.histoires.v1`), pas dans le dépôt ; elles sont
+transformées en histoires jouables par `compileHistoire()` et ajoutées à l'accueil (badge « Moi »).
+Pour en faire une histoire du dépôt (visible partout), le parent peut la recopier à Claude.
+
 ## Format d'une histoire
 ```json
 {
