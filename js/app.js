@@ -2,7 +2,7 @@
 "use strict";
 
 const W = 1280, H_ = 720, VX = 150, VY = 72, VW = 980, VH = 510, G = 450;
-const FOND = [255, 238, 186];
+const FOND = [246, 239, 224];
 const SLOTS_COPAINS = [140, 840, 290, 690, 520];
 const rnd = (a, b) => a + Math.random() * (b - a);
 const choix = (l) => l[Math.floor(Math.random() * l.length)];
@@ -617,8 +617,7 @@ class App {
     }
   }
   fond(ctx) {
-    rrect(ctx, 0, 0, W, H_, 0, FOND);
-    for (let k = 0; k < W; k += 80) for (let j = 0; j < H_; j += 80) rond(ctx, k + (Math.floor(j / 80) % 2) * 40, j, 9, [255, 228, 160]);
+    rrect(ctx, 0, 0, W, H_, 0, FOND); // fond uni, plus sobre
   }
   dessine() {
     const ctx = this.ctx;
@@ -652,14 +651,14 @@ class App {
     if (this.charge && !this.histoires.length) ecrit(ctx, tr("aucune"), 30, CONTOUR, [W / 2, 330]);
     if (!this.charge) ecrit(ctx, tr("chargement"), 30, CONTOUR, [W / 2, 330]);
     const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
-    rrect(ctx, 0, 600, W, 120, 0, [120, 120, 130]);
-    for (let k = 0; k < 16; k++) rrect(ctx, mod(k * 90 - this.t * 80, W + 90) - 45, 690, 45, 6, 0, [250, 250, 250]);
+    ovale(ctx, -200, 590, W + 400, 260, [150, 210, 95], 4); // une colline verte et un chemin beige
+    rrect(ctx, 0, 662, W, 34, 0, [228, 210, 165]);
     VEHICULES.forEach((kind, k) => dessineVehicule(ctx, kind, COULEUR_DEFAUT[kind], mod(k * 230 + this.t * 70, W + 300) - 150, 680, this.t + k, 0, this.t * 3, 0.38));
     if (pages > 1) {
       for (const [x, d] of [[65, -1], [W - 65, 1]]) poly(ctx, [[x - 28 * d, 625], [x + 28 * d, 655], [x - 28 * d, 685]], [110, 140, 220], 4);
-      ecrit(ctx, `Page ${this.page + 1}/${pages}`, 22, [255, 255, 255], [W / 2, 700]);
+      ecrit(ctx, `Page ${this.page + 1}/${pages}`, 22, [110, 90, 60], [W / 2, 680]);
     }
-    ecrit(ctx, tr("astuce"), 18, [255, 255, 255], [W / 2, 614]);
+    ecrit(ctx, tr("astuce"), 18, [70, 110, 50], [W / 2, 622]);
   }
   dessineConfig(ctx) {
     this.bRetour.dessine(ctx);
@@ -685,11 +684,6 @@ class App {
   }
   dessineHistoire(ctx) {
     const t = this.t, vc = this.vctx;
-    dinoLongCou(ctx, 70, 330 + 6 * Math.sin(t * 2), 0.42, undefined, t);
-    dessineVehicule(ctx, "tractopelle", "jaune", 75, 560, t, 0.5 + 0.5 * Math.sin(t * 2), 0, 0.45);
-    dinoStego(ctx, 1208, 300 + 6 * Math.sin(t * 2 + 1), 0.55, undefined, t, -1);
-    dessineVehicule(ctx, "toupie", "bleu", 1205, 560, t, 0, 0, 0.36, -1);
-    [[40, 120], [120, 400], [1250, 120], [1170, 380], [60, 640], [1230, 650]].forEach(([x, y], k) => etoile(ctx, x, y, 14 + 4 * Math.sin(t * 3 + k), [255, 200, 60], t * 0.5 + k));
     if (!this.fin) this.scene.dessine(vc);
     else {
       const m = this.monde;
@@ -701,8 +695,8 @@ class App {
       m.dessineParticules(vc);
       ecrit(vc, tr("fin"), 110, [255, 220, 60], [VW / 2, 120], [200, 70, 60]);
     }
-    rrect(ctx, VX - 11, VY - 11, VW + 22, VH + 22, 26, [90, 70, 60]);
-    rrect(ctx, VX - 6, VY - 6, VW + 12, VH + 12, 22, [255, 200, 80]);
+    rrect(ctx, VX - 8, VY - 2, VW + 16, VH + 16, 22, [225, 210, 185]); // ombre douce
+    rrect(ctx, VX - 6, VY - 6, VW + 12, VH + 12, 20, [255, 255, 255]); // cadre blanc tout simple
     ctx.drawImage(this.video, VX, VY);
     if (this.fin) { this.bEncore.dessine(ctx, t, true); this.bAutres.dessine(ctx); }
     this.bRetour.dessine(ctx);
