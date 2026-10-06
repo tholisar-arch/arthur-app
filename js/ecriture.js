@@ -80,6 +80,9 @@ function compileHistoire(e) {
 function litHistoiresPerso() {
   try { return JSON.parse(localStorage.getItem(CLE_HISTOIRES) || "[]"); } catch (e) { return []; }
 }
+function supprimeHistoirePerso(id) { // supprime pour de bon une histoire écrite dans l'appli
+  try { localStorage.setItem(CLE_HISTOIRES, JSON.stringify(litHistoiresPerso().filter((e) => e.id !== id))); } catch (e) { /* stockage indisponible */ }
+}
 function histoiresPerso() { // pour l'accueil : les histoires écrites dans l'appli, prêtes à jouer
   return litHistoiresPerso().filter((e) => e.etapes && e.etapes.length).map((e) => {
     try { return { ...normalise(compileHistoire(e), "moi-" + e.id, e.date), perso: e.id }; } catch (err) { return { titre: e.titre, erreur: String(err), fichier: "moi-" + e.id, date: e.date, heros: "tractopelle", perso: e.id }; }

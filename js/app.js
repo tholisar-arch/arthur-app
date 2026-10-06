@@ -528,6 +528,9 @@ class App {
     this.bLangue = new Bouton([18, 16, 170, 54], () => tr("langue"), [60, 160, 160], 24);
     this.bEcrire = new Bouton([198, 16, 150, 54], () => "✎ " + tr("ecrire"), [235, 130, 70], 24);
     this.ecriture = new Ecriture(this);
+    this.modeSuppr = false; // mode « supprimer des histoires » de l'accueil
+    this.bSuppr = new Bouton([W - 350, 626, 210, 48], () => (this.modeSuppr ? tr("termine") : tr("supprimerBouton")), [200, 90, 80], 20);
+    this.bRemettre = new Bouton([130, 626, 330, 48], () => tr("remettre", { n: histoiresCachees().length }), [110, 140, 220], 17);
     this.atelier = new Atelier(this);
     this.ancienne = document.createElement("canvas"); // image de la scène précédente, pour le fondu
     this.ancienne.width = VW; this.ancienne.height = VH;
@@ -585,7 +588,16 @@ class App {
     if (this.i >= this.histoire.scenes.length) { this.fin = true; joue("bravo"); this.voix.dire(tr("finHistoire", { prenom: this.prenom })); }
     else this.scene = new Scene(this, this.monde, this.histoire.scenes[this.i], this.valeurs);
   }
-  menu() { this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
+  supprimeHistoire(h) { // depuis l'accueil, en mode suppression (avec confirmation)
+    const titre = titreDe(h);
+    if (h.perso) { if (!window.confirm(tr("confirmePerso", { titre }))) return; supprimeHistoirePerso(h.perso); }
+    else { if (!window.confirm(tr("confirmeCachee", { titre }))) return; cacheHistoire(h.fichier); }
+    joue("pop");
+    this.histoires = this.histoires.filter((x) => x !== h);
+    this.page = Math.min(this.page, Math.max(0, Math.ceil(this.histoires.length / 6) - 1));
+  }
+  menu() {
+    this.modeSuppr = false; this.voix.stop(); this.etat = "menu"; this.rechargeHistoires(); }
 
   // ------------------------------------------------ événements
   cartes() { const r = []; for (let k = 0; k < 6; k++) r.push([75 + (k % 3) * 390, 125 + Math.floor(k / 3) * 225, 350, 200]); return r; }
@@ -602,6 +614,8 @@ class App {
         this.voix.dire(tr("titreAccueil", { prenom: this.prenom }));
         return this.prechargeMenu();
       }
+      if (this.bSuppr.touche(p)) { this.modeSuppr = !this.modeSuppr; joue("clic"); return; }
+      if (this.modeSuppr && histoiresCachees().length && this.bRemettre.touche(p)) { remetHistoires(); joue("magie"); return this.rechargeHistoires(); }
       const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
       if (pages > 1 && dans([20, 610, 90, 90], p)) { this.page = mod(this.page - 1, pages); joue("clic"); }
       if (pages > 1 && dans([W - 110, 610, 90, 90], p)) { this.page = mod(this.page + 1, pages); joue("clic"); }
@@ -609,6 +623,7 @@ class App {
       this.cartes().forEach((r, k) => {
         const h = liste[k];
         if (!h || !dans(r, p)) return;
+        if (this.modeSuppr) return this.supprimeHistoire(h);
         if (h.erreur) this.voix.dire(tr("oups"));
         else { joue("pop"); this.ouvreConfig(h); }
       });
@@ -680,7 +695,8 @@ class App {
       if (erreur) ecrit(ctx, tr("illisible"), 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);
       else ecrit(ctx, tr("images", { n: h.scenes.length }) + (traduite(h) ? "" : "  (FR)"), 18, [150, 140, 130], [x + 165, y + hh - 32], null, true);
       if (h.perso) { rrect(ctx, x + 10, y + 30, 64, 24, 8, [235, 130, 70]); ecrit(ctx, "✎ " + tr("moi"), 14, [255, 255, 255], [x + 42, y + 42]); }
-      if (!erreur && estNouvelle(h)) { etoile(ctx, x + w - 4, y - 2, 34, [255, 210, 50], 0.2); ecrit(ctx, tr("nouveau"), 15, CONTOUR, [x + w - 4, y]); }
+      if (this.modeSuppr) { rond(ctx, x + w - 8, y + 8, 22, [220, 70, 70], 4); ecrit(ctx, "✕", 24, [255, 255, 255], [x + w - 8, y + 8]); }
+      else if (!erreur && estNouvelle(h)) { etoile(ctx, x + w - 4, y - 2, 34, [255, 210, 50], 0.2); ecrit(ctx, tr("nouveau"), 15, CONTOUR, [x + w - 4, y]); }
     });
     if (this.charge && !this.histoires.length) ecrit(ctx, tr("aucune"), 30, CONTOUR, [W / 2, 330]);
     if (!this.charge) ecrit(ctx, tr("chargement"), 30, CONTOUR, [W / 2, 330]);
@@ -692,7 +708,11 @@ class App {
       for (const [x, d] of [[65, -1], [W - 65, 1]]) poly(ctx, [[x - 28 * d, 625], [x + 28 * d, 655], [x - 28 * d, 685]], [110, 140, 220], 4);
       ecrit(ctx, `Page ${this.page + 1}/${pages}`, 22, [110, 90, 60], [W / 2, 680]);
     }
-    ecrit(ctx, tr("astuce"), 18, [70, 110, 50], [W / 2, 622]);
+    if (this.modeSuppr) {
+      ecrit(ctx, tr("toucheCroix"), 18, [170, 60, 50], [W / 2, 608]);
+      if (histoiresCachees().length) this.bRemettre.dessine(ctx);
+    } else ecrit(ctx, tr("astuce"), 18, [70, 110, 50], [W / 2, 608]);
+    this.bSuppr.dessine(ctx);
   }
   dessineConfig(ctx) {
     this.bRetour.dessine(ctx);

@@ -198,9 +198,17 @@ async function chargeTout() {
     }
   }));
   out.push(...histoiresPerso()); // + les histoires écrites dans l'appli (gardées sur l'appareil)
-  return out.sort((x, y) => (y.date || "").localeCompare(x.date || "") || y.fichier.localeCompare(x.fichier));
+  const cachees = histoiresCachees();
+  return out.filter((h) => !cachees.includes(h.fichier)) // moins celles retirées de cet appareil
+    .sort((x, y) => (y.date || "").localeCompare(x.date || "") || y.fichier.localeCompare(x.fichier));
 }
-
+// histoires de l'appli retirées sur cet appareil (on peut les remettre)
+const CLE_CACHEES = "tracto.cachees.v1";
+function histoiresCachees() { try { return JSON.parse(localStorage.getItem(CLE_CACHEES) || "[]"); } catch (e) { return []; } }
+function cacheHistoire(fichier) {
+  try { localStorage.setItem(CLE_CACHEES, JSON.stringify([...new Set(histoiresCachees().concat([fichier]))])); } catch (e) { /* stockage indisponible */ }
+}
+function remetHistoires() { try { localStorage.removeItem(CLE_CACHEES); } catch (e) { /* stockage indisponible */ } }
 function estNouvelle(h) { return h.date && Date.now() - new Date(h.date).getTime() < 3 * 24 * 3600 * 1000; }
 
 function textes(heros, couleur, prenom, langue = LANGUE) { // {vehicule}, {heros}, {couleur}… dans une langue
