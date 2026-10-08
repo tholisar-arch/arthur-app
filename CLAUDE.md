@@ -13,14 +13,17 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
-## Écrire une histoire avec une IA gratuite (ChatGPT, Copilot) — sans clé ni compte
+## Écrire une histoire avec une IA gratuite, automatiquement
 Accueil → « 🎤 Raconter » (ou « 📝 Texte libre ») : les parents racontent (dictée ou clavier), puis
-« ✨ Avec ChatGPT / Copilot » : 1) « 📋 Copier la demande » (`demandeIA()` : le format complet des histoires
-+ le récit), 2) « Ouvrir ChatGPT / Copilot » (leur version gratuite), on colle, 3) on recopie la réponse dans
-l'appli → `lisReponseIA()` (tolère le texte autour, les ```json, une virgule en trop) → `histoireDeIA()`
-(`normalise` + filtre pour enfants) → histoire de l'appli modifiable, lancée directement. Le brouillon du récit
-est gardé (`tracto.brouillon.v1`) pendant l'aller-retour. « ⚡ Tout de suite » = sans IA (mots-clés).
-Aucune clé d'API, aucun serveur : il n'y a plus de fonction `api/histoire.py` ni de code famille.
+« ✨ L'IA l'écrit (gratuit) » : l'appli envoie le récit à `api/histoire.py` (Vercel, Python), qui demande l'histoire
+à une IA au palier GRATUIT avec les consignes du format (FR + EN, chapitres si « longue histoire ») :
+- `GEMINI_API_KEY` : Google Gemini (clé gratuite sur https://aistudio.google.com/apikey), essayé en premier ;
+  si le modèle (`GEMINI_MODELE`, défaut `gemini-2.5-flash`) n'existe plus, le « flash » le plus récent est pris.
+- `GROQ_API_KEY` (facultatif) : Groq (clé gratuite sur https://console.groq.com/keys), en secours.
+Clés dans Vercel → Settings → Environment Variables (jamais dans le code), puis Redeploy. Sans clé : message
+clair et « ⚡ Tout de suite » (sans IA, mots-clés). Seul le récit est envoyé ; les consignes sont côté serveur.
+La réponse est vérifiée par `histoireDeIA()` (`normalise` + filtre pour enfants), devient une histoire de l'appli
+modifiable, et se lance directement. `maxDuration` 300 s.
 
 ## Jeux pour apprendre (adaptés à l'âge)
 - `"action": "chiffres"` : des bulles 1, 2, 3… à toucher dans l'ordre (3 ans : 1-3, 4 ans : 1-5, 5 ans : 1-7 ;

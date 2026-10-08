@@ -31,6 +31,9 @@
   "functions": {
     "api/voix.py": {
       "maxDuration": 30
+    },
+    "api/histoire.py": {
+      "maxDuration": 300
     }
   }
 }

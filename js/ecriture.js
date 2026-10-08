@@ -436,27 +436,6 @@ class Ecriture {
         </div>
         <textarea id="libreTexte" rows="12" placeholder="${tr("libreExemple")}" style="flex-shrink:0;min-height:150px;font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
         <label style="font-size:17px;color:#7a6a58;display:flex;gap:8px;align-items:center"><input id="libreLongue" type="checkbox" style="width:22px;height:22px"> ${tr("iaLongue")}</label>
-        <div id="libreIA" style="display:none;flex-shrink:0;flex-direction:column;gap:10px;background:#f1e8ff;border-radius:16px;padding:14px">
-          <div style="font-size:19px;font-weight:700;color:#6a3fb0">${tr("iaTitre")}</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:17px;color:#5a4a70">1.</span>
-            <button id="iaCopier" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#8a5ad2;color:#fff">${tr("iaCopier")}</button>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:17px;color:#5a4a70">2.</span>
-            <button id="iaChatgpt" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#10a37f;color:#fff">${tr("iaChatgpt")}</button>
-            <button id="iaCopilot" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#2b6fd6;color:#fff">${tr("iaCopilot")}</button>
-            <span style="font-size:15px;color:#5a4a70">${tr("iaColleLa")}</span>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:17px;color:#5a4a70">3.</span>
-            <span style="font-size:15px;color:#5a4a70">${tr("iaRecopie")}</span>
-            <button id="iaColler" style="font:inherit;font-size:16px;padding:6px 14px;border:0;border-radius:10px;background:#b8a3dc;color:#fff">${tr("iaColler")}</button>
-          </div>
-          <textarea id="iaReponse" rows="4" placeholder="${tr("iaReponsePlace")}" style="font:inherit;font-size:15px;padding:10px;border:2px solid #d8c8f0;border-radius:12px;resize:vertical"></textarea>
-          <div id="iaInfo" style="color:#6a3fb0;font-size:15px;min-height:18px"></div>
-          <button id="iaCreer" style="align-self:flex-end;font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#46b95a;color:#fff">${tr("iaCreer")}</button>
-        </div>
         <div id="libreErreur" style="color:#b23c32;font-size:16px;min-height:20px"></div>
         <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
           <button id="libreAnnuler" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#b8b2a8;color:#fff">${tr("libreAnnuler")}</button>
@@ -469,12 +448,8 @@ class Ecriture {
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
-    d.querySelector("#libreAvecIA").onclick = () => this.ouvreIA();
-    d.querySelector("#iaCopier").onclick = () => this.copieDemande();
-    for (const site of ["chatgpt", "copilot"]) d.querySelector("#ia" + site[0].toUpperCase() + site.slice(1)).onclick = () => window.open(SITES_IA[site], "_blank");
-    d.querySelector("#iaColler").onclick = () => this.colleReponse();
-    d.querySelector("#iaCreer").onclick = () => this.creeDepuisIA();
-    // le brouillon est gardé : on peut aller sur ChatGPT et revenir sans rien perdre
+    d.querySelector("#libreAvecIA").onclick = () => this.ecritAvecIA();
+    // le brouillon est gardé (si on ferme la fenêtre, ou si l'iPad recharge l'appli)
     try {
       const b = JSON.parse(localStorage.getItem(CLE_BROUILLON) || "null");
       if (b && b.texte) { d.querySelector("#libreTexte").value = b.texte; if (b.titre) d.querySelector("#libreTitre").value = b.titre; d.querySelector("#libreLongue").checked = !!b.longue; }
@@ -512,38 +487,33 @@ class Ecriture {
     r.onend = () => { this.reco = null; if (this.libre) bouton.textContent = tr("dicteeGo"); };
     try { r.start(); this.reco = r; bouton.textContent = tr("dicteeStop"); } catch (e) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); }
   }
-  // ------------------------------------------------ l'IA gratuite (ChatGPT, Copilot) : on copie la demande, on colle la réponse
-  ouvreIA() {
-    const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; };
-    if (d.querySelector("#libreTexte").value.trim().length < 10) { erreur(tr("libreVide")); return d.querySelector("#libreTexte").focus(); }
-    const refus = texteRefuse(d.querySelector("#libreTexte").value, 8000) || texteRefuse(d.querySelector("#libreTitre").value, 80);
+  // ------------------------------------------------ l'IA gratuite écrit l'histoire, automatiquement (api/histoire.py)
+  async ecritAvecIA() {
+    const d = this.libre, erreur = (m, neutre = false) => { const z = d.querySelector("#libreErreur"); z.textContent = m; z.style.color = neutre ? "#7a5a30" : "#b23c32"; };
+    const texte = d.querySelector("#libreTexte").value.trim(), titre = d.querySelector("#libreTitre").value.trim();
+    if (texte.length < 10) return erreur(tr("libreVide"));
+    const refus = texteRefuse(texte, 8000) || texteRefuse(titre, 80);
     if (refus) return erreur(tr("refuse", { raison: refus }));
     if (this.reco) this.reco.stop();
-    erreur("");
-    d.querySelector("#libreIA").style.display = "flex";
-    d.querySelector("#libreIA").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-  async copieDemande() {
-    const d = this.libre, info = d.querySelector("#iaInfo");
-    const demande = demandeIA(d.querySelector("#libreTexte").value.trim(), d.querySelector("#libreTitre").value.trim(), d.querySelector("#libreLongue").checked, this.app.prenom);
-    const ok = await copie(demande);
-    info.textContent = ok ? tr("iaCopie") : tr("iaCopieRatee");
-    if (!ok) { const z = d.querySelector("#iaReponse"); z.value = demande; z.select(); } // à copier à la main
-    joue(ok ? "pop" : "clic");
-  }
-  async colleReponse() {
-    try { const t = await navigator.clipboard.readText(); if (t) this.libre.querySelector("#iaReponse").value = t; } catch (e) { this.libre.querySelector("#iaReponse").focus(); }
-  }
-  creeDepuisIA() {
-    const d = this.libre, erreur = (m) => { d.querySelector("#iaInfo").textContent = m; joue("clic"); };
-    const brut = lisReponseIA(d.querySelector("#iaReponse").value);
-    if (!brut) return erreur(tr("iaIllisible"));
-    const e = histoireDeIA(brut, d.querySelector("#libreTitre").value.trim()); // vérifiée : format, personnages, filtre pour enfants
-    if (typeof e === "string") return erreur(e);
-    this.ajoute(e);
-    try { localStorage.removeItem(CLE_BROUILLON); } catch (err) { /* rien */ }
-    this.fermeLibre();
-    this.essaie(); // on passe directement à l'histoire
+    const bouton = d.querySelector("#libreAvecIA"), debut = Date.now();
+    bouton.disabled = true; d.querySelector("#libreCreer").disabled = true;
+    const minuteur = setInterval(() => { bouton.textContent = tr("iaEcrit", { s: Math.round((Date.now() - debut) / 1000) }); }, 500);
+    erreur(tr("iaPatience"), true);
+    try {
+      const rep = await fetch("api/histoire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        texte, titre, prenom: this.app.prenom, longue: d.querySelector("#libreLongue").checked,
+        personnages: Object.entries(PERSONNAGES).map(([id, p]) => ({ id, nom: p.nom })) }) });
+      const brut = await rep.json().catch(() => ({}));
+      if (rep.status === 503) throw new Error(tr("iaNonConfigure"));
+      if (!rep.ok) throw new Error(tr("iaRatee"));
+      const e = histoireDeIA(brut, titre); // vérifiée : format, personnages, filtre pour enfants
+      if (typeof e === "string") throw new Error(e);
+      this.ajoute(e);
+      try { localStorage.removeItem(CLE_BROUILLON); } catch (err) { /* rien */ }
+      this.fermeLibre();
+      this.essaie(); // on passe directement à l'histoire
+    } catch (err) { erreur(err.message && !/fetch|network|load/i.test(err.message) ? err.message : tr("iaHorsLigne")); }
+    finally { clearInterval(minuteur); if (this.libre) { bouton.disabled = false; bouton.textContent = tr("iaAvec"); d.querySelector("#libreCreer").disabled = false; } }
   }
   creeDepuisTexte() {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
@@ -966,54 +936,5 @@ function histoireDeIA(brut, titre) {
     titre_en: h.titre_en, heros: h.heros, couleur: COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros], etapes, parIA: true };
 }
 
-// ------------------------------------------------ l'histoire écrite par une IA gratuite (ChatGPT, Copilot…) : copier / coller
+// ------------------------------------------------ le brouillon du récit (gardé tant que l'histoire n'est pas créée)
 const CLE_BROUILLON = "tracto.brouillon.v1";
-const SITES_IA = { chatgpt: "https://chatgpt.com/", copilot: "https://copilot.microsoft.com/" };
-function demandeIA(texte, titre, longue, prenom) { // tout ce qu'il faut à l'IA pour écrire une histoire jouable dans l'appli
-  const persos = Object.entries(PERSONNAGES).map(([id, p]) => `${id} = ${p.nom}`).join(", ");
-  return `Tu écris une histoire interactive pour ${prenom}, un petit garçon de 3 ans fan d'engins de chantier, à partir de ce que racontent ses parents (en bas).
-L'histoire est jouée dans une appli : des images animées, une voix qui lit, et l'enfant touche l'écran à certains moments.
-
-RÈGLES
-- Reste fidèle à ce que racontent les parents, en l'enrichissant avec douceur. Phrases courtes et simples, ton doux et joyeux.
-- AUCUN méchant, aucune violence, rien d'effrayant : les « combats » deviennent des défis ou des jeux, les problèmes se résolvent ensemble.
-- Quand les parents disent « configuration » ou « touche », la scène devient interactive ; sinon, environ une scène sur deux ou trois.
-- ${longue ? "Histoire LONGUE : 35 à 50 scènes en 4 à 6 chapitres (\"parties\"), avec des lieux et des péripéties variés." : "8 à 15 scènes."}
-- Bilingue OBLIGATOIRE : "titre_en", et dans chaque scène "texte_en" (anglais américain : Mommy, Daddy, Grandpa, Grandma), "consigne_en" si "consigne", "texte_en" dans les bulles, "titre_en" pour chaque chapitre.
-- Dans les textes, utilise {nom} (le prénom du véhicule, ex. Tracto), {heros} (« le tractopelle jaune »), {Vehicule}, {prenom} (= ${prenom}). N'écris jamais « le tractopelle » en dur.
-- Mets "decor" sur CHAQUE scène.
-
-FORMAT — réponds avec UN SEUL bloc de code JSON valide, complet, sans rien couper :
-{"titre": "...", "titre_en": "...", "heros": "tractopelle", "couleur": "jaune", "decor": "...", "scenes": [ ... ]}
-(histoire longue : "parties": [{"titre": "...", "titre_en": "...", "scenes": [ ... ]}, ...] à la place de "scenes")
-
-Une scène : {"texte": "...", "texte_en": "...", "action": "...", "decor": "...", "interactif": true, "clics": 3, "consigne": "Touche ...", "consigne_en": "Tap ...", "amis": ["..."], "partent": ["..."], "humeur": {"id": "joie"}, "bulle": {"qui": "id", "texte": "...", "texte_en": "..."}, "meteo": "pluie", "nuit": true, "copains": ["grue"], "vehicule": "toupie", "objet": "ballon", "mot": "{prenom}"}
-Seuls "texte", "texte_en", "action" et "decor" sont obligatoires. "amis" = ceux qui ARRIVENT dans la scène (ils restent jusqu'à "partent") ; "amis": [] si personne n'arrive.
-
-heros : tractopelle | benne | toupie | pompier | bulldozer | grue — couleur : jaune | orange | rouge | bleu | vert | violet | rose
-decor : chantier | ville | campagne | dinosaures | plage | neige | ecole | vacances (maison avec piscine) | jardin (maison de la famille) | pms (l'entreprise de Papy et Mamie) | foret | montagne | ferme | port
-meteo : pluie | orage | neige | arcenciel | etoiles — humeur : joie | peur | calme
-action : rouler (on roule) | parler | trou (remplir un trou) | feu (éteindre un feu) | deblayer (pousser du sable) | construire (une maison) | copains (des engins arrivent, avec "copains") | manger | spectacle | bulles | calin (la peur devient joie) | piscine | cueillir (des mûres) | chateau (de sable) | route (poser des pierres) | voler (le véhicule s'envole) | fenetres | cadeau ("clics": 1) | velo | fete (feux d'artifice) | dormir | pont (réparer un pont cassé) | arbre (pousser un arbre tombé) | panne (réparer un engin, avec "vehicule") | chercher (derrière des buissons, avec "objet" : ballon, doudou, cle ou chat) | chiffres (toucher 1, 2, 3 dans l'ordre) | lettres (toucher les lettres d'un "mot")
-Pour montrer un problème avant de le faire résoudre : une scène avec "clics": 0 (non interactive), puis la même action interactive juste après.
-Personnages (pour "amis", "partent", "humeur", "bulle.qui") : UNIQUEMENT ces identifiants : trex (Rexou, un T-rex gentil), dino (diplodocus), stego (stégosaure), dragon (petit dragon gentil), chat (Moustache), ${persos}. L'enfant est "arthur". "heros" = le véhicule (pour une bulle).
-
-TITRE SOUHAITÉ : ${titre || "(à toi de choisir)"}
-
-CE QUE RACONTENT LES PARENTS :
-${texte}`;
-}
-function lisReponseIA(texte) { // la réponse copiée depuis ChatGPT / Copilot -> l'objet JSON de l'histoire
-  let t = String(texte || "").replace(/```(?:json)?/gi, "");
-  const debut = t.indexOf("{"), fin = t.lastIndexOf("}");
-  if (debut < 0 || fin <= debut) return null;
-  t = t.slice(debut, fin + 1);
-  const virgules = (x) => x.replace(/,\s*([}\]])/g, "$1"), guillemets = (x) => x.replace(/[“”]/g, '"'); // en dernier recours
-  for (const essai of [t, virgules(t), guillemets(t), virgules(guillemets(t))]) { try { return JSON.parse(essai); } catch (e) { /* on essaie autrement */ } }
-  return null;
-}
-async function copie(texte) {
-  try { await navigator.clipboard.writeText(texte); return true; } catch (e) { /* ancienne méthode */ }
-  const z = document.createElement("textarea"); z.value = texte; z.style.cssText = "position:fixed;top:-1000px"; document.body.appendChild(z);
-  z.select(); z.setSelectionRange(0, texte.length); let ok = false; try { ok = document.execCommand("copy"); } catch (e) { /* rien */ }
-  z.remove(); return ok;
-}
