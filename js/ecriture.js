@@ -84,9 +84,10 @@ function compileHistoire(e) {
     avant = presents;
     return {
       texte: textes[0] || textes[1] || "", texte_en: et.texteLibre ? textes[1] : textes[1], action: et.action, decor: et.decor,
-      interactif: !!et.interactif, amis: arrivent, partent, positions, humeur, cache_heros: cache,
+      interactif: !!et.interactif, amis: arrivent, partent, positions, humeur: { ...humeur, ...(et.humeurs || {}) }, cache_heros: et.cacheHeros ?? cache,
       nuit: !!et.nuit, copains: (et.copains || []).filter((k) => k !== e.heros),
-      ...(et.clics ? { clics: et.clics } : {}),
+      ...(et.clics != null ? { clics: et.clics } : {}),
+      ...(et.vehicule ? { vehicule: et.vehicule } : {}),
       ...(et.consigne ? { consigne: et.consigne.fr, consigne_en: et.consigne.en || null } : {}),
       ...(et.meteo && et.meteo !== "aucune" ? { meteo: et.meteo } : {}),
       ...(et.bulle && et.bulle.fr ? { bulle: { qui: et.bulle.qui, texte: et.bulle.fr, texte_en: et.bulle.en || null } } : {}),
@@ -98,7 +99,7 @@ function compileHistoire(e) {
       ...(et.vid ? { cleVoix: cleVoix(e, et) } : {}),
     };
   });
-  return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes, miniature: e.miniature || null };
+  return { titre: e.titre, titre_en: e.titre_en || e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes, miniature: e.miniature || null };
 }
 function litHistoiresPerso() {
   try { return JSON.parse(localStorage.getItem(CLE_HISTOIRES) || "[]"); } catch (e) { return []; }
@@ -434,10 +435,17 @@ class Ecriture {
           <button id="libreChapitre" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#eb8246;color:#fff">${tr("chapNouveau")}</button>
         </div>
         <textarea id="libreTexte" rows="12" placeholder="${tr("libreExemple")}" style="font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
+        <label style="font-size:17px;color:#7a6a58;display:flex;gap:8px;align-items:center"><input id="libreLongue" type="checkbox" style="width:22px;height:22px"> ${tr("claudeLongue")}</label>
+        <div id="libreConnexion" style="display:none;gap:10px;align-items:center;flex-wrap:wrap;background:#fff1dc;border-radius:14px;padding:12px">
+          <span style="font-size:17px;color:#7a5a30">${tr("claudeCodeAide")}</span>
+          <input id="libreCode" type="password" autocomplete="current-password" placeholder="${tr("claudeCodePlace")}" style="font:inherit;font-size:18px;padding:8px 12px;border:2px solid #e6d8c2;border-radius:10px;flex:1;min-width:160px">
+          <button id="libreConnecter" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#6e8cdc;color:#fff">${tr("claudeConnecter")}</button>
+        </div>
         <div id="libreErreur" style="color:#b23c32;font-size:16px;min-height:20px"></div>
-        <div style="display:flex;gap:12px;justify-content:flex-end">
+        <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
           <button id="libreAnnuler" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#b8b2a8;color:#fff">${tr("libreAnnuler")}</button>
-          <button id="libreCreer" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#46b95a;color:#fff">${tr("libreCreer")}</button>
+          <button id="libreCreer" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#46b95a;color:#fff">${tr("claudeSans")}</button>
+          <button id="libreClaude" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#8a5ad2;color:#fff">${tr("claudeAvec")}</button>
         </div>
       </div>`;
     document.body.appendChild(d);
@@ -445,6 +453,9 @@ class Ecriture {
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
+    d.querySelector("#libreClaude").onclick = () => this.ecritAvecClaude();
+    d.querySelector("#libreConnecter").onclick = () => this.connexionFamille();
+    if (voix) d.querySelector("#libreLongue").checked = false;
     if (voix) d.querySelector("#libreMicro").onclick = () => this.dicte();
     d.querySelector("#libreChapitre").onclick = () => { // insère « 📖 Titre » sur sa propre ligne, là où est le curseur
       const zone = d.querySelector("#libreTexte"), titre = window.prompt(tr("promptChapitre"), "");
@@ -475,6 +486,50 @@ class Ecriture {
     r.onerror = (ev) => { if (ev.error !== "no-speech" && ev.error !== "aborted") d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); };
     r.onend = () => { this.reco = null; if (this.libre) bouton.textContent = tr("dicteeGo"); };
     try { r.start(); this.reco = r; bouton.textContent = tr("dicteeStop"); } catch (e) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); }
+  }
+  // ------------------------------------------------ « Raconte-la à Claude » : Claude écrit l'histoire (connexion famille)
+  async connexionFamille() {
+    const d = this.libre, code = d.querySelector("#libreCode").value.trim(), erreur = d.querySelector("#libreErreur");
+    if (!code) return;
+    erreur.textContent = tr("claudeVerifie");
+    try {
+      const rep = await fetch("api/histoire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "connexion", code }) });
+      if (rep.status === 401) { erreur.textContent = tr("claudeCodeFaux"); return; }
+      if (rep.status === 503) { erreur.textContent = tr("claudeNonConfigure"); return; }
+      if (!rep.ok) throw new Error(rep.status);
+      try { localStorage.setItem(CLE_FAMILLE, code); } catch (e) { /* stockage indisponible */ }
+      d.querySelector("#libreConnexion").style.display = "none";
+      erreur.textContent = tr("claudeConnecte"); erreur.style.color = "#2f8a3e"; joue("magie");
+    } catch (e) { erreur.textContent = tr("claudeHorsLigne"); }
+  }
+  async ecritAvecClaude() {
+    const d = this.libre, erreur = (m, neutre = false) => { const z = d.querySelector("#libreErreur"); z.textContent = m; z.style.color = neutre ? "#7a5a30" : "#b23c32"; };
+    let code = ""; try { code = localStorage.getItem(CLE_FAMILLE) || ""; } catch (e) { /* stockage indisponible */ }
+    if (!code) { d.querySelector("#libreConnexion").style.display = "flex"; d.querySelector("#libreCode").focus(); return erreur(tr("claudeCodeDemande")); }
+    const texte = d.querySelector("#libreTexte").value.trim(), titre = d.querySelector("#libreTitre").value.trim();
+    if (texte.length < 10) return erreur(tr("libreVide"));
+    const refus = texteRefuse(texte, 8000) || texteRefuse(titre, 80);
+    if (refus) return erreur(tr("refuse", { raison: refus }));
+    if (this.reco) this.reco.stop();
+    const bouton = d.querySelector("#libreClaude"), debut = Date.now();
+    bouton.disabled = true; d.querySelector("#libreCreer").disabled = true;
+    const minuteur = setInterval(() => { bouton.textContent = tr("claudeEcrit", { s: Math.round((Date.now() - debut) / 1000) }); }, 500);
+    erreur(tr("claudePatience"), true);
+    try {
+      const rep = await fetch("api/histoire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        code, texte, titre, prenom: this.app.prenom, longue: d.querySelector("#libreLongue").checked,
+        personnages: Object.entries(PERSONNAGES).map(([id, p]) => ({ id, nom: p.nom })) }) });
+      const brut = await rep.json().catch(() => ({}));
+      if (rep.status === 401) { try { localStorage.removeItem(CLE_FAMILLE); } catch (e) { /* rien */ } d.querySelector("#libreConnexion").style.display = "flex"; throw new Error(tr("claudeCodeFaux")); }
+      if (rep.status === 503) throw new Error(tr("claudeNonConfigure"));
+      if (!rep.ok) throw new Error(brut.erreur || tr("claudeHorsLigne"));
+      const e = histoireDeClaude(brut, titre); // vérifiée : format, personnages, filtre pour enfants
+      if (typeof e === "string") throw new Error(e);
+      this.ajoute(e);
+      this.fermeLibre();
+      this.essaie(); // on passe directement à l'histoire
+    } catch (err) { erreur(err.message || tr("claudeHorsLigne")); }
+    finally { clearInterval(minuteur); if (this.libre) { bouton.disabled = false; bouton.textContent = tr("claudeAvec"); d.querySelector("#libreCreer").disabled = false; } }
   }
   creeDepuisTexte() {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
@@ -862,4 +917,37 @@ function positionsApercu(sc, presents) { // où le moteur placera chacun (pour l
   const places = presents.length >= 3 ? placesReparties(presents.length, 430, sc.cache_heros) : [180, 680];
   libres.forEach((id) => { pos[id] = places[presents.indexOf(id)] ?? 470; });
   return pos;
+}
+
+// ------------------------------------------------ une histoire écrite par Claude -> une histoire de l'appli (modifiable)
+const CLE_FAMILLE = "tracto.famille.v1";
+function histoireDeClaude(brut, titre) {
+  let h;
+  try { h = normalise(brut, "claude", new Date().toISOString()); } catch (e) { return tr("claudeIllisible"); }
+  const textes = [h.titre, h.titre_en];
+  for (const d of h.scenes) {
+    textes.push(d.texte, d.texte_en, d.partie, d.partie_en);
+    if (d.consigne !== CONSIGNES[d.action]) textes.push(d.consigne, d.consigne_en);
+    if (d.bulle) textes.push(d.bulle.texte, d.bulle.texte_en);
+  }
+  for (const t of textes) { const refus = t && texteRefuse(String(t), 400); if (refus) return tr("refuse", { raison: refus }); }
+  const presents = new Set();
+  const etapes = h.scenes.map((d) => {
+    for (const k of d.amis) presents.add(k);
+    const et = {
+      action: d.action, decor: d.decor, presents: [...presents], interactif: d.interactif, vid: nouvelId(),
+      texteLibre: { fr: d.texte, en: d.texte_en || null }, humeur: "auto", humeurs: d.humeur, nuit: d.nuit,
+      meteo: d.meteo || "aucune", copains: d.copains, clics: d.interactif || d.clics === 0 ? d.clics : null,
+      consigne: d.consigne && d.consigne !== CONSIGNES[d.action] ? { fr: d.consigne, en: d.consigne_en || null } : null,
+      ...(d.bulle ? { bulle: { qui: d.bulle.qui, fr: d.bulle.texte, en: d.bulle.texte_en } } : {}),
+      ...(d.partie != null ? { partie: { fr: d.partie, en: d.partie_en || null } } : {}),
+      ...(Object.keys(d.positions).length ? { positions: d.positions } : {}),
+      ...(d.objet ? { objet: d.objet } : {}), ...(d.mot ? { mot: d.mot } : {}), ...(d.vehicule ? { vehicule: d.vehicule } : {}),
+      ...(d.cache_heros ? { cacheHeros: true } : {}),
+    };
+    for (const k of d.partent) presents.delete(k);
+    return et;
+  });
+  return { id: nouvelId(), date: new Date().toISOString(), titre: h.titre === "claude" ? titre || tr("titreDefaut") : h.titre,
+    titre_en: h.titre_en, heros: h.heros, couleur: COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros], etapes, parClaude: true };
 }

@@ -16,13 +16,13 @@ const MOTS_INTERDITS = [
   "zombie", "demon", "diable", "cauchemar", "horreur", "terrifiant", "cadavre", "squelette", "suicide",
   // adultes / alcool / drogue (fr)
   "sexe", "sexy", "nu", "nue", "nus", "nues", "porno", "baiser", "seins", "alcool", "biere", "vin", "vodka", "whisky",
-  "ivre", "saoul", "drogue", "cannabis", "joint", "cocaine", "cigarette", "fumer", "clope", "pari", "casino",
+  "ivre", "saoul", "drogue", "cannabis", "joint", "cocaine", "cigarette", "clope", "pari", "casino",
   // anglais
   "fuck", "fucking", "shit", "bitch", "bastard", "asshole", "ass", "dick", "cock", "pussy", "cunt", "damn", "crap",
   "shut up", "kill", "killed", "kills", "murder", "dead", "die", "dies", "death",
   "blood", "gun", "guns", "knife", "sword", "bomb", "war", "stab", "shoot", "weapon",
   "zombie", "demon", "devil", "nightmare", "horror", "corpse", "suicide", "sex", "sexy", "naked", "nude", "porn",
-  "kiss on the mouth", "boobs", "beer", "wine", "alcohol", "drunk", "drug", "drugs", "weed", "cocaine", "cigarette", "smoke",
+  "kiss on the mouth", "boobs", "beer", "wine", "alcohol", "drunk", "drug", "drugs", "weed", "cocaine", "cigarette",
 ];
 const RACINES_INTERDITES = ["encul", "niqu", "salop", "connar", "foutr", "emmerd", "merdi", "pornogr", "masturb", "fuck", "shit", "bitch", "nazi", "hitler", "terroris"];
 

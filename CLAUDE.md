@@ -13,6 +13,17 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
+## « Raconte-la à Claude » directement dans l'appli
+Accueil → « 🎤 Raconter » (ou « 📝 Texte libre ») : les parents racontent (dictée ou clavier), puis
+« ✨ Claude l'écrit » (option « longue histoire en chapitres ») ou « ⚡ Tout de suite » (sans Claude, mots-clés).
+- `api/histoire.py` (Vercel, Python) appelle l'API Claude avec la description du format des histoires
+  (même règles que ce fichier) et renvoie l'histoire JSON (FR + EN). `maxDuration` 300 s dans `vercel.json`.
+- « Login » : un **code famille** demandé une fois dans l'appli (gardé dans `localStorage` `tracto.famille.v1`),
+  vérifié par le serveur. Variables Vercel (Settings → Environment Variables, jamais dans le code) :
+  `ANTHROPIC_API_KEY`, `FAMILLE_CODE`, et facultatif `CLAUDE_MODELE` (défaut `claude-sonnet-5-5`).
+- L'appli vérifie la réponse (`histoireDeClaude()` : `normalise`, filtre pour enfants sur tous les textes),
+  la convertit en histoire de l'appli (modifiable dans l'éditeur, badge « Moi ») et la lance directement.
+
 ## Jeux pour apprendre (adaptés à l'âge)
 - `"action": "chiffres"` : des bulles 1, 2, 3… à toucher dans l'ordre (3 ans : 1-3, 4 ans : 1-5, 5 ans : 1-7 ;
   6 ans et plus : 3 petites additions « 2 + 3 = ? »). Pas de main qui montre la réponse (un petit halo après 7 s).
