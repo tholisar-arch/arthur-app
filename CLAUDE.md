@@ -40,6 +40,15 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
+## Style des dessins : dessin animé avec un peu de volume
+- `teinte()` (dessins.js) : chaque forme pleine de `rrect`/`poly` reçoit un dégradé vertical (clair en haut, un peu
+  plus foncé en bas), chaque `rond`/`ovale` un reflet arrondi (lumière en haut à gauche). Pas sur les très grands fonds.
+- Vitres (`VITRE`) : deux reflets en biais (`refletVitre`) ; pneus : reflet ; bras/jambes : liseré clair.
+- Décor : ciel en dégradé, brume à l'horizon, herbe et cailloux au sol, ombres douces, halo du soleil, vrai croissant
+  de lune, voile bleu la nuit, arbres en bouquet de feuillage, dessous gris des nuages.
+- `RELIEF.on = false` : retour au dessin tout plat. La boucle (app.js) le coupe toute seule si le dessin dépasse
+  ~13 ms par image (vieille tablette). Dessiner de nouvelles choses avec les primitives : le volume vient tout seul.
+
 ## Le héros
 L'appli est « Les aventures de [héros] » (« d' » devant une voyelle). Le héros = le personnage `arthur` de l'atelier
 (« ⭐ Héros de l'histoire ») : son prénom (`app.prenom`) et son allure servent partout ({prenom}, titres, voix, âge des jeux).

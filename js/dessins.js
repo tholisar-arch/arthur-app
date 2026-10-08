@@ -25,36 +25,62 @@ function hasard(graine) { // générateur pseudo-aléatoire reproductible
 }
 
 // ------------------------------------------------------------ primitives (coordonnées écran)
-// Style « à plat » (entre notre dessin et un dessin animé pour tout-petits) : contours fins,
-// dans une teinte plus foncée de la couleur de l'objet plutôt qu'un trait noir.
+// Style dessin animé avec un peu de volume : contours fins dans une teinte plus foncée de l'objet (pas de trait noir),
+// et chaque forme éclairée doucement d'en haut à gauche (dégradé clair -> couleur -> un peu plus foncé).
+// Les ronds et les ovales ont un reflet arrondi, comme une balle. RELIEF.on = false : retour au dessin tout plat.
 const TRAIT = 0.62;
+const RELIEF = { on: true, fort: 1 };
+function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
+  if (!RELIEF.on || w < 7 || h < 7 || w * h > 600000 || !ctx.createLinearGradient) return css(fill);
+  const lum = (fill[0] * 0.3 + fill[1] * 0.59 + fill[2] * 0.11) / 255, k = RELIEF.fort;
+  const haut = clair(fill, 0.24 * k), bas = fonce(fill, 1 - (lum > 0.9 ? 0.06 : 0.15) * k);
+  const g = arrondi ? ctx.createRadialGradient(x + w * 0.36, y + h * 0.3, Math.min(w, h) * 0.04, x + w * 0.46, y + h * 0.46, Math.max(w, h) * 0.62)
+    : ctx.createLinearGradient(0, y, 0, y + h);
+  if (!g || !g.addColorStop) return css(fill);
+  g.addColorStop(0, css(haut)); g.addColorStop(arrondi ? 0.5 : 0.45, css(fill)); g.addColorStop(1, css(bas));
+  return g;
+}
 function bordure(ctx, fill, bord, colBord) {
   ctx.lineWidth = Math.max(1, bord * TRAIT);
   ctx.strokeStyle = css(colBord === CONTOUR && fill ? fonce(fill, 0.7) : colBord);
   ctx.stroke();
 }
+const estVitre = (c) => c && c[0] === VITRE[0] && c[1] === VITRE[1] && c[2] === VITRE[2];
+function refletVitre(ctx, chemin, x, y, w, h) { // deux bandes de lumière en biais sur le verre
+  if (!RELIEF.on || w < 12 || h < 12) return;
+  ctx.save(); ctx.beginPath(); chemin(); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  const b = Math.min(w, h);
+  ctx.beginPath(); ctx.moveTo(x + w * 0.18, y + h); ctx.lineTo(x + w * 0.18 + b * 0.32, y + h); ctx.lineTo(x + w * 0.62 + b * 0.32, y); ctx.lineTo(x + w * 0.62, y); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.beginPath(); ctx.moveTo(x + w * 0.5, y + h); ctx.lineTo(x + w * 0.5 + b * 0.12, y + h); ctx.lineTo(x + w * 0.94 + b * 0.12, y); ctx.lineTo(x + w * 0.94, y); ctx.fill();
+  ctx.restore();
+}
 function rrect(ctx, x, y, w, h, rad, fill, bord, colBord = CONTOUR) {
-  ctx.beginPath();
-  if (rad > 0) ctx.roundRect(x, y, w, h, Math.min(rad, w / 2, h / 2)); else ctx.rect(x, y, w, h);
-  if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
+  const chemin = () => { if (rad > 0) ctx.roundRect(x, y, w, h, Math.min(rad, w / 2, h / 2)); else ctx.rect(x, y, w, h); };
+  ctx.beginPath(); chemin();
+  if (fill) { ctx.fillStyle = teinte(ctx, fill, x, y, w, h); ctx.fill(); }
   if (bord) bordure(ctx, fill, bord, colBord);
+  if (estVitre(fill)) refletVitre(ctx, chemin, x, y, w, h);
 }
 function ovale(ctx, x, y, w, h, fill, bord, colBord = CONTOUR) {
   ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * PI);
-  if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
+  if (fill) { ctx.fillStyle = teinte(ctx, fill, Math.min(x, x + w), Math.min(y, y + h), Math.abs(w), Math.abs(h), true); ctx.fill(); }
   if (bord) bordure(ctx, fill, bord, colBord);
 }
 function rond(ctx, x, y, r, fill, bord, colBord = CONTOUR) {
   ctx.beginPath(); ctx.arc(x, y, Math.max(0.5, r), 0, 2 * PI);
-  if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
+  if (fill) { ctx.fillStyle = teinte(ctx, fill, x - r, y - r, 2 * r, 2 * r, true); ctx.fill(); }
   if (bord) bordure(ctx, fill, bord, colBord);
 }
 function poly(ctx, pts, fill, bord, colBord = CONTOUR) {
-  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.closePath(); ctx.lineJoin = "round";
-  if (fill) { ctx.fillStyle = css(fill); ctx.fill(); }
+  const chemin = () => { ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); };
+  ctx.beginPath(); chemin(); ctx.lineJoin = "round";
+  let y0 = Infinity, y1 = -Infinity, x0 = Infinity, x1 = -Infinity;
+  for (const p of pts) { if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; }
+  if (fill) { ctx.fillStyle = teinte(ctx, fill, x0, y0, x1 - x0, y1 - y0); ctx.fill(); }
   if (bord) bordure(ctx, fill, bord, colBord);
+  if (estVitre(fill)) refletVitre(ctx, chemin, x0, y0, x1 - x0, y1 - y0);
 }
 function trait(ctx, a, b, w, col, cap = "butt") {
   ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
@@ -81,6 +107,7 @@ class Pen {
     const pa = this.P(...a), pb = this.P(...b), ww = this.w(w);
     trait(this.ctx, pa, pb, ww + this.w(2.5), fonce(c, 0.7), "round");
     trait(this.ctx, pa, pb, ww, c, "round");
+    if (RELIEF.on && ww >= 4) trait(this.ctx, [pa[0] - ww * 0.18, pa[1] - ww * 0.12], [pb[0] - ww * 0.18, pb[1] - ww * 0.12], ww * 0.35, clair(c, 0.3), "round");
   }
   arc(c, x1, y1, x2, y2, a0, a1, w = 3) { const r = this.R(x1, y1, x2, y2); arcRect(this.ctx, ...r, a0, a1, this.w(w), c); }
 }
@@ -88,6 +115,7 @@ class Pen {
 // ------------------------------------------------------------ pièces des véhicules
 function roue(pen, cx, r, rot) {
   pen.circle(PNEU, cx, -r, r, true);
+  if (RELIEF.on) { const c = pen.P(cx, -r), ctx = pen.ctx; ctx.beginPath(); ctx.arc(c[0], c[1], r * pen.s * 0.8, PI * 1.08, PI * 1.62); ctx.lineWidth = Math.max(1, r * pen.s * 0.13); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineCap = "round"; ctx.stroke(); ctx.lineCap = "butt"; }
   pen.circle(JANTE, cx, -r, r * 0.58);
   for (let k = 0; k < 4; k++) {
     const a = rot + (k * PI) / 2;
@@ -214,8 +242,19 @@ const VEHICULES_DESSIN = {
   },
 };
 
-function ombre(ctx, x, g, largeur, hauteur) {
+function ombre(ctx, x, g, largeur, hauteur) { // ombre douce au sol (plus foncée au centre)
   ctx.beginPath(); ctx.ellipse(x, g + 2, largeur / 2, hauteur / 2, 0, 0, 2 * PI);
+  if (RELIEF.on && ctx.createRadialGradient && largeur > 4) {
+    ctx.save(); ctx.translate(x, g + 2); ctx.scale(1, Math.max(0.05, hauteur / largeur));
+    const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, largeur / 2);
+    ctx.restore();
+    if (gr && gr.addColorStop) {
+      gr.addColorStop(0, "rgba(20,25,40,0.36)"); gr.addColorStop(0.65, "rgba(20,25,40,0.22)"); gr.addColorStop(1, "rgba(20,25,40,0)");
+      ctx.save(); ctx.translate(x, g + 2); ctx.scale(1, Math.max(0.05, hauteur / largeur));
+      ctx.beginPath(); ctx.arc(0, 0, largeur / 2, 0, 2 * PI); ctx.fillStyle = gr; ctx.fill(); ctx.restore();
+      return;
+    }
+  }
   ctx.fillStyle = "rgba(0,0,0,0.27)"; ctx.fill();
 }
 
@@ -281,13 +320,30 @@ const SOLS = {
   ferme: [[140, 205, 90], [215, 185, 135]], port: [[205, 195, 175], [175, 165, 155]],
 };
 
-function soleil(ctx, x, y, t) { // soleil simple, sans visage
-  ctx.fillStyle = "rgba(255,235,140,0.35)";
-  ctx.beginPath(); ctx.arc(x, y, 54 + 2 * Math.sin(t * 1.5), 0, 2 * PI); ctx.fill();
+function soleil(ctx, x, y, t) { // soleil simple, sans visage, avec un halo de lumière
+  if (RELIEF.on && ctx.createRadialGradient) {
+    const h = ctx.createRadialGradient(x, y, 30, x, y, 150 + 4 * Math.sin(t * 1.5));
+    if (h && h.addColorStop) {
+      h.addColorStop(0, "rgba(255,240,170,0.55)"); h.addColorStop(0.4, "rgba(255,240,180,0.2)"); h.addColorStop(1, "rgba(255,245,200,0)");
+      ctx.fillStyle = h; ctx.beginPath(); ctx.arc(x, y, 155, 0, 2 * PI); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = "rgba(255,235,140,0.35)";
+    ctx.beginPath(); ctx.arc(x, y, 54 + 2 * Math.sin(t * 1.5), 0, 2 * PI); ctx.fill();
+  }
   rond(ctx, x, y, 38, [255, 222, 70], 3);
 }
-function lune(ctx, x, y) { rond(ctx, x, y, 38, [250, 245, 200]); rond(ctx, x + 18, y - 10, 32, CIELS.nuit[0]); }
+function lune(ctx, x, y) { // un vrai croissant (découpé, donc joli sur n'importe quel ciel) et un halo doux
+  if (RELIEF.on && ctx.createRadialGradient) {
+    const h = ctx.createRadialGradient(x, y, 30, x, y, 110);
+    if (h && h.addColorStop) { h.addColorStop(0, "rgba(255,250,210,0.22)"); h.addColorStop(1, "rgba(255,250,210,0)"); ctx.fillStyle = h; ctx.beginPath(); ctx.arc(x, y, 110, 0, 2 * PI); ctx.fill(); }
+  }
+  ctx.save(); ctx.beginPath(); ctx.rect(x - 60, y - 60, 120, 120); ctx.arc(x + 18, y - 10, 32, 0, 2 * PI); ctx.clip("evenodd");
+  rond(ctx, x, y, 38, [250, 245, 200]);
+  ctx.restore();
+}
 function nuage(ctx, x, y, s = 1, col = [255, 255, 255]) {
+  if (RELIEF.on) for (const [dx, dy, r] of [[2, 6, 27], [32, 14, 25], [62, 6, 27]]) rond(ctx, x + dx * s, y + dy * s, r * s, fonce(col, 0.9));
   for (const [dx, dy, r] of [[0, 0, 28], [30, -12, 34], [62, 0, 28], [30, 8, 26]]) rond(ctx, x + dx * s, y + dy * s, r * s, col);
 }
 function etoile(ctx, x, y, r, col, a = 0) {
@@ -300,9 +356,14 @@ function etoile(ctx, x, y, r, col, a = 0) {
 }
 const boucle = (base, scroll, k, w, marge = 200) => mod(base - scroll * k, w + 2 * marge) - marge;
 
-function arbre(ctx, x, g, s = 1, col = [95, 175, 70]) { // arbre « sucette »
-  rrect(ctx, x - 5 * s, g - 72 * s, 10 * s, 72 * s, 3 * s, [150, 105, 65], 3);
-  rond(ctx, x, g - 98 * s, 40 * s, col, 4);
+function arbre(ctx, x, g, s = 1, col = [95, 175, 70]) { // arbre : tronc et bouquet de feuillage
+  if (!RELIEF.on) { rrect(ctx, x - 5 * s, g - 72 * s, 10 * s, 72 * s, 3 * s, [150, 105, 65], 3); rond(ctx, x, g - 98 * s, 40 * s, col, 4); return; }
+  poly(ctx, [[x - 7 * s, g], [x + 7 * s, g], [x + 4 * s, g - 74 * s], [x - 4 * s, g - 74 * s]], [150, 105, 65], 3);
+  trait(ctx, [x, g - 62 * s], [x + 14 * s, g - 80 * s], Math.max(1, 4 * s), [140, 98, 60], "round");
+  const touffes = [[-24, -84, 26], [24, -86, 25], [0, -78, 26], [-14, -108, 27], [16, -110, 26], [0, -124, 22]];
+  for (const [dx, dy, r] of touffes) rond(ctx, x + dx * s, g + dy * s, r * s, col, 4); // le contour du bouquet
+  for (const [dx, dy, r] of touffes) rond(ctx, x + dx * s, g + dy * s, (r - 1.5) * s, col);   // puis l'intérieur, sans traits
+  for (const [dx, dy] of [[-16, -100], [12, -118], [6, -92]]) rond(ctx, x + dx * s, g + dy * s, 7 * s, clair(col, 0.22)); // des reflets de lumière
 }
 function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [120, 190, 80], maison = true) {
   // collines toutes rondes, cernées d'un fin trait, avec une petite maison et des arbres au sommet
@@ -341,7 +402,11 @@ function ecrireCentre(ctx, txt, x, y, taille, col) {
 function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   if (!SOLS[nom]) nom = "chantier";
   const [haut, bas] = CIELS[nuit ? "nuit" : nom];
-  ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], 0.45))); // ciel uni
+  if (RELIEF.on) { // le ciel : plus profond en haut, plus clair vers l'horizon
+    const ciel = ctx.createLinearGradient(0, 0, 0, G);
+    ciel.addColorStop(0, css(haut.map((v, i) => lerp(v, bas[i], 0.1)))); ciel.addColorStop(1, css(bas));
+    ctx.fillStyle = ciel;
+  } else ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], 0.45))); // ciel uni
   ctx.fillRect(0, 0, W, H);
   const rng = hasard(7);
   if (nuit) {
@@ -519,8 +584,26 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   }
   else if (DECORS_EXTRA[nom]) DECORS_EXTRA[nom].fond(ctx, W, H, horizon, scroll, t, nuit); // parc, zoo, maison, gare, espace…
   const [herbe, route] = SOLS[nom];
+  if (RELIEF.on) { // un voile de brume sur le fond : les choses lointaines paraissent plus claires
+    const brume = ctx.createLinearGradient(0, horizon - 160, 0, horizon);
+    brume.addColorStop(0, css(bas, 0)); brume.addColorStop(1, css(bas, nuit ? 0.12 : 0.28));
+    ctx.fillStyle = brume; ctx.fillRect(0, horizon - 160, W, 160);
+  }
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
+  if (RELIEF.on) { // brins d'herbe au bord, petits cailloux sur le chemin, ombre douce au bord de la route
+    const r3 = hasard(11), vert = herbe[1] > herbe[0] + 25 && herbe[1] > herbe[2] + 25;
+    ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.fillRect(0, horizon + 18, W, 5);
+    for (let k = 0; k < 70; k++) {
+      const x = boucle(r3() * (W + 200), scroll, 1, W, 100), y = horizon + 3 + r3() * 13, h = 5 + r3() * 6;
+      if (vert) trait(ctx, [x, y + h * 0.5], [x + (r3() - 0.5) * 5, y - h * 0.5], 2, k % 2 ? fonce(herbe, 0.82) : clair(herbe, 0.25), "round");
+      else rond(ctx, x, y, 1.5 + r3() * 1.5, fonce(herbe, 0.88));
+    }
+    for (let k = 0; k < 26; k++) {
+      const x = boucle(r3() * (W + 200), scroll, 1, W, 100), y = horizon + 28 + r3() * (G - horizon + 25);
+      ovale(ctx, x, y, 5 + r3() * 7, 3 + r3() * 3, k % 3 ? fonce(route, 0.88) : clair(route, 0.2));
+    }
+  }
   if (nom === "ville") {
     for (let k = 0; k < 14; k++) rrect(ctx, boucle(k * 90, scroll, 1, W, 100), G + 22, 50, 8, 0, [250, 250, 250]);
   } else if (nom === "ecole") {
@@ -549,6 +632,10 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     else if (nom === "port") { rrect(ctx, x - 9, y - 30, 18, 30, 5, [90, 95, 110], 2); trait(ctx, [x + 9, y - 18], [x + 60, y - 8], 3, [210, 180, 120]); }
     else if (nom === "vacances") for (const dx of [-10, 0, 10]) { trait(ctx, [x + dx, y], [x + dx * 1.3, y - 34], 3, [90, 150, 80]); ovale(ctx, x + dx * 1.3 - 4, y - 50, 8, 18, [170, 120, 220]); }
     else if (nom === "neige") { rond(ctx, x, y - 16, 16, [255, 255, 255]); rond(ctx, x, y - 42, 11, [255, 255, 255]); poly(ctx, [[x, y - 43], [x + 14, y - 40], [x, y - 38]], [255, 140, 30]); }
+  }
+  if (nuit && RELIEF.on) { // la nuit tombe aussi sur le paysage (moins sur le fond, pour garder les fenêtres allumées)
+    ctx.fillStyle = "rgba(25,30,80,0.18)"; ctx.fillRect(0, horizon - 260, W, 260);
+    ctx.fillStyle = "rgba(25,30,80,0.36)"; ctx.fillRect(0, horizon, W, H - horizon);
   }
   if (nom === "neige")
     for (let k = 0; k < 50; k++) rond(ctx, mod(k * 97 + t * 20 + Math.sin(t + k) * 15, W), mod(k * 53 + t * 60, H), 2 + (k % 3), [255, 255, 255]);

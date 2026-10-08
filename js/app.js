@@ -1245,11 +1245,16 @@ async function demarre() {
   document.addEventListener("visibilitychange", () => { if (!document.hidden && app.etat === "menu") app.rechargeHistoires(); });
 
   let avant = performance.now();
-  let erreurs = 0;
+  let erreurs = 0, lent = [];
   const boucle = (maintenant) => {
     const dt = Math.min(0.05, (maintenant - avant) / 1000);
     avant = maintenant;
-    try { app.maj(dt); app.dessine(); erreurs = 0; }
+    try {
+      app.maj(dt);
+      const t0 = performance.now(); app.dessine(); erreurs = 0;
+      // appareil un peu lent (vieille tablette) : on repasse au dessin tout plat pour garder une animation fluide
+      if (RELIEF.on && !document.hidden) { lent.push(performance.now() - t0); if (lent.length > 90) { lent.sort((x, y) => x - y); if (lent[45] > 13) RELIEF.on = false; lent = []; } }
+    }
     catch (e) { // un souci dans un écran : on ne bloque jamais l'enfant, on passe à la suite
       console.error(e);
       if (++erreurs > 3) { erreurs = 0; try { if (app.etat === "histoire" && !app.fin) app.sceneSuivante(); else app.menu(); } catch (e2) { app.etat = "menu"; } }
