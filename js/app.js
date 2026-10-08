@@ -147,7 +147,7 @@ class Scene {
     const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420, pont: 300, arbre: 420, panne: 380, chercher: 130, chiffres: 200, lettres: 200 }[this.act] ?? (A ? A.poste ?? 200 : 430);
     this.altitude = 0; this.ouvert = 0; this.veloX = 440; this.pedale = 0;
     this.cacheHeros = !!d.cache_heros || this.act === "libre" || !!(A && A.sansEngin) || (INTERIEURS.has(d.decor) && !AVEC_ENGIN.has(this.act));
-    this.elements = (d.elements || []).map((e) => ({ ...e, saut: 0 }));
+    this.elements = (d.elements || []).concat(typeof elementsDesChoses === "function" ? elementsDesChoses(d.choses) : []).map((e) => ({ ...e, saut: 0 }));
     this.aToucher = this.elements.filter((e) => e.toucher);
     if (this.act === "libre") { hero.x = -400; if (this.inter && this.aToucher.length) this.n = this.aToucher.length; }
     let kindActeur = this.act === "panne" ? null : d.vehicule;

@@ -57,6 +57,31 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   existe toujours : `STYLE_DESSIN.plat = false` (alors `RELIEF.on = true`). La boucle (app.js) coupe `RELIEF`
   si le dessin dépasse ~13 ms par image.
 
+## Le grand monde de l'enfant (js/monde.js, chargé après activites.js)
+- **24 lieux en plus** (`LIEUX_MONDE`, ajoutés à `DECORS_EXTRA`) : chambre, salon (la télé passe un dessin animé),
+  cuisine, salle de bain, classe (aussi crèche / nounou), bibliothèque, boulangerie, restaurant, cinéma, cirque, fête
+  foraine, château, jungle, désert, banquise, sous la mer, camping, caserne de pompiers, garage, aquarium, marché,
+  lac, musée, dans les nuages. `interieur: true` les range dans `INTERIEURS` ; `sansCiel` : ni soleil ni nuages.
+  Reconnus dans le texte par `MOTS_DECORS_EXTRA` (mis en tête : « la chambre » n'est plus juste « la maison »).
+  Les activités de la maison ont leur vraie pièce (bain -> salle de bain, cuisine -> cuisine, livre -> chambre…).
+  Dedans, le camion ne vient que pour de vrais travaux (pas pour rouler, jouer ou voler).
+- **45 objets du quotidien** (`CHOSES`, aussi dans `OBJETS_DECOR` pour l'écran libre) : télé, canapé, lit, table,
+  frigo, jouets, nounours, robot, ballons, fruits, pizza, bonbons, parapluie, téléphone, guitare, piano, trottinette,
+  seau, bouée, poisson rouge, tente, feu de camp, luge, trésor, baguette magique, montgolfière, poussette…
+  Une phrase qui les cite -> `etape.choses` (`chosesCitees`, 4 au plus, sauf ceux déjà dans le décor) -> scène
+  `choses` -> posés au fond de la scène (`elementsDesChoses`). Les histoires JSON peuvent aussi écrire `"choses": [...]`.
+- **25 animaux en plus** (`ANIMAUX_MONDE`) : poisson, tortue, papillon, oiseau, escargot, grenouille, souris, renard,
+  hibou, écureuil, abeille, coccinelle, crocodile, zèbre, tigre, dauphin, baleine, pieuvre, crabe, panda,
+  kangourou, serpent, hérisson, âne, chèvre. (`sourireA` corrigé : les animaux sourient au lieu de bouder.)
+- **25 personnes** (`GENS`) : maîtresse, nounou, docteur, infirmière, policier, pompier (`sapeur`), boulanger,
+  cuisinier, facteur, fermier, vendeuse, garagiste, bébé, clown, magicien, gentille sorcière, fée, princesse,
+  prince, roi, reine, chevalier, pirate, astronaute, Père Noël. Modèles comme l'atelier + `chapeau` (casquette,
+  toque, casque de pompier, pirate, pointu, Noël, paille, chevalier, diadème, infirmière, melon, astronaute),
+  `accessoire` en main (livre, baguette, pain, louche, lettre, clé, épée en bois, stéthoscope), `ailes`,
+  `nezRouge`, `tetine`, `bebe` (plus petit). Ils restent dans `STYLES` (`definitPersonnages` ne les efface pas),
+  ne sont pas dans l'atelier, et restent sur place quand on change de lieu (comme les animaux).
+- Éditeur : les lieux et les personnages sont rangés en pages (▶ 1/3) ; les noms trop longs rapetissent.
+
 ## Le héros
 L'appli est « Les aventures de [héros] » (« d' » devant une voyelle). Le héros = le personnage `arthur` de l'atelier
 (« ⭐ Héros de l'histoire ») : son prénom (`app.prenom`) et son allure servent partout ({prenom}, titres, voix, âge des jeux).

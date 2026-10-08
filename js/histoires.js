@@ -157,6 +157,7 @@ function scene(d, decorCourant, premiere, derniere, heros) {
     elements: Array.isArray(d.elements) ? d.elements.filter((e) => e && isFinite(e.x) && isFinite(e.y)).slice(0, 80).map((e) => ({
       type: ["perso", "engin", "heros", "objet"].includes(e.type) ? e.type : "objet", id: String(e.id || ""), x: +e.x, y: +e.y,
       s: borneNb(+e.s || 1, 0.3, 3), f: e.f === -1 ? -1 : 1, col: e.col || null, toucher: !!e.toucher, humeur: e.humeur || null })) : [],
+    choses: Array.isArray(d.choses) ? d.choses.filter((id) => typeof CHOSES !== "undefined" && CHOSES[id]).slice(0, 5) : [],
     objet: d.objet || null, mot: d.mot ? String(d.mot) : null, cleVoix: d.cleVoix || null, partie: d.partie != null ? String(d.partie) : null, partie_en: d.partie_en || null,
   };
 }

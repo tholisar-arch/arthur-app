@@ -94,6 +94,7 @@ function compileHistoire(e) {
       ...(et.voix && et.vid ? { voixPerso: cleVoix(e, et) } : {}),
       ...(et.partie ? { partie: et.partie.fr || "", partie_en: et.partie.en || null } : {}),
       ...(et.objet ? { objet: et.objet } : {}),
+      ...(et.choses && et.choses.length ? { choses: et.choses } : {}),
       ...(et.elements && et.elements.length ? { elements: et.elements } : {}),
       ...(et.mot ? { mot: et.mot } : {}),
       ...(et.vid ? { cleVoix: cleVoix(e, et) } : {}),
@@ -161,7 +162,7 @@ function etapesDepuisTexte(lignes, prenom) {
     const nouveauLieu = lieu || decor || "campagne";
     if (decor && nouveauLieu !== decor) { // on change d'endroit : les animaux du zoo, de la ferme… restent là-bas (sauf s'ils sont cités)
       const cites2 = new Set(cites(texte));
-      for (const id of [...presents]) if (!STYLES[id] && !["chien", "chat"].includes(id) && !cites2.has(id)) presents.delete(id);
+      for (const id of [...presents]) if ((!STYLES[id] || GENS[id]) && !["chien", "chat"].includes(id) && !cites2.has(id)) presents.delete(id); // les animaux et les gens d'un endroit y restent
     }
     decor = nouveauLieu;
     // « …, touche pour glisser » : la consigne pour l'enfant, pas un morceau de l'histoire lue
@@ -171,6 +172,7 @@ function etapesDepuisTexte(lignes, prenom) {
     pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
       texteLibre: { fr: consigneDite ? (/[.!?…]$/.test(recit) ? recit : recit + ".") : texte, en: null }, consigne: consigneDite, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: vehiculesCites(texte), clics: null,
+      choses: chosesCitees(texte, decor),
       objet: /\bdoudou\b/.test(sa) ? "doudou" : /\bcles?\b/.test(sa) ? "cle" : /\b(chat|moustache|minou)\b/.test(sa) ? "chat" : null,
       meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(orage|tonnerre|eclairs?)\b/.test(sa) ? "orage" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
     });
@@ -581,7 +583,9 @@ class Ecriture {
     };
     const puce = (r, texte, on, action, col = [255, 200, 60], taille = 17) => { // petit choix
       rrect(ctx, ...r, 10, on ? col : [255, 255, 255], on ? 4 : 2, on ? fonce(col, 0.75) : [200, 190, 175]);
-      ecrit(ctx, texte, taille, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+      let tl = taille; ctx.font = `700 ${tl}px Fredoka, sans-serif`; // un nom trop long : on écrit un peu plus petit
+      while (tl > 9 && ctx.measureText(texte).width > r[2] - 10) { tl--; ctx.font = `700 ${tl}px Fredoka, sans-serif`; }
+      ecrit(ctx, texte, tl, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
       z.push({ r, action });
     };
     const titre = (texte, x, y) => ecrit(ctx, texte, 20, [110, 90, 70], [x, y], null, true);
@@ -694,7 +698,13 @@ class Ecriture {
     const Y = 306;
     if (this.onglet === "lieu") {
       titre(tr("lieu"), 268, Y);
-      LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 11) * 90, Y + 20 + Math.floor(i / 11) * 40, 85, 36], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 14));
+      { // beaucoup de lieux : 21 par page, la dernière case tourne la page (on s'ouvre sur la page du lieu choisi)
+        const parPage = 21, pages = Math.ceil(LIEUX_ECRITURE.length / parPage);
+        if (this.lieuVu !== this.sc + ":" + this.id) { this.lieuVu = this.sc + ":" + this.id; this.pageLieux = Math.max(0, Math.floor(LIEUX_ECRITURE.indexOf(et.decor) / parPage)); }
+        const page = (this.pageLieux || 0) % pages;
+        LIEUX_ECRITURE.slice(page * parPage, page * parPage + parPage).forEach((l, i) => puce([265 + (i % 11) * 90, Y + 20 + Math.floor(i / 11) * 40, 85, 36], tr("lieux")[l] || l, et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 13));
+        if (pages > 1) puce([265 + 10 * 90, Y + 60, 85, 36], `▶ ${page + 1}/${pages}`, false, () => { this.pageLieux = (page + 1) % pages; joue("clic"); }, [255, 200, 120], 14);
+      }
       titre(tr("action"), 268, Y + 106);
       puce([1030, Y + 100, 110, 34], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90], 16);
       puce([1150, Y + 100, 110, 34], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230], 16);
@@ -707,7 +717,10 @@ class Ecriture {
         puce([265 + (i % 9) * 111, Y + 180 + Math.floor(i / 9) * 44, 104, 38], tr("actions")[a] || a, et.action === a, () => this.choisitAction(a), [255, 200, 60], 14));
     } else if (this.onglet === "qui") {
       titre(tr("quiEstLa"), 268, Y);
-      Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).slice(0, 32).forEach((id, i) => {
+      const tous = Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN), parPage = 31, pagesQui = Math.ceil(tous.length / parPage);
+      const pageQui = (this.pageQui || 0) % pagesQui;
+      if (pagesQui > 1) { const r = [265 + 15 * 62, Y + 20 + 64, 58, 58]; rrect(ctx, ...r, 10, [255, 230, 180], 2, [235, 150, 60]); ecrit(ctx, `▶ ${pageQui + 1}/${pagesQui}`, 14, CONTOUR, [r[0] + 29, r[1] + 29]); z.push({ r, action: () => { this.pageQui = (pageQui + 1) % pagesQui; joue("clic"); } }); }
+      tous.slice(pageQui * parPage, pageQui * parPage + parPage).forEach((id, i) => {
         const on = et.presents.includes(id), r = [265 + (i % 16) * 62, Y + 20 + Math.floor(i / 16) * 64, 58, 58];
         vignette(r, on, () => {
           const [w, h] = tailleElement({ type: "perso", id }), ech = Math.min(50 / w, 52 / h);

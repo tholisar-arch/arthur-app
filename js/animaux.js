@@ -4,7 +4,7 @@
 
 const oeilA = (pen, x, y, r = 5) => { pen.circle([255, 255, 255], x, y, r + 2, true); pen.circle(CONTOUR, x + 1, y, r * 0.6); pen.circle([255, 255, 255], x + 2, y - 1.5, 1.4); };
 const joueA = (pen, x, y, r = 6) => pen.circle([255, 150, 165], x, y, r);
-const sourireA = (pen, x, y, w = 14) => pen.arc(CONTOUR, x - w / 2, y - w / 3, x + w / 2, y + w / 3, 0.15 * PI, 0.85 * PI, 2.5);
+const sourireA = (pen, x, y, w = 14) => pen.arc(CONTOUR, x - w / 2, y - w / 2, x + w / 2, y + w / 4, 1.15 * PI, 1.85 * PI, 2.5); // un sourire (la moitié basse de l'ovale)
 function pattes4(pen, col, xs, haut, bas, ep, marche) { // quatre pattes qui marchent
   xs.forEach((lx, k) => { const sw = Math.sin(marche + k * PI) * ep * 0.6; pen.bras(fonce(col, k % 2 ? 0.8 : 0.9), [lx, haut], [lx + sw, bas], ep); });
 }

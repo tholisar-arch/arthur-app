@@ -448,15 +448,15 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     ctx.fillStyle = ciel;
   } else ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], 0.45))); // ciel uni
   ctx.fillRect(0, 0, W, H);
-  const rng = hasard(7);
-  if (nuit) {
+  const rng = hasard(7), sansCiel = typeof DECORS_EXTRA !== "undefined" && DECORS_EXTRA[nom] && DECORS_EXTRA[nom].sansCiel; // sous la mer : ni soleil ni nuages
+  if (sansCiel) { /* rien dans le ciel */ } else if (nuit) {
     for (let k = 0; k < 40; k++) {
       const x = rng() * W, y = rng() * G * 0.6;
       rond(ctx, x, y, Math.max(1, 2 + 1.5 * Math.sin(t * 3 + k)), [255, 255, 220]);
     }
     lune(ctx, W - 120, 90);
   } else soleil(ctx, W - 110, 90, t);
-  for (let k = 0; k < 4; k++) nuage(ctx, boucle(k * 300 + t * 12, scroll, 0.15, W), 50 + (k % 2) * 45, 0.9 + 0.2 * (k % 2), nuit ? [70, 75, 125] : [255, 255, 255]);
+  if (!sansCiel) for (let k = 0; k < 4; k++) nuage(ctx, boucle(k * 300 + t * 12, scroll, 0.15, W), 50 + (k % 2) * 45, 0.9 + 0.2 * (k % 2), nuit ? [70, 75, 125] : [255, 255, 255]);
 
   const horizon = G - 45;
   if (nom === "chantier") {
@@ -830,6 +830,7 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
     haut: couleurDe("habits", p.haut, "bleu"), bas: couleurDe("habits", p.bas, "jean"),
     chaussures: couleurDe("chaussures", p.chaussures, "noir"),
     robe: typeHaut === "robe", cils: !!p.cils, lunettes: !!p.lunettes, couronne: !!p.couronne, moustache: !!p.moustache,
+    chapeau: p.chapeau || null, chapeauCol: Array.isArray(p.chapeauCol) ? p.chapeauCol : null, accessoire: p.accessoire || null, ailes: !!p.ailes, nezRouge: !!p.nezRouge, tetine: !!p.tetine,
     barbe: !!p.barbe, petiteBarbe: !!p.petiteBarbe && !p.barbe, muscle: corp === "costaud", rond: corp === "rond", dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
   };
 }
@@ -875,7 +876,16 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     if (manche >= 1) baton(st.haut, a, vers(a, m, 0.85), largB * 1.55 * (st.muscle ? 1.25 : 1));
     else if (manche > 0) baton(st.haut, a, vers(a, m, manche), largB * 1.8 * (st.muscle ? 1.25 : 1));
     const p = pen.P(...m); rond(ctx, p[0], p[1], largB * 1.05 * s, peau, 3); // la main toute ronde
+    return m;
   };
+  if (st.ailes) { // des ailes de fée, derrière le dos
+    ctx.save(); ctx.globalAlpha = 0.75;
+    for (const sx of [-1, 1]) {
+      pen.forme([215, 238, 255], [["M", sx * 0.1 * W, epaule + 10], ["C", sx * 1.1 * W, epaule - 40, sx * 1.3 * W, epaule + 20, sx * 0.2 * W, epaule + 24], ["Z"]]);
+      pen.forme([235, 220, 255], [["M", sx * 0.1 * W, epaule + 22], ["C", sx * 0.9 * W, epaule + 40, sx * 0.8 * W, epaule + 70, sx * 0.15 * W, epaule + 34], ["Z"]]);
+    }
+    ctx.restore();
+  }
   bras(0);
   [0, 1].forEach((k) => {
     const lx = (k ? 1 : -1) * W * 0.18, sw = Math.sin(marche + k * PI) * L * 0.3;
@@ -918,7 +928,8 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     else if (st.dessin === "etoile") etoile(ctx, c[0], c[1] - 4 * s, 9 * s, [255, 215, 60], 0);
     else if (st.dessin === "coeur") coeur(ctx, c[0], c[1] - 6 * s, 7 * s, [230, 60, 90]);
   }
-  bras(1);
+  if (st.accessoire === "stethoscope") { pen.courbe([90, 95, 110], [[-0.22 * W, epaule + 2], [0, epaule + T * 0.55], [0.22 * W, epaule + 2]], 2.2); pen.circle([170, 175, 190], 0.05 * W, epaule + T * 0.5, Math.max(2, W * 0.07), true); }
+  const main = bras(1);
 
   // --- la tête : grosse et ronde, avec un petit nez rond qui dépasse vers l'avant, une oreille
   const visage = [["M", 0.0, -1.0], ["C", 0.58, -1.0, 0.98, -0.62, 1.0, -0.1], ["C", 0.98, 0.5, 0.62, 0.92, 0.02, 0.92],
@@ -952,6 +963,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     pen.forme(cheveux, tete([["M", 0.7, -0.7], ["C", 1.3, -0.95, 1.6, -0.2, 1.38, 0.38], ["C", 1.3, 0.1, 1.08, -0.2, 0.86, -0.3], ["Z"]]));
     for (const u of [-0.9, 0.84]) pen.circle([250, 90, 130], tx + u * R, ty - 0.48 * R, 0.11 * R, true);
   }
+  if (st.chapeau) chapeauDe(pen, st, tete, tx, ty, R, s, t);
   if (st.couronne) {
     const y0 = ty - R * (co === "chauve" || co === "papi" ? 0.94 : 1.06);
     pen.poly([255, 205, 50], [[-R * 0.5, y0], [-R * 0.6, y0 - R * 0.55], [-R * 0.25, y0 - R * 0.28], [0, y0 - R * 0.68], [R * 0.25, y0 - R * 0.28], [R * 0.6, y0 - R * 0.55], [R * 0.5, y0]]);
@@ -991,6 +1003,73 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   if (peur) pen.ellipse([150, 50, 60], tx + 0.6 * R, ty + 0.52 * R, tx + 0.76 * R, ty + 0.72 * R, true);
   else if (joie || mange > 0.3) pen.forme([200, 60, 75], tete([["M", 0.48, 0.56], ["Q", 0.7, 0.6, 0.92, 0.5], ["Q", 0.84, 0.88, 0.48, 0.56], ["Z"]]));
   else pen.courbe(levres, pts([[0.5, 0.58], [0.72, 0.72], [0.9, 0.54]]), adulte ? 2.4 : 2.2);
+  if (st.nezRouge) pen.circle([230, 40, 50], tx + 1.06 * R, ty + 0.12 * R, 0.17 * R, true);
+  if (st.tetine) { pen.circle([255, 255, 255], tx + 0.72 * R, ty + 0.62 * R, 0.16 * R, true); pen.circle([120, 190, 240], tx + 0.72 * R, ty + 0.62 * R, 0.1 * R, true); }
+  if (st.accessoire && st.accessoire !== "stethoscope") objetEnMain(pen, st.accessoire, main, t);
+  if (st.chapeau === "astronaute") {
+    const p = pen.P(tx + 0.05 * R, ty - 0.05 * R);
+    ctx.beginPath(); ctx.arc(p[0], p[1], 1.32 * R * s, 0, 2 * PI); ctx.fillStyle = "rgba(200,230,255,0.22)"; ctx.fill();
+    ctx.lineWidth = Math.max(2, 5 * s); ctx.strokeStyle = css([235, 240, 248]); ctx.stroke(); ctx.lineWidth = Math.max(1, 1.5 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0], p[1], 1.1 * R * s, 1.15 * PI, 1.45 * PI); ctx.lineWidth = Math.max(1, 4 * s); ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.stroke();
+  }
+}
+function chapeauDe(pen, st, tete, tx, ty, R, s, t) { // casquette, toque, casque, chapeau pointu…
+  const c = st.chapeauCol, blanc = [252, 252, 250];
+  switch (st.chapeau) {
+    case "casquette": { const col = c || [40, 60, 120];
+      pen.forme(col, tete([["M", -0.94, -0.5], ["C", -0.98, -1.24, 0.92, -1.28, 0.96, -0.5], ["Z"]]));
+      pen.forme(fonce(col, 0.8), tete([["M", 0.45, -0.56], ["Q", 1.1, -0.62, 1.42, -0.44], ["Q", 1.0, -0.38, 0.45, -0.48], ["Z"]]));
+      pen.circle([255, 210, 60], tx + 0.12 * R, ty - 0.8 * R, 0.1 * R, true); break; }
+    case "toque":
+      for (const [u, v, r] of [[-0.45, -1.3, 0.36], [0.5, -1.28, 0.36], [0.03, -1.46, 0.42]]) pen.circle(blanc, tx + u * R, ty + v * R, r * R, true);
+      pen.forme(blanc, tete([["M", -0.74, -0.66], ["L", 0.74, -0.66], ["L", 0.7, -1.02], ["L", -0.7, -1.02], ["Z"]])); break;
+    case "casquePompier": { const col = c || [210, 50, 50];
+      pen.forme(col, tete([["M", -0.98, -0.45], ["C", -1.02, -1.38, 1.02, -1.38, 0.98, -0.45], ["Z"]]));
+      pen.forme(fonce(col, 0.85), tete([["M", -1.15, -0.5], ["Q", 0, -0.66, 1.35, -0.42], ["Q", 0, -0.3, -1.15, -0.5], ["Z"]]));
+      pen.courbe(fonce(col, 0.7), [[tx - 0.05 * R, ty - 0.55 * R], [tx, ty - 1.3 * R], [tx + 0.05 * R, ty - 0.55 * R]], 2);
+      pen.circle([255, 210, 60], tx + 0.4 * R, ty - 0.82 * R, 0.13 * R, true); break; }
+    case "pirate":
+      pen.forme([45, 40, 50], tete([["M", -1.25, -0.6], ["Q", -0.9, -1.0, -0.62, -1.3], ["Q", 0, -1.02, 0.62, -1.3], ["Q", 0.95, -1.0, 1.25, -0.6], ["Q", 0, -0.84, -1.25, -0.6], ["Z"]]));
+      pen.circle(blanc, tx, ty - 0.98 * R, 0.13 * R);
+      pen.line(blanc, [tx - 0.16 * R, ty - 0.8 * R], [tx + 0.16 * R, ty - 0.68 * R], 2); pen.line(blanc, [tx + 0.16 * R, ty - 0.8 * R], [tx - 0.16 * R, ty - 0.68 * R], 2); break;
+    case "pointu": { const col = c || [70, 50, 150];
+      pen.forme(col, tete([["M", -0.72, -0.64], ["Q", -0.2, -1.6, 0.4, -2.35], ["Q", 0.46, -1.4, 0.78, -0.64], ["Z"]]));
+      pen.ellipse(col, tx - 1.28 * R, ty - 0.8 * R, tx + 1.34 * R, ty - 0.5 * R);
+      pen.forme(clair(col, 0.4), tete([["M", -0.7, -0.66], ["Q", 0, -0.82, 0.76, -0.66], ["L", 0.7, -0.86], ["Q", 0, -1.0, -0.64, -0.86], ["Z"]]), false);
+      for (const [u, v] of [[0.0, -1.2], [0.25, -1.65], [-0.2, -1.0]]) { const p = pen.P(tx + u * R, ty + v * R); etoile(pen.ctx, p[0], p[1], 0.11 * R * s, [255, 220, 80], t * 0.5); } break; }
+    case "noel":
+      pen.forme([215, 45, 50], tete([["M", -0.95, -0.6], ["Q", -0.7, -1.5, 0.1, -1.45], ["Q", 0.8, -1.4, 1.18, -0.85], ["Q", 0.9, -1.0, 0.95, -0.6], ["Z"]]));
+      pen.forme(blanc, tete([["M", -1.0, -0.46], ["Q", 0, -0.8, 1.0, -0.46], ["L", 1.0, -0.68], ["Q", 0, -1.0, -1.0, -0.68], ["Z"]]));
+      pen.circle(blanc, tx + 1.2 * R, ty - 0.8 * R, 0.17 * R, true); break;
+    case "paille":
+      pen.ellipse([235, 200, 110], tx - 1.45 * R, ty - 0.74 * R, tx + 1.5 * R, ty - 0.42 * R);
+      pen.forme([240, 210, 120], tete([["M", -0.75, -0.6], ["Q", -0.72, -1.36, 0.05, -1.36], ["Q", 0.76, -1.36, 0.8, -0.6], ["Z"]]));
+      pen.forme([210, 70, 60], tete([["M", -0.76, -0.66], ["Q", 0, -0.78, 0.8, -0.66], ["L", 0.78, -0.82], ["Q", 0, -0.94, -0.74, -0.82], ["Z"]]), false); break;
+    case "casqueChevalier": { const gris = [190, 195, 210];
+      pen.forme(gris, tete([["M", -1.04, 0.15], ["C", -1.12, -1.38, 1.12, -1.38, 1.02, -0.42], ["L", -0.42, -0.42], ["Q", -0.5, -0.1, -0.5, 0.15], ["Z"]]));
+      pen.courbe(fonce(gris, 0.75), [[tx - 0.9 * R, ty - 0.7 * R], [tx, ty - 1.3 * R], [tx + 0.9 * R, ty - 0.7 * R]], 1.6);
+      pen.forme([220, 60, 70], tete([["M", -0.1, -1.1], ["Q", -0.6, -1.9, -0.9, -1.5], ["Q", -0.5, -1.4, -0.1, -1.1], ["Z"]])); break; }
+    case "diademe":
+      pen.poly([235, 235, 250], [[tx - 0.45 * R, ty - 0.98 * R], [tx - 0.36 * R, ty - 1.26 * R], [tx - 0.16 * R, ty - 1.06 * R], [tx, ty - 1.34 * R], [tx + 0.16 * R, ty - 1.06 * R], [tx + 0.36 * R, ty - 1.26 * R], [tx + 0.45 * R, ty - 0.98 * R]]);
+      pen.circle([240, 110, 180], tx, ty - 1.12 * R, 0.08 * R, true); break;
+    case "infirmiere":
+      pen.forme(blanc, tete([["M", -0.6, -0.9], ["L", 0.62, -0.9], ["L", 0.5, -1.26], ["L", -0.48, -1.26], ["Z"]]));
+      pen.line([220, 60, 60], [tx, ty - 1.18 * R], [tx, ty - 0.98 * R], 3); pen.line([220, 60, 60], [tx - 0.1 * R, ty - 1.08 * R], [tx + 0.1 * R, ty - 1.08 * R], 3); break;
+    case "melon": { const col = c || [90, 160, 230];
+      pen.ellipse(col, tx - 0.62 * R, ty - 1.12 * R, tx + 0.7 * R, ty - 0.96 * R);
+      pen.forme(col, tete([["M", -0.42, -1.06], ["Q", -0.42, -1.5, 0.05, -1.5], ["Q", 0.5, -1.5, 0.5, -1.06], ["Z"]]));
+      pen.forme([240, 80, 90], tete([["M", -0.42, -1.08], ["L", 0.5, -1.08], ["L", 0.48, -1.18], ["L", -0.42, -1.18], ["Z"]]), false); break; }
+  }
+}
+function objetEnMain(pen, quoi, m, t) { // ce que la personne tient dans sa main (devant)
+  const ctx = pen.ctx, P = (dx, dy) => pen.P(m[0] + dx, m[1] + dy);
+  if (quoi === "livre") { pen.rect([220, 80, 80], m[0] - 2, m[1] - 18, m[0] + 22, m[1] + 8, 3); pen.line([255, 255, 255], [m[0] + 2, m[1] - 14], [m[0] + 2, m[1] + 4], 2); }
+  else if (quoi === "baguette") { pen.line([80, 60, 90], [m[0], m[1]], [m[0] + 14, m[1] - 38], 3); const p = P(15, -42); etoile(ctx, p[0], p[1], 9 * pen.s, [255, 215, 60], t); }
+  else if (quoi === "pain") { ctx.save(); const p = P(10, -8); ctx.translate(p[0], p[1]); ctx.rotate(-0.8 * pen.f); rrect(ctx, -30 * pen.s, -5 * pen.s, 60 * pen.s, 10 * pen.s, 5 * pen.s, [225, 170, 90], 2); ctx.restore(); }
+  else if (quoi === "louche") { pen.line([170, 175, 190], [m[0], m[1]], [m[0] + 8, m[1] + 26], 3); pen.circle([170, 175, 190], m[0] + 10, m[1] + 30, 6, true); }
+  else if (quoi === "lettre") { pen.rect([255, 255, 255], m[0] - 4, m[1] - 14, m[0] + 22, m[1] + 4, 2); pen.line([200, 80, 80], [m[0] - 4, m[1] - 14], [m[0] + 9, m[1] - 4], 1.5); pen.line([200, 80, 80], [m[0] + 22, m[1] - 14], [m[0] + 9, m[1] - 4], 1.5); }
+  else if (quoi === "cle") { pen.line([150, 155, 170], [m[0], m[1]], [m[0] + 6, m[1] - 30], 4); pen.circle([150, 155, 170], m[0] + 7, m[1] - 33, 6, true); }
+  else if (quoi === "epee") { pen.line([200, 160, 110], [m[0], m[1] - 4], [m[0] + 4, m[1] - 50], 5); pen.line([150, 100, 60], [m[0] - 8, m[1] - 6], [m[0] + 8, m[1] - 6], 4); }
 }
 
 const AMIS_DESSIN = {
@@ -999,7 +1078,7 @@ const AMIS_DESSIN = {
   stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g + Math.sin(marche) * 2, 0.95 * s, undefined, t, f),
 };
 function definitPersonnages(liste) { // (re)construit les styles de dessin à partir des modèles
-  for (const k of Object.keys(STYLES)) if (!liste[k]) { delete STYLES[k]; delete AMIS_DESSIN[k]; }
+  for (const k of Object.keys(STYLES)) if (!liste[k] && !(typeof GENS !== "undefined" && GENS[k])) { delete STYLES[k]; delete AMIS_DESSIN[k]; } // les gens (monde.js) restent
   PERSONNAGES = liste;
   for (const [id, p] of Object.entries(liste)) {
     STYLES[id] = styleDe(p);
