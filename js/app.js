@@ -121,7 +121,8 @@ class Monde { // ce qui reste d'une scène à l'autre
   }
 }
 
-const DUREE_FONDU = 0.75; // fondu entre deux scènes (secondes)
+const DUREE_FONDU = 0.75;
+const DUREE_VERROU = 0.8; // secondes d'appui pour ouvrir un bouton des parents // fondu entre deux scènes (secondes)
 const RAYON_CIBLE = 100; // taille de la zone à toucher autour de la cible (en pixels de l'image)
 const estimeDuree = (texte) => texte.length / 11 + 1;
 
@@ -189,10 +190,16 @@ class Scene {
     for (const a of m.amis) if (d.partent.includes(a.kind)) { a.part = true; a.cible = a.x < VW / 2 ? -200 : VW + 200; }
     const ecarts = this.act === "manger" ? [-280, 300, -430, 440] : [-250, 250, -420, 420];
     const restants = m.amis.filter((a) => !a.part);
-    const larg = A ? A.largeur ?? 300 : 0, interdits = A ? [[this.cx - larg / 2 - 40, this.cx + larg / 2 + 40]].concat(this.cacheHeros ? [] : [[poste - 170, poste + 200]]) : null;
+    const zA = A ? ZONES_ACTIVITES[this.act] || [-150, 150] : null, avecZone = A && !A.devant && !A.passagers && zA[1] > zA[0];
+    const interdits = (avecZone ? [[this.cx + zA[0] - 25, this.cx + zA[1] + 25]] : []).concat(this.cacheHeros ? [] : [[poste - 170, poste + 200]]);
+    const largeurZones = (z) => z.reduce((t, [a, b]) => t + b - a, 0);
+    let zones = zonesHors(interdits);
+    if (largeurZones(zones) < 140 && interdits.length > 1) zones = zonesHors(interdits.slice(0, 1)); // pas de place : on se serre près du camion
+    if (largeurZones(zones) < 140) zones = [[70, Math.max(200, (avecZone ? this.cx + zA[0] - 25 : 300))]]; // toujours à côté, jamais dessus
     const largeurs = restants.map((a) => largeurAmi(a.kind));
-    const reparties = A && restants.length ? placesLibres(restants.length, interdits, largeurs) // loin de l'activité et du camion
-      : restants.length >= 3 ? placesReparties(restants.length, poste, this.cacheHeros, largeurs) : null; // beaucoup de monde : on s'étale
+    const place = zones.reduce((t, [a, b]) => t + b - a, 0), besoin = largeurs.reduce((t, l) => t + l, 0) || 1;
+    this.echelleFoule = A || restants.length >= 3 ? borne(place / besoin, 0.62, 1) : 1; // trop de monde : tout le monde un peu plus petit
+    const reparties = (A && restants.length) || restants.length >= 3 ? placesDansZones(zones, restants.length, largeurs) : null; // loin de l'activité et du camion
     restants.forEach((a, i) => {
       const aGauche = { arbre: [150, 80, 220, 40], pont: [120, 60, 180, 30], panne: [130, 60, 200, 30], chercher: [300, 240, 340, 200], chiffres: [400, 540, 680, 820], lettres: [400, 540, 680, 820] }[this.act]; // loin de l'obstacle
       a.cible = borne(d.positions[a.kind] ?? (reparties ? reparties[i] : aGauche ? aGauche[i % 4] : poste + ecarts[i % 4]), 70, VW - 70);
@@ -617,7 +624,7 @@ class Scene {
     else if (this.act === "fenetres") maisonAOuvrir(ctx, this.cx, G, this.etages, this.n, m.t);
     else if (this.act === "cadeau") cadeau(ctx, this.cx, G, this.ouvert, m.t);
     else if (this.act === "pont") pont(ctx, this.cx, G, this.etages, this.total);
-    else if (this.A) this.A.dessin(ctx, this.cx, G, this.etatAct());
+    else if (this.A && !this.A.devant) this.A.dessin(ctx, this.cx, G, this.etatAct());
     else if (this.act === "panne") vehiculeEnPanne(ctx, this.panneKind, this.panneCol, this.repare ? -999 : this.cx, G, 1 - this.niveau, m.t, false);
     else if (this.act === "cueillir") {
       buisson(ctx, this.cx, G, 1 - this.niveau);
@@ -634,7 +641,8 @@ class Scene {
       if (this.act === "velo" && this.cyclistes().includes(a)) continue; // sur le vélo (dessinés plus bas)
       if (this.A && this.A.prendActeur && a.kind === this.acteurAct) continue; // l'activité le dessine (sur le toboggan…)
       const dansLEau = this.act === "piscine" && a.kind === "papi" ? 44 : 0; // Papi est dans la piscine
-      dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, 1, a.humeur);
+      if (this.A && this.A.passagers) continue; // ils sont dans le bateau
+      dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, this.echelleFoule || 1, a.humeur);
     }
     if (this.act === "manger") for (let i = 0; i < this.n; i++) { const [x, k] = this.posRepas(i); nourriture(ctx, k, x, G, this.qte[i]); }
     for (const v of [m.hero].concat(this.acteur ? [this.acteur] : [])) {
@@ -647,6 +655,7 @@ class Scene {
         m.amis.forEach((a, i) => dessineAmi(ctx, a.kind, v.x + 2 + i * 32, G + dy - 108, m.t, 1, 0, 0, 0.62, "joie"));
     }
     if (this.act === "piscine") piscineDevant(ctx, this.cx, G, m.t);
+    if (this.A && this.A.devant) this.A.dessin(ctx, this.cx, G, this.etatAct()); // le train passe devant le quai
     if (this.act === "velo") { // le vélo jaune qui vole, avec Arthur devant et Mamie derrière
       const g = G + this.altitude + 8 * Math.sin(m.t * 2) + (this.boost || 0), x = this.veloX;
       ailes(ctx, x + 40, g + 30, m.t);
@@ -668,7 +677,7 @@ class Scene {
     if (this.bulle && this.t > 0.6) { // bulle de dialogue au-dessus de celui qui parle
       const a = m.amis.find((x) => x.kind === this.bulle.qui);
       if (this.bulle.qui === "heros" && !this.cacheHeros) bulleDialogue(ctx, m.hero.x - 20, G - 185, this.bulle.texte);
-      else if (a) { const [bx, by] = boucheAmi(a.kind, a.x + (a.dx || 0), G + a.dy, a.f); bulleDialogue(ctx, bx, by - 30, this.bulle.texte); }
+      else if (a) { const [bx, by] = boucheAmi(a.kind, a.x + (a.dx || 0), G + a.dy, a.f, this.echelleFoule || 1); bulleDialogue(ctx, bx, by - 30, this.bulle.texte); }
     }
     this.dessineFin(ctx);
   }
@@ -926,15 +935,15 @@ class App {
     }
     if (this.etat === "ecrire") return this.ecriture.touche(p);
     if (this.etat === "menu") {
-      if (this.bPerso.touche(p)) { joue("pop"); return this.atelier.ouvre(); }
-      if (this.bEcrire.touche(p)) { joue("pop"); return this.ecriture.ouvre(); }
-      if (this.bRaconter.touche(p)) { joue("pop"); this.ecriture.ouvre(); return this.ecriture.ouvreLibre(true); }
+      if (this.bPerso.touche(p)) return this.verrouParent(this.bPerso, () => this.atelier.ouvre());
+      if (this.bEcrire.touche(p)) return this.verrouParent(this.bEcrire, () => this.ecriture.ouvre());
+      if (this.bRaconter.touche(p)) return this.verrouParent(this.bRaconter, () => { this.ecriture.ouvre(); this.ecriture.ouvreLibre(true); });
       if (this.bLangue.touche(p)) { // français <-> anglais
         changeLangue(LANGUE === "fr" ? "en" : "fr"); joue("pop"); this.voix.stop();
         this.voix.dire(tr("titreAccueil", { prenom: this.prenom }));
         return this.prechargeMenu();
       }
-      if (this.bSuppr.touche(p)) { this.modeSuppr = !this.modeSuppr; joue("clic"); return; }
+      if (this.bSuppr.touche(p)) { if (this.modeSuppr) { this.modeSuppr = false; joue("clic"); return; } return this.verrouParent(this.bSuppr, () => { this.modeSuppr = true; }); }
       if (this.modeSuppr && histoiresCachees().length && this.bRemettre.touche(p)) { remetHistoires(); joue("magie"); return this.rechargeHistoires(); }
       const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
       if (pages > 1 && dans([20, 610, 90, 90], p)) { this.page = mod(this.page - 1, pages); joue("clic"); }
@@ -949,8 +958,8 @@ class App {
       });
     } else if (this.etat === "config") {
       if (this.bRetour.touche(p)) return this.menu();
-      if (this.bNarrer.touche(p)) { joue("pop"); return this.ouvreNarration(); }
-      if (this.bMini.touche(p)) { joue("pop"); return this.miniEd.ouvre(this.histoire, "config"); }
+      if (this.bNarrer.touche(p)) return this.verrouParent(this.bNarrer, () => this.ouvreNarration());
+      if (this.bMini.touche(p)) return this.verrouParent(this.bMini, () => this.miniEd.ouvre(this.histoire, "config"));
       if (this.bGo.touche(p)) {
         joue("klaxon");
         const depart = this.departScene != null ? this.departScene : this.chapDepart ? this.histoire.chapitres[this.chapDepart].debut : 0;
@@ -982,8 +991,29 @@ class App {
   }
 
   // ------------------------------------------------ boucle
+  // ------------------------------------------------ verrou parents : appui long sur les boutons des grands
+  verrouParent(bouton, action) { this.appui = { bouton, action, t: 0 }; joue("clic"); }
+  lacheParent() {
+    if (this.appui && this.appui.t < DUREE_VERROU) { this.astuceVerrou = 2.5; } // appui trop court : on explique
+    this.appui = null;
+  }
+  dessineVerrou(ctx) {
+    if (this.appui) { // un anneau qui se remplit pendant l'appui
+      const [x, y, w, h] = this.appui.bouton.r, k = Math.min(1, this.appui.t / DUREE_VERROU);
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) / 2 + 10, -PI / 2, -PI / 2 + 2 * PI * k);
+      ctx.lineWidth = 8; ctx.strokeStyle = "rgba(255,150,40,0.9)"; ctx.lineCap = "round"; ctx.stroke();
+    }
+    if (this.astuceVerrou > 0) {
+      ctx.globalAlpha = Math.min(1, this.astuceVerrou);
+      rrect(ctx, W / 2 - 280, 640, 560, 50, 16, [255, 245, 225], 3, [235, 150, 60]);
+      ecrit(ctx, tr("verrouAstuce"), 20, [150, 80, 30], [W / 2, 665]);
+      ctx.globalAlpha = 1;
+    }
+  }
   maj(dt) {
     this.t += dt;
+    if (this.appui) { this.appui.t += dt; if (this.appui.t >= DUREE_VERROU) { const a = this.appui.action; this.appui = null; joue("magie"); a(); } }
+    if (this.astuceVerrou > 0) this.astuceVerrou -= dt;
     this.fondu = Math.max(0, this.fondu - dt); this.ouverture = Math.max(0, this.ouverture - dt);
     this.atelier.messageT -= dt;
     if (this.etat === "narrer") this.scene.maj(dt);
@@ -1010,6 +1040,7 @@ class App {
     else if (this.etat === "ecrire") this.ecriture.dessine(ctx, this.t);
     else if (this.etat === "narrer") this.dessineNarration(ctx);
     else if (this.etat === "miniature") this.miniEd.dessine(ctx, this.t);
+    if (this.etat === "menu" || this.etat === "config") this.dessineVerrou(ctx);
     else this.dessineHistoire(ctx);
   }
   dessineMenu(ctx) {
@@ -1171,18 +1202,24 @@ async function demarre() {
     const b = canvas.getBoundingClientRect();
     ed.glisse([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
   });
-  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => { app.ecriture.lache(); app.miniEd.lache(); });
+  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => { app.ecriture.lache(); app.miniEd.lache(); app.lacheParent(); });
+  // hors connexion : l'appli et les voix déjà entendues restent disponibles (voiture, avion…)
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
   // iPhone : selon la version d'iOS, le son n'est autorisé qu'au lever du doigt ou au « clic »
   for (const ev of ["touchend", "click"]) document.addEventListener(ev, () => Audio_.debloque(), { passive: true });
   document.addEventListener("visibilitychange", () => { if (!document.hidden && app.etat === "menu") app.rechargeHistoires(); });
 
   let avant = performance.now();
+  let erreurs = 0;
   const boucle = (maintenant) => {
     const dt = Math.min(0.05, (maintenant - avant) / 1000);
     avant = maintenant;
-    app.maj(dt);
-    app.dessine();
+    try { app.maj(dt); app.dessine(); erreurs = 0; }
+    catch (e) { // un souci dans un écran : on ne bloque jamais l'enfant, on passe à la suite
+      console.error(e);
+      if (++erreurs > 3) { erreurs = 0; try { if (app.etat === "histoire" && !app.fin) app.sceneSuivante(); else app.menu(); } catch (e2) { app.etat = "menu"; } }
+    }
     requestAnimationFrame(boucle);
   };
   requestAnimationFrame(boucle);
@@ -1214,5 +1251,10 @@ function placesDansZones(zones, n, largeurs) { // chacun prend une place à sa t
     if (out.length < k + 1) out.push(Math.round(zones[zones.length - 1][1]));
   }
   return out;
+}
+function zonesHors(interdits) { // la largeur de l'écran moins les endroits occupés
+  let zones = [[70, VW - 70]];
+  for (const [a, b] of interdits) zones = zones.flatMap(([z0, z1]) => [[z0, Math.min(z1, a)], [Math.max(z0, b), z1]]).filter(([z0, z1]) => z1 - z0 > 50);
+  return zones;
 }
 const largeurAmi = (kind) => (STYLES[kind] ? 70 : (TAILLE_AMI[kind] || [90])[0] * 0.75); // la place qu'il prend sur l'écran

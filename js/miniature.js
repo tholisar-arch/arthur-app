@@ -8,7 +8,8 @@ const COULEURS_BANDE = { ...COULEURS, turquoise: [60, 190, 190], marron: [150, 1
 const FONDS_COULEUR = [[255, 240, 200], [205, 232, 255], [212, 244, 210], [255, 222, 232], [236, 222, 255], [255, 255, 255]];
 const LIEUX_MINI = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures", "foret", "montagne", "ferme", "port", "pms"];
 
-function litMiniatures() { try { return JSON.parse(localStorage.getItem(CLE_MINIATURES) || "{}"); } catch (e) { return {}; } }
+let cacheMiniatures = null;
+function litMiniatures() { if (!cacheMiniatures) { try { cacheMiniatures = JSON.parse(localStorage.getItem(CLE_MINIATURES) || "{}"); } catch (e) { cacheMiniatures = {}; } } return cacheMiniatures; }
 function normaliseMini(m) {
   if (!m) return null;
   if (m.type) return { fond: null, bande: null, elements: [{ ...m, x: 0.52, y: 0.88, s: 0.8, f: 1, auto: true }] }; // ancien format : une seule image
@@ -18,6 +19,7 @@ function miniatureDe(h) { return normaliseMini(litMiniatures()[h.fichier] || h.m
 function sauveMiniature(h, mini) {
   const toutes = litMiniatures();
   if (mini) toutes[h.fichier] = mini; else delete toutes[h.fichier];
+  cacheMiniatures = toutes;
   try { localStorage.setItem(CLE_MINIATURES, JSON.stringify(toutes)); } catch (e) { /* stockage indisponible */ }
   if (h.perso) { // une histoire écrite dans l'appli : la miniature voyage avec elle (envoi à la famille)
     const liste = litHistoiresPerso(), e = liste.find((x) => x.id === h.perso);
@@ -83,7 +85,7 @@ function dessineCarte(ctx, h, x, y, w, hh, t, options = {}) {
   lignes.forEach((l, i) => ecrit(ctx, l, 26, CONTOUR, [x + 165, y0 + i * 34], null, true));
   if (erreur) ecrit(ctx, tr("illisible"), 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);
   else {
-    const duree = dureeHistoire(h), info = h.chapitres.length > 1 ? tr("chapitresN", { n: h.chapitres.length }) : tr("images", { n: h.scenes.length });
+    const duree = h.dureeCache ?? (h.dureeCache = dureeHistoire(h)), info = h.chapitres.length > 1 ? tr("chapitresN", { n: h.chapitres.length }) : tr("images", { n: h.scenes.length });
     ecrit(ctx, info + (duree >= 3 ? " · " + tr("minutes", { n: duree }) : "") + (traduite(h) ? "" : "  (FR)"), 18, [150, 140, 130], [x + 165, y + hh - 32], null, true);
   }
   if (h.perso) { rrect(ctx, x + 10, y + 30, 64, 24, 8, [235, 130, 70]); ecrit(ctx, "✎ " + tr("moi"), 14, [255, 255, 255], [x + 42, y + 42]); }
@@ -254,13 +256,14 @@ class EditeurMiniature {
 
 // le dernier camion (et sa couleur) choisi pour chaque histoire : la miniature le montre, l'écran de départ le propose
 const CLE_CAMIONS = "tracto.camions.v1";
-function litCamions() { try { return JSON.parse(localStorage.getItem(CLE_CAMIONS) || "{}"); } catch (e) { return {}; } }
+let cacheCamions = null;
+function litCamions() { if (!cacheCamions) { try { cacheCamions = JSON.parse(localStorage.getItem(CLE_CAMIONS) || "{}"); } catch (e) { cacheCamions = {}; } } return cacheCamions; }
 function camionDe(h) {
   const c = (h && h.fichier && litCamions()[h.fichier]) || {};
   const veh = VEHICULES.includes(c.veh) ? c.veh : h.heros, col = COULEURS[c.col] ? c.col : COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[veh];
   return { veh, col };
 }
 function retientCamion(h, veh, col) {
-  const tous = litCamions(); tous[h.fichier] = { veh, col };
+  const tous = litCamions(); tous[h.fichier] = { veh, col }; cacheCamions = tous;
   try { localStorage.setItem(CLE_CAMIONS, JSON.stringify(tous)); } catch (e) { /* stockage indisponible */ }
 }

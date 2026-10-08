@@ -25,6 +25,18 @@ clair et « ⚡ Tout de suite » (sans IA, mots-clés). Seul le récit est envoy
 La réponse est vérifiée par `histoireDeIA()` (`normalise` + filtre pour enfants), devient une histoire de l'appli
 modifiable, et se lance directement. `maxDuration` 300 s.
 
+## Robustesse, parents, hors connexion, dictée propre
+- La boucle d'animation ne s'arrête jamais : une erreur dans un écran → on passe à l'écran suivant (console.error).
+- Verrou parents : « ✎ Écrire », « 🎤 Raconter », « Personnages », « Supprimer », « 🖼 Miniature » et
+  « 🎙 Raconter avec ma voix » s'ouvrent par un appui long (`DUREE_VERROU` 0,8 s) ; appui court = astuce.
+- Hors connexion : `sw.js` (réseau d'abord pour les fichiers de l'appli, cache pour les voix `/api/voix`).
+- Dictée : `nettoieRecit()` enlève les hésitations (euh, bah, du coup, tu vois…), les bégaiements (« le le »),
+  les mots coupés, et l'oral « le chat il dort » → « le chat dort » (garde « vroum vroum », « très très »).
+  Appliqué à chaque phrase dictée, à la création, et au texte envoyé à l'IA ; bouton « ✨ Rendre joli ».
+  « …, touche pour glisser » devient la consigne de l'écran au lieu d'être lu dans l'histoire.
+- Placement : chaque activité a sa largeur (`ZONES_ACTIVITES`) ; les personnages se mettent à côté, jamais dessus,
+  et rapetissent un peu s'il y a trop de monde (`echelleFoule`).
+
 ## La vie de tous les jours : activités, lieux, animaux (`js/activites.js`, `js/animaux.js`)
 Ajouter une activité = une entrée dans `ACTIVITES` (dessin, endroit à toucher, son, textes FR/EN, mots-clés,
 lieu habituel) : elle est alors disponible partout (moteur générique dans `Scene`, texte libre / dictée,

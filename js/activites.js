@@ -595,11 +595,14 @@ const ACTIVITES = {
     } },
 };
 
+// la place que prend chaque activité (objets autour compris) : les personnages se mettent ailleurs
+const ZONES_ACTIVITES = { toboggan: [-195, 170], balancoire: [-170, 175], ballon: [-160, 330], cerfvolant: [-185, 230], cubes: [-245, 45], puzzle: [-315, 250], flaques: [-310, 300], danse: [-90, 90], musique: [-195, 240], gateau: [-180, 180], bain: [-170, 170], dents: [-150, 150], ranger: [-290, 310], cuisine: [-210, 230], peinture: [-120, 180], livre: [-190, 190], docteur: [-170, 240], courses: [-275, 340], sapin: [-160, 160], jardiner: [-230, 230], peche: [-350, 290], nourrir: [-80, 80], bonhomme: [-110, 110], coquillages: [-265, 280], glace: [-50, 50], laver: [-150, 290], train: [0, 0], avion: [-120, 120], bateau: [0, 0], fusee: [-100, 245] };
+ACTIVITES.train.devant = true; ACTIVITES.bateau.passagers = true; // le train passe devant le quai ; dans le bateau, tout le monde est à bord
 // ================================================================= on branche tout ça dans l'appli
 const MOTS_ACTIVITES = Object.entries(ACTIVITES).map(([id, A]) => [new RegExp(A.mots), id]);
 const MOTS_DECORS_EXTRA = [
   ["\\bparc\\b|aire de jeux|square|playground|\\bpark\\b", "parc"], ["\\bzoo\\b|safari", "zoo"],
-  ["salon|chambre|salle de bain|a l'interieur|dans la maison|a la maison|kitchen|bedroom|bathroom|living room|at home", "maison"],
+  ["salon|chambre|salle de bain|a l'interieur|dans la maison|kitchen|bedroom|bathroom|living room|indoors", "maison"],
   ["magasin|supermarche|boutique|epicerie|\\bshop\\b|\\bstore\\b|supermarket", "magasin"],
   ["docteur|medecin|hopital|cabinet|hospital|doctor", "docteur"], ["\\bgare\\b|\\bstation\\b|\\bquai\\b", "gare"],
   ["espace|planetes?|sur la lune|outer space|\\bspace\\b|planets?|on the moon|cosmos", "espace"], ["aeroport|airport|runway", "aeroport"],

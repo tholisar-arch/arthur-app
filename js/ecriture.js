@@ -164,9 +164,13 @@ function etapesDepuisTexte(lignes, prenom) {
       for (const id of [...presents]) if (!STYLES[id] && !["chien", "chat"].includes(id) && !cites2.has(id)) presents.delete(id);
     }
     decor = nouveauLieu;
+    // « …, touche pour glisser » : la consigne pour l'enfant, pas un morceau de l'histoire lue
+    const ordre = texte.match(/(?:^|[,.;!?]\s*|\s(?:et|alors)\s+)((?:touche|touches|appuie|clique)\b[^.!?]*)[.!?]?\s*$/i);
+    const recit = ordre ? texte.slice(0, ordre.index).replace(/[\s,;]+$/, "").trim() : texte;
+    const consigneDite = ordre && recit ? { fr: ordre[1].trim().replace(/^\p{L}/u, (c) => c.toUpperCase()).replace(/[\s,]+$/, "") + " !", en: null } : null;
     pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
-      texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: vehiculesCites(texte), clics: null, consigne: null,
+      texteLibre: { fr: consigneDite ? (/[.!?…]$/.test(recit) ? recit : recit + ".") : texte, en: null }, consigne: consigneDite, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: vehiculesCites(texte), clics: null,
       objet: /\bdoudou\b/.test(sa) ? "doudou" : /\bcles?\b/.test(sa) ? "cle" : /\b(chat|moustache|minou)\b/.test(sa) ? "chat" : null,
       meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(orage|tonnerre|eclairs?)\b/.test(sa) ? "orage" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
     });
@@ -452,6 +456,7 @@ class Ecriture {
         <div class="ligne">
           ${voix ? `<button id="libreMicro" style="background:#dc5a78;font-size:20px;padding:10px 22px">${tr("dicteeGo")}</button>` : ""}
           <button id="libreChapitre" style="background:#eb8246">${tr("chapNouveau")}</button>
+          <button id="libreJoli" style="background:#5aa0d8">${tr("rendreJoli")}</button>
           <input id="libreTitre" type="text" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="flex:1;min-width:180px;font-size:18px;padding:8px 12px">
         </div>
         <textarea id="libreTexte" placeholder="${tr("libreExemple")}"></textarea>
@@ -473,6 +478,10 @@ class Ecriture {
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
     d.querySelector("#libreAvecIA").onclick = () => this.ecritAvecIA();
+    d.querySelector("#libreJoli").onclick = () => { // enlève les « euh », les répétitions… et montre le résultat
+      const zone = d.querySelector("#libreTexte"), avant = zone.value, apres = textePropre(avant);
+      zone.value = apres; zone.dispatchEvent(new Event("input")); joue(apres !== avant ? "magie" : "clic");
+    };
     // le brouillon est gardé (si on ferme la fenêtre, ou si l'iPad recharge l'appli)
     try {
       const b = JSON.parse(localStorage.getItem(CLE_BROUILLON) || "null");
@@ -504,7 +513,7 @@ class Ecriture {
     r.onresult = (ev) => {
       let fini = "", encours = "";
       for (let k = ev.resultIndex; k < ev.results.length; k++) (ev.results[k].isFinal ? (fini += ev.results[k][0].transcript) : (encours += ev.results[k][0].transcript));
-      if (fini) base = (base + " " + fini).replace(/\s+/g, " ").trim();
+      if (fini) { let propre = nettoieRecit(fini); if (propre && !/[.!?…]$/.test(propre)) propre += "."; base = (base + " " + propre).replace(/\s+/g, " ").trim(); }
       zone.value = (base + " " + encours).trim();
       zone.scrollTop = zone.scrollHeight;
     };
@@ -515,7 +524,7 @@ class Ecriture {
   // ------------------------------------------------ l'IA gratuite écrit l'histoire, automatiquement (api/histoire.py)
   async ecritAvecIA() {
     const d = this.libre, erreur = (m, neutre = false) => { const z = d.querySelector("#libreErreur"); z.textContent = m; z.style.color = neutre ? "#7a5a30" : "#b23c32"; };
-    const texte = d.querySelector("#libreTexte").value.trim(), titre = d.querySelector("#libreTitre").value.trim();
+    const texte = textePropre(d.querySelector("#libreTexte").value), titre = d.querySelector("#libreTitre").value.trim();
     if (texte.length < 10) return erreur(tr("libreVide"));
     const refus = texteRefuse(texte, 8000) || texteRefuse(titre, 80);
     if (refus) return erreur(tr("refuse", { raison: refus }));
@@ -548,7 +557,8 @@ class Ecriture {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
     const titre = d.querySelector("#libreTitre").value.trim() || tr("titreDefaut");
     const brut = d.querySelector("#libreTexte").value;
-    let lignes = this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    let lignes = (this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean))
+      .map((l) => (/^(📖|#)/.test(l) ? l : nettoieRecit(l))).filter(Boolean); // sans « euh » ni bégaiements
     if (!lignes.length) return erreur(tr("libreVide"));
     const refusTitre = texteRefuse(titre, 80);
     if (refusTitre) return erreur(tr("refuse", { raison: refusTitre }));
@@ -980,3 +990,38 @@ function histoireDeIA(brut, titre) {
 
 // ------------------------------------------------ le brouillon du récit (gardé tant que l'histoire n'est pas créée)
 const CLE_BROUILLON = "tracto.brouillon.v1";
+
+// ------------------------------------------------ un récit dicté -> un texte joli à lire (sans « euh », sans bégaiement)
+const SONS_GARDES = /^(vroum|miam|plouf|tchou|pin|pon|boum|bip|tut|clap|coin|meuh|ouaf|wouf|miaou|cocorico|hop|toc|ding|dong|zou|hihi|haha|ha|hi|oh|ah|non|oui|encore|tres|trop|vite|plus|beaucoup|bravo|hourra|chut|splash|vroom|yum|choo|beep|toot|wow|yes|no|very|so|more)$/;
+function nettoieRecit(texte) {
+  let t = " " + String(texte || "").replace(/\s+/g, " ") + " ";
+  const sans = (x) => sansAccent(x).replace(/[^a-z']/g, "");
+  // les hésitations et les petits mots qui ne servent qu'à réfléchir
+  t = t.replace(/[\s,]*\b(?:e+u+h+|e+u{2,}h*|h+e+u+h*|h+u+m+|h+m+|m+h+|bah|beh|bon ben|ben|du coup|en fait|enfin bref|bref|hein|comment dire|comment on dit|disons|you know|um+|uh+|erm+)\b[\s,…]*/gi, " ");
+  t = t.replace(/[\s,]*(?<![\p{L}])(?:tu vois|vous voyez|tu sais|vous savez|voil[aà]|quoi|genre|like)(?![\p{L}])(?=\s*(?:[,.!…]|$|et\s|alors\s|puis\s|mais\s))/giu, "");
+  t = t.replace(/,\s*genre\s*,/gi, ",");
+  t = t.replace(/\s\S+-(?=\s)/g, " "); // les mots coupés : « au par- au parc »
+  // les répétitions : « le le camion », « il va il va au parc » (mais on garde « vroum vroum », « très très »)
+  let mots = t.trim().split(" ").filter(Boolean);
+  for (let taille = 3; taille >= 1; taille--) {
+    const out = [];
+    for (let i = 0; i < mots.length; i++) {
+      const bloc = mots.slice(i, i + taille).map(sans).join(" "), avant = out.slice(-taille).map(sans).join(" ");
+      if (out.length >= taille && bloc && bloc === avant && !(taille === 1 && SONS_GARDES.test(bloc))) { i += taille - 1; continue; }
+      out.push(mots[i]);
+    }
+    mots = out;
+  }
+  t = mots.join(" ");
+  // l'oral « le dinosaure il arrive » -> « le dinosaure arrive »
+  const pasSujet = /^(alors|puis|ensuite|apres|soudain|quand|si|mais|donc|comme|qui|que|tout|et|enfin|maintenant|aujourd'hui|demain|ce|cette|la-bas|ici)$/;
+  t = t.replace(/(^\s*|[.!?…]\s+|\bet\s+)((?:(?:alors|et puis|puis|ensuite|après|apres|soudain|et)\s+)*)((?:(?:le|la|les|l'|un|une|mon|ma|mes|son|sa|ses|notre)\s*)?[\p{L}-]+)\s+(?:il|elle|ils|elles)\s+(?=\p{L})/giu,
+    (m, debut, adv, sujet) => (pasSujet.test(sansAccent(sujet.split(/\s|'/).pop())) ? m : debut + adv + sujet + " "));
+  // la ponctuation et les majuscules
+  t = t.replace(/\s+([,.…])/g, "$1").replace(/([,.!?])(?:\s*[,.])+/g, "$1").replace(/^[\s,.;]+/, "").replace(/,\s*$/, "").trim();
+  t = t.replace(/(^|[.!?…]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+  return t;
+}
+function textePropre(texte) { // tout un récit, ligne par ligne (les lignes de chapitre restent telles quelles)
+  return String(texte || "").split("\n").map((l) => (/^\s*(📖|#)/.test(l) ? l.trim() : nettoieRecit(l))).filter((l, i, t) => l || (i > 0 && t[i - 1])).join("\n").trim();
+}
