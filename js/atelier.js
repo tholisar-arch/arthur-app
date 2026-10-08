@@ -63,6 +63,15 @@ class Atelier {
     this.sauve(); joue("magie");
     this.app.voix.dire(tr("bonjour", { nom }));
   }
+  naissance() { // JJ/MM/AAAA -> AAAA-MM-JJ
+    const p = PERSONNAGES[this.sel], actuelle = p.naissance ? p.naissance.split("-").reverse().join("/") : "";
+    const t = (window.prompt(tr("promptNaissance"), actuelle) || "").trim();
+    const m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+    if (!m) return;
+    const d = `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    if (isNaN(new Date(d)) || new Date(d) > new Date()) return;
+    this.modifie({ naissance: d });
+  }
   renomme() {
     const nom = (window.prompt(tr("promptRenommer"), PERSONNAGES[this.sel].nom) || "").trim();
     if (nom) this.modifie({ nom });
@@ -216,6 +225,16 @@ class Atelier {
       titre(tr("accessoires"), 148);
       choix(148, [["lunettes", tr("lunettes")], ["couronne", tr("couronne")], ["cils", tr("cils")]], (v) => !!p[v], bascule);
       choix(234, [["moustache", tr("moustache")], ["barbe", tr("barbe")]], (v) => !!p[v], bascule);
+      if (p.age !== "adulte") { // la date de naissance : les jeux s'adaptent à l'âge
+        titre(tr("naissance"), 340);
+        const nais = p.naissance ? new Date(p.naissance) : null, ok = nais && !isNaN(nais);
+        const age = ok ? Math.floor((Date.now() - nais.getTime()) / (365.25 * 24 * 3600 * 1000)) : 0;
+        const r = [735, 372, 360, 50];
+        rrect(ctx, ...r, 12, [255, 255, 255], 3, [110, 140, 220]);
+        ecrit(ctx, ok ? `${nais.toLocaleDateString(LANGUE === "en" ? "en-US" : "fr-FR")} · ${tr("ageAns", { n: age })}` : "✎ " + tr("naissanceVide"), 21, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+        z.push({ r, action: () => this.naissance() });
+        ecrit(ctx, tr("naissanceAide"), 15, [150, 140, 130], [735, 432], null, true);
+      }
     }
     ecrit(ctx, this.messageT > 0 ? tr("enregistre") : tr("gardes"), 17,
       this.messageT > 0 ? [60, 150, 70] : [150, 140, 130], [995, 700]);

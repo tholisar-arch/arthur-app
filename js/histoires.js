@@ -2,7 +2,7 @@
 "use strict";
 
 const VEHICULES = ["tractopelle", "benne", "toupie", "pompier", "bulldozer", "grue"];
-const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher", "libre"];
+const ACTIONS = ["rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher", "libre", "chiffres", "lettres"];
 const estAmi = (k) => k in AMIS_DESSIN; // animaux + tous les personnages (y compris ceux du configurateur)
 const INFOS_VEHICULE = {
   tractopelle: ["le tractopelle", "Tracto", "m"], benne: ["le camion benne", "Benny", "m"],
@@ -10,7 +10,7 @@ const INFOS_VEHICULE = {
   bulldozer: ["le bulldozer", "Bouldo", "m"], grue: ["la grue", "Grutty", "f"],
 };
 const COULEUR_FEMININ = { bleu: "bleue", vert: "verte", violet: "violette" };
-const CLICS_DEFAUT = { piscine: 4, cueillir: 5, chateau: 3, route: 5, voler: 3, fenetres: 4, cadeau: 1, velo: 3,manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3, pont: 4, arbre: 4, panne: 4, chercher: 3, libre: 1 };
+const CLICS_DEFAUT = { piscine: 4, cueillir: 5, chateau: 3, route: 5, voler: 3, fenetres: 4, cadeau: 1, velo: 3,manger: 3, spectacle: 4, bulles: 4, calin: 3, trou: 4, feu: 4, deblayer: 4, construire: 4, fete: 5, dormir: 4, rouler: 3, parler: 3, pont: 4, arbre: 4, panne: 4, chercher: 3, libre: 1, chiffres: 3, lettres: 3 };
 const CONSIGNES = {
   trou: "Clique pour remplir le trou !", feu: "Clique pour arroser le feu !", deblayer: "Clique pour pousser le sable !",
   construire: "Clique pour construire la maison !", copains: "Clique pour appeler les copains !",
@@ -24,7 +24,7 @@ const CONSIGNES = {
   rouler: "Clique pour klaxonner !", parler: "Clique pour klaxonner !",
   pont: "Clique pour poser les planches du pont !", arbre: "Clique pour pousser l'arbre !",
   panne: "Clique pour réparer le camion !", chercher: "Clique sur les buissons pour chercher !",
-  libre: "Touche l'image qui brille !",
+  libre: "Touche l'image qui brille !", chiffres: "Touche les chiffres dans l'ordre !", lettres: "Touche les lettres dans l'ordre !",
 };
 const ALIAS_VEHICULE = [
   ["camions? de pompiers?|pompiers?", "pompier"], ["camions?[- ]bennes?|bennes?", "benne"],
@@ -36,7 +36,7 @@ const ALIAS_ACTION = {
   incendie: "feu", arroser: "feu", construire: "construire", batir: "construire", copains: "copains", amis: "copains",
   manger: "manger", miam: "manger", repas: "manger", spectacle: "spectacle", show: "spectacle", bulles: "bulles",
   calin: "calin", bisous: "calin", piscine: "piscine", plouf: "piscine", cueillir: "cueillir", ramasser: "cueillir", chateau: "chateau", "bac a sable": "chateau", voler: "voler", envol: "voler", fenetres: "fenetres", portes: "fenetres", cadeau: "cadeau", velo: "velo", fete: "fete", fin: "fete", dormir: "dormir", nuit: "dormir",
-  rouler: "rouler", route: "route", pont: "pont", arbre: "arbre", panne: "panne", reparer: "panne", chercher: "chercher", cacher: "chercher", libre: "libre", paver: "route", parler: "parler", attendre: "parler",
+  rouler: "rouler", route: "route", pont: "pont", arbre: "arbre", panne: "panne", reparer: "panne", chercher: "chercher", cacher: "chercher", libre: "libre", chiffres: "chiffres", compter: "chiffres", lettres: "lettres", paver: "route", parler: "parler", attendre: "parler",
 };
 const ALIAS_DECOR = {
   chantier: "chantier", ville: "ville", campagne: "campagne", foret: "foret", bois: "foret", ferme: "ferme", port: "port", bateau: "port", phare: "port",
@@ -77,6 +77,8 @@ function action(nom, defaut = "parler") { const n = sansAccent(nom).trim(); retu
 
 function devineAction(texte, premiere, derniere) {
   const n = sansAccent(texte);
+  if (a("\\b(compte|comptent|compter|chiffres?|1, 2, 3|un, deux, trois)\\b", n)) return "chiffres";
+  if (a("\\b(lettres?|epele|alphabet)\\b", n)) return "lettres";
   if (a("artifice|\\bfete\\b|hourra|bravo|\\bgagne", n)) return "fete";
   if (a("\\bfeu\\b|flamme|incendie|brul", n)) return "feu";
   if (a("\\bpont\\b", n)) return "pont";
@@ -146,7 +148,7 @@ function scene(d, decorCourant, premiere, derniere, heros) {
     elements: Array.isArray(d.elements) ? d.elements.filter((e) => e && isFinite(e.x) && isFinite(e.y)).slice(0, 80).map((e) => ({
       type: ["perso", "engin", "heros", "objet"].includes(e.type) ? e.type : "objet", id: String(e.id || ""), x: +e.x, y: +e.y,
       s: borneNb(+e.s || 1, 0.3, 3), f: e.f === -1 ? -1 : 1, col: e.col || null, toucher: !!e.toucher, humeur: e.humeur || null })) : [],
-    objet: d.objet || null, partie: d.partie != null ? String(d.partie) : null, partie_en: d.partie_en || null,
+    objet: d.objet || null, mot: d.mot ? String(d.mot) : null, cleVoix: d.cleVoix || null, partie: d.partie != null ? String(d.partie) : null, partie_en: d.partie_en || null,
   };
 }
 
@@ -160,6 +162,7 @@ function normalise(brut, fichier, date) {
   const scenes = brutes.map((s, i) => {
     const sc = scene(typeof s === "string" ? { texte: s } : s, dec, i === 0, i === brutes.length - 1, heros);
     dec = sc.decor;
+    if (!sc.cleVoix) sc.cleVoix = `${fichier}#${i}`; // où trouver la voix de la famille enregistrée pour cet écran
     return sc;
   });
   const chapitres = [];
@@ -171,6 +174,7 @@ function normalise(brut, fichier, date) {
     titre: String(brut.titre || fichier.replace(/\.[^.]+$/, "")), titre_en: brut.titre_en || null, heros,
     couleur: String(brut.couleur || "").toLowerCase() || null,
     copains: (brut.copains || []).map((c) => vehicule(c)), scenes, chapitres, fichier, date,
+    miniature: brut.miniature && brut.miniature.type ? { type: brut.miniature.type, id: String(brut.miniature.id || ""), col: brut.miniature.col || null } : null,
   };
 }
 

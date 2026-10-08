@@ -6,7 +6,7 @@
 
 const CLE_HISTOIRES = "tracto.histoires.v1";
 const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures", "foret", "montagne", "ferme", "port"];
-const ACTIONS_ECRITURE = ["libre", "rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
+const ACTIONS_ECRITURE = ["libre", "chiffres", "lettres", "rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
   "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher"];
 const ANIMAUX_ECRITURE = ["trex", "chat", "dino", "stego"];
 const MAX_SCENES = 300; // largement de quoi faire une histoire de plus d'une demi-heure
@@ -18,6 +18,8 @@ const cleVoix = (e, et) => e.id + ":" + et.vid; // la voix enregistrée d'une sc
 // le texte automatique de chaque action, en français et en anglais
 const MODELES = {
   libre: ["Regarde !", "Look!"],
+  chiffres: ["On compte ensemble ! Touche les chiffres dans l'ordre.", "Let's count together! Tap the numbers in order."],
+  lettres: ["Écrivons un mot avec les lettres !", "Let's spell a word with the letters!"],
   rouler: ["{nom}, {heros}, part en balade. Vroum, vroum !", "{nom}, {heros}, goes for a ride. Vroom, vroom!"],
   parler: ["Tout le monde se retrouve et discute joyeusement.", "Everyone meets up and has a happy chat."],
   trou: ["Oh ! Un gros trou sur la route. {nom} le remplit avec de la terre.", "Oh! A big hole in the road. {nom} fills it with dirt."],
@@ -92,9 +94,11 @@ function compileHistoire(e) {
       ...(et.partie ? { partie: et.partie.fr || "", partie_en: et.partie.en || null } : {}),
       ...(et.objet ? { objet: et.objet } : {}),
       ...(et.elements && et.elements.length ? { elements: et.elements } : {}),
+      ...(et.mot ? { mot: et.mot } : {}),
+      ...(et.vid ? { cleVoix: cleVoix(e, et) } : {}),
     };
   });
-  return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes };
+  return { titre: e.titre, titre_en: e.titre, heros: e.heros, couleur: e.couleur, decor: e.etapes[0].decor, scenes, miniature: e.miniature || null };
 }
 function litHistoiresPerso() {
   try { return JSON.parse(localStorage.getItem(CLE_HISTOIRES) || "[]"); } catch (e) { return []; }
@@ -127,7 +131,7 @@ function etapesDepuisTexte(lignes, prenom) {
   let decor = null, partie = null;
   const pousse = (et) => { if (partie !== null) { et.partie = { fr: partie, en: null }; partie = null; } etapes.push(et); };
   lignes.forEach((brut, i) => {
-    const chap = brut.trim().match(/^(?:#+\s*(.*)|📖\s*(.*)|(?:chapitre|partie|chapter)\s*\d+\s*[:.\-–]?\s*(.*))$/iu);
+    const chap = brut.trim().match(/^(?:#+\s*(.*)|📖\s*(.*)|(?:(?:chapitre|chapter)\s*(?:\d+|une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|one|two|three|four|five|seven|eight|nine|ten)?|partie\s*\d+)\s*[:.\-–]?\s*(.*))$/iu);
     if (chap) { partie = (chap[1] ?? chap[2] ?? chap[3] ?? "").trim(); return; } // « 📖 L'orage », « # L'orage » ou « Chapitre 2 : L'orage »
     const texte = brut.replace(/\bconfiguration\b\s*[:,.!\-–]*\s*/gi, "").trim().replace(/(^|[.!?]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
     const dialogue = texte.match(/^([^:]{1,30}?)\s*:\s*(.+)$/), qui = dialogue && quiParle(dialogue[1], prenom);
@@ -145,7 +149,9 @@ function etapesDepuisTexte(lignes, prenom) {
     const sa = sansAccent(texte);
     for (const id of amisCites(texte)) presents.add(id);
     if (prenom && new RegExp("(^|[^a-z])" + sansAccent(prenom) + "([^a-z]|$)").test(sa)) presents.add("arthur");
-    decor = devineDecor(texte) || decor || "campagne";
+    let lieu = devineDecor(texte);
+    if (lieu === "dinosaures" && decor && !/volcan|pays|ile|monde|chez les dino/.test(sa)) { lieu = null; presents.add("trex"); }
+    decor = lieu || decor || "campagne";
     pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
       texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: [], clics: null, consigne: null,
@@ -408,14 +414,16 @@ class Ecriture {
   }
 
   // ------------------------------------------------ « texte libre » : une vraie zone de texte par-dessus l'appli
-  ouvreLibre() {
+  ouvreLibre(voix = false) {
     if (this.libre) return;
+    this.dictee = voix;
     const d = document.createElement("div");
     d.style.cssText = "position:fixed;inset:0;background:rgba(60,45,30,.45);display:flex;align-items:center;justify-content:center;z-index:10;touch-action:auto;-webkit-user-select:text;user-select:text;font-family:Fredoka,'Comic Sans MS',sans-serif";
     d.innerHTML = `
       <div style="background:#fffaf0;border-radius:22px;padding:22px;width:min(760px,92vw);max-height:94vh;overflow:auto;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr("libreTitre")}</div>
-        <div style="font-size:15px;color:#7a6a58;line-height:1.35">${tr("libreAide", { prenom: this.app.prenom })}</div>
+        <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr(voix ? "dicteeTitre" : "libreTitre")}</div>
+        <div style="font-size:15px;color:#7a6a58;line-height:1.35">${tr(voix ? "dicteeAide" : "libreAide", { prenom: this.app.prenom })}</div>
+        ${voix ? `<button id="libreMicro" style="font:inherit;font-size:24px;padding:16px;border:0;border-radius:18px;background:#dc5a78;color:#fff">${tr("dicteeGo")}</button>` : ""}
         <input id="libreTitre" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="font:inherit;font-size:20px;padding:10px 14px;border:2px solid #e6d8c2;border-radius:12px">
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button id="libreChapitre" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#eb8246;color:#fff">${tr("chapNouveau")}</button>
@@ -432,6 +440,7 @@ class Ecriture {
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
+    if (voix) d.querySelector("#libreMicro").onclick = () => this.dicte();
     d.querySelector("#libreChapitre").onclick = () => { // insère « 📖 Titre » sur sa propre ligne, là où est le curseur
       const zone = d.querySelector("#libreTexte"), titre = window.prompt(tr("promptChapitre"), "");
       if (titre === null) return zone.focus();
@@ -442,11 +451,31 @@ class Ecriture {
     };
     setTimeout(() => d.querySelector("#libreTexte").focus(), 50);
   }
-  fermeLibre() { if (this.libre) { this.libre.remove(); this.libre = null; } }
+  fermeLibre() { if (this.reco) { try { this.reco.stop(); } catch (e) { /* déjà arrêtée */ } this.reco = null; } if (this.libre) { this.libre.remove(); this.libre = null; } }
+  dicte() { // la dictée du navigateur (Safari, Chrome) : on parle, le texte s'écrit
+    const d = this.libre, zone = d.querySelector("#libreTexte"), bouton = d.querySelector("#libreMicro");
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (this.reco) { this.reco.stop(); return; }
+    if (!SR) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); return zone.focus(); }
+    const r = new SR();
+    r.lang = LANGUE === "en" ? "en-US" : "fr-FR"; r.continuous = true; r.interimResults = true;
+    let base = zone.value.trim();
+    r.onresult = (ev) => {
+      let fini = "", encours = "";
+      for (let k = ev.resultIndex; k < ev.results.length; k++) (ev.results[k].isFinal ? (fini += ev.results[k][0].transcript) : (encours += ev.results[k][0].transcript));
+      if (fini) base = (base + " " + fini).replace(/\s+/g, " ").trim();
+      zone.value = (base + " " + encours).trim();
+      zone.scrollTop = zone.scrollHeight;
+    };
+    r.onerror = (ev) => { if (ev.error !== "no-speech" && ev.error !== "aborted") d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); };
+    r.onend = () => { this.reco = null; if (this.libre) bouton.textContent = tr("dicteeGo"); };
+    try { r.start(); this.reco = r; bouton.textContent = tr("dicteeStop"); } catch (e) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); }
+  }
   creeDepuisTexte() {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
     const titre = d.querySelector("#libreTitre").value.trim() || tr("titreDefaut");
-    let lignes = d.querySelector("#libreTexte").value.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const brut = d.querySelector("#libreTexte").value;
+    let lignes = this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     if (!lignes.length) return erreur(tr("libreVide"));
     const refusTitre = texteRefuse(titre, 80);
     if (refusTitre) return erreur(tr("refuse", { raison: refusTitre }));
@@ -458,8 +487,10 @@ class Ecriture {
     lignes = lignes.slice(0, MAX_SCENES);
     const texte = lignes.join(" ");
     this.ajoute({ id: Date.now().toString(36), date: new Date().toISOString(), titre, heros: vehiculesCites(texte)[0] || "tractopelle",
-      couleur: "jaune", etapes: etapesDepuisTexte(lignes, this.app.prenom) });
+      couleur: "jaune", etapes: etapesDepuisTexte(lignes, this.app.prenom).map((et) => ({ ...et, vid: nouvelId() })) });
+    const dictee = this.dictee;
     this.fermeLibre();
+    if (dictee) return this.essaie(); // raconté à voix haute : on passe directement à l'histoire (sans l'éditeur)
     if (trop) this.dit(tr("libreTrop"));
   }
 
@@ -498,7 +529,9 @@ class Ecriture {
 
     // --- mes histoires (à gauche)
     titre(tr("mesHistoires"), 18, 76);
-    this.histoires.slice(0, 8).forEach((h, i) => {
+    bouton([14, 522, 115, 50], tr("recevoir"), [110, 140, 220], () => this.recoit(), 17);
+    bouton([135, 522, 115, 50], tr("partager"), [110, 140, 220], () => this.partage(), 17, !!e);
+    this.histoires.slice(0, 7).forEach((h, i) => {
       const r = [14, 98 + i * 58, 236, 50], on = h.id === this.id;
       rrect(ctx, ...r, 12, on ? [255, 248, 215] : [255, 255, 255], on ? 4 : 2, on ? [255, 140, 30] : [205, 195, 180]);
       ecrit(ctx, coupe(ctx, h.titre, 18, 210)[0] || "", 18, CONTOUR, [r[0] + 12, r[1] + 14], null, true);
@@ -513,9 +546,13 @@ class Ecriture {
     }
 
     // --- titre, véhicule, couleur
-    const rt = [265, 76, 370, 54];
+    const rt = [265, 76, 310, 54];
+    vignette([581, 76, 56, 54], !!e.miniature, () => {
+      const it = e.miniature || { type: "heros" }, [mw, mh] = tailleElement(it);
+      dessineElement(ctx, { ...it, x: 609, y: 126, s: Math.min(48 / mw, 44 / mh), f: 1 }, t, { kind: e.heros, col: COULEURS[e.couleur] });
+    }, () => { this.choixMini = true; joue("pop"); }, [255, 140, 30]);
     rrect(ctx, ...rt, 12, [255, 255, 255], 2, [205, 195, 180]);
-    ecrit(ctx, "✎ " + (coupe(ctx, e.titre, 22, 340)[0] || ""), 22, CONTOUR, [rt[0] + 14, rt[1] + 15], null, true);
+    ecrit(ctx, "✎ " + (coupe(ctx, e.titre, 22, 280)[0] || ""), 22, CONTOUR, [rt[0] + 14, rt[1] + 15], null, true);
     z.push({ r: rt, action: () => this.renomme() });
     VEHICULES.forEach((k, i) => vignette([650 + i * 60, 76, 56, 54], e.heros === k,
       () => dessineVehicule(ctx, k, e.heros === k ? e.couleur : COULEUR_DEFAUT[k], 678 + i * 60, 124, t, 0, 0, 0.2),
@@ -584,11 +621,11 @@ class Ecriture {
     if (this.onglet === "lieu") {
       titre(tr("lieu"), 268, Y);
       LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 9) * 111, Y + 20 + Math.floor(i / 9) * 46, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 16));
-      titre(tr("action"), 268, Y + 112);
-      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 132 + Math.floor(i / 9) * 46, 104, 40], tr("actions")[a], et.action === a, () => this.choisitAction(a), [255, 200, 60], 15));
-      titre(tr("moment"), 268, Y + 276);
-      puce([265, Y + 296, 120, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
-      puce([395, Y + 296, 120, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
+      titre(tr("action"), 268, Y + 110);
+      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 130 + Math.floor(i / 9) * 44, 104, 38], tr("actions")[a], et.action === a, () => this.choisitAction(a), [255, 200, 60], 15));
+      ecrit(ctx, tr("moment"), 18, [110, 90, 70], [800, Y + 86]);
+      puce([850, Y + 66, 112, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
+      puce([968, Y + 66, 112, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
     } else if (this.onglet === "qui") {
       titre(tr("quiEstLa"), 268, Y);
       Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).slice(0, 14).forEach((id, i) => {
@@ -646,6 +683,16 @@ class Ecriture {
       bouton([495, Y + 244, 160, 50], tr("ecouter"), [70, 185, 90], () => this.ecoute(), 19, !!et.voix && !rec);
       bouton([665, Y + 244, 160, 50], tr("effacerVoix"), [150, 160, 175], () => this.effaceVoix(), 19, !!et.voix && !rec);
       if (rec) rond(ctx, 465, Y + 256, 6 + 2 * Math.sin(t * 8), [255, 255, 255]);
+      if (et.action === "lettres") {
+        titre(tr("motMot"), 848, Y + 222);
+        bouton([845, Y + 244, 410, 50], "✎ " + (et.mot || app.prenom), [110, 140, 220], () => {
+          const m = window.prompt(tr("promptMot"), et.mot || app.prenom);
+          if (m === null) return;
+          const refus = texteRefuse(m, 20);
+          if (refus) return this.dit(tr("refuse", { raison: refus }));
+          this.change({ mot: m.trim() || null });
+        }, 20);
+      }
       if (et.action === "chercher") {
         titre(tr("objetMot"), 848, Y + 222);
         OBJETS.forEach((o, i) => puce([845 + i * 104, Y + 244, 98, 50], tr("objets")[o], (et.objet || "ballon") === o, () => this.change({ objet: o }), [255, 200, 60], 16));
@@ -712,7 +759,82 @@ class Ecriture {
     bouton([717, 650, 56, 52], "▶", [150, 160, 175], () => this.deplaceScene(1), 20, this.sc < e.etapes.length - 1);
     bouton([783, 650, 180, 52], tr("supprimerScene"), [210, 120, 90], () => this.enleveScene(), 17, e.etapes.length > 1);
     bouton([973, 650, 160, 52], tr("supprimerHistoire"), [210, 80, 80], () => this.supprime(), 18);
+    if (this.choixMini) this.dessineMini(ctx, t);
     this.messageBas(ctx);
+  }
+  dessineMini(ctx, t) { // choisir l'image de l'histoire sur l'accueil
+    const z = this.zones, e = this.histoire(), heros = { kind: e.heros, col: COULEURS[e.couleur] };
+    z.length = 0; // seule la fenêtre répond
+    ctx.fillStyle = "rgba(60,45,30,0.4)"; ctx.fillRect(0, 0, W, H_);
+    rrect(ctx, 150, 90, 980, 560, 24, [255, 250, 240], 4, [235, 150, 60]);
+    ecrit(ctx, tr("miniTitre"), 28, [200, 110, 40], [W / 2, 128]);
+    const items = [null, { type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })),
+      Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id })),
+      Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id })));
+    items.slice(0, 60).forEach((it, k) => {
+      const r = [176 + (k % 12) * 78, 160 + Math.floor(k / 12) * 84, 72, 78];
+      const on = it ? e.miniature && e.miniature.type === it.type && e.miniature.id === it.id : !e.miniature;
+      rrect(ctx, ...r, 12, on ? [255, 230, 180] : [255, 255, 255], on ? 4 : 2, on ? [235, 130, 40] : [215, 205, 190]);
+      if (!it) ecrit(ctx, tr("miniAuto"), 17, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+      else {
+        const [mw, mh] = tailleElement(it);
+        ctx.save(); ctx.beginPath(); ctx.rect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4); ctx.clip();
+        dessineElement(ctx, { ...it, x: r[0] + r[2] / 2, y: r[1] + r[3] - 6, s: Math.min(62 / mw, 66 / mh), f: 1 }, t, heros);
+        ctx.restore();
+      }
+      z.push({ r, action: () => { e.miniature = it; this.choixMini = false; this.sauve(); joue("magie"); } });
+    });
+    z.push({ r: [0, 0, W, H_], action: () => { this.choixMini = false; } }); // toucher à côté : on ferme
+  }
+  // --- envoyer une histoire à la famille (avec les voix enregistrées), ou en recevoir une
+  async partage() {
+    const e = this.histoire();
+    if (!e) return;
+    const voix = {};
+    for (let i = 0; i < e.etapes.length; i++) {
+      const et = e.etapes[i], blob = await Memoire.lit(et.vid ? cleVoix(e, et) : `moi-${e.id}#${i}`);
+      if (blob) voix[i] = await new Promise((ok) => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(blob); });
+    }
+    const json = JSON.stringify({ format: "tracto-histoire", version: 1, histoire: e, voix });
+    const nom = (sansAccent(e.titre).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "histoire") + ".tracto.json";
+    const fichier = new File([json], nom, { type: "application/json" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [fichier] })) return await navigator.share({ files: [fichier], title: e.titre });
+    } catch (err) { if (err && err.name === "AbortError") return; }
+    const a = document.createElement("a"); // sinon : on télécharge le fichier
+    a.href = URL.createObjectURL(fichier); a.download = nom; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+  recoit() {
+    const entree = document.createElement("input");
+    entree.type = "file"; entree.accept = ".json,application/json";
+    entree.onchange = async () => {
+      const f = entree.files && entree.files[0];
+      if (!f) return;
+      if (f.size > 40e6) return this.dit(tr("importErreur"));
+      let paquet;
+      try { paquet = JSON.parse(await f.text()); } catch (err) { return this.dit(tr("importErreur")); }
+      const e = paquet && paquet.format === "tracto-histoire" && paquet.histoire;
+      if (!e || !Array.isArray(e.etapes) || !e.etapes.length) return this.dit(tr("importErreur"));
+      // le filtre « pour enfants » s'applique aussi aux histoires reçues
+      const textes = [e.titre];
+      for (const et of e.etapes) for (const champ of ["texteLibre", "bulle", "consigne", "partie"]) if (et[champ]) textes.push(et[champ].fr, et[champ].en);
+      for (const s of textes) { const refus = s && texteRefuse(String(s), 400); if (refus) return this.dit(tr("importRefus", { raison: refus })); }
+      const ancien = e.id;
+      e.id = nouvelId(); e.date = new Date().toISOString(); e.titre = String(e.titre || tr("titreDefaut")).slice(0, 80);
+      e.etapes = e.etapes.slice(0, MAX_SCENES);
+      for (const [i, url] of Object.entries(paquet.voix || {})) {
+        const et = e.etapes[+i];
+        if (!et || typeof url !== "string" || !url.startsWith("data:audio/")) continue;
+        if (!et.vid) et.vid = nouvelId();
+        await Memoire.met(cleVoix(e, et), await (await fetch(url)).blob());
+        et.voix = true;
+      }
+      this.ajoute(e);
+      this.dit(tr("importOk", { titre: e.titre }));
+      this.app.dessine();
+    };
+    entree.click();
   }
   messageBas(ctx) {
     if (this.messageT > 0) {
@@ -720,4 +842,28 @@ class Ecriture {
       ecrit(ctx, coupe(ctx, this.message, 17, 730)[0] || "", 17, [150, 80, 30], [740, 35]);
     }
   }
+}
+
+const MOTS_DEBUT = /^(aujourd'?hui|ce|cet|cette|il|elle|ils|elles|on|apres|ensuite|puis|alors|tout|soudain|arthur|papa|maman|papy|papi|mamie|tracto|today|then)$/;
+// une histoire racontée à voix haute (souvent sans ponctuation) -> des écrans
+function decoupeRecit(texte) {
+  let t = String(texte).replace(/\s+/g, " ").trim().replace(/\s*\b(chapitre|chapter)\b/gi, "\n$1");
+  let morceaux = t.split("\n").flatMap((l) => l.split(/(?<=[.!?…])\s+/));
+  // « chapitre deux la forêt Arthur arrive… » : le titre = jusqu'à la ponctuation, ou 5 mots
+  morceaux = morceaux.flatMap((m) => {
+    const c = m.match(/^((?:chapitre|chapter)\s+(?:\d+|une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|one|two|three|four|five|seven|eight|nine|ten)?\s*[:,.\-–]?\s*)(.*)$/i);
+    if (!c) return [m];
+    // le titre s'arrête à la ponctuation, ou au mot qui commence visiblement une phrase (3 mots au plus)
+    const mots = c[2].split(" "), fin = mots.findIndex((x) => /[,.:!?]$/.test(x));
+    const debutPhrase = mots.findIndex((x, k) => k > 0 && MOTS_DEBUT.test(sansAccent(x)));
+    const n = fin >= 0 && fin < 3 ? fin + 1 : Math.min(3, mots.length, debutPhrase > 0 ? debutPhrase : 99);
+    return ["📖 " + mots.slice(0, n).join(" ").replace(/[,.:!?]$/, ""), mots.slice(n).join(" ")];
+  });
+  // sans ponctuation : on coupe avant « et puis », « ensuite », « tout à coup »…
+  morceaux = morceaux.flatMap((m) => (m.length > 150 ? m.split(/\s+(?=(?:et puis|ensuite|après|tout à coup|soudain|alors|and then|suddenly|then)\b)/i) : [m]));
+  morceaux = morceaux.flatMap((m) => { const mots = m.split(" "); if (mots.length <= 30) return [m]; const out = []; for (let k = 0; k < mots.length; k += 22) out.push(mots.slice(k, k + 22).join(" ")); return out; });
+  morceaux = morceaux.map((m) => m.trim()).filter((m) => m && m !== "📖");
+  for (let k = morceaux.length - 2; k >= 0; k--) // les bouts trop courts (« et puis ») rejoignent la suite
+    if (!morceaux[k].startsWith("📖") && !morceaux[k + 1].startsWith("📖") && morceaux[k].split(" ").length < 4) morceaux.splice(k, 2, morceaux[k] + " " + morceaux[k + 1]);
+  return morceaux.slice(0, MAX_SCENES);
 }

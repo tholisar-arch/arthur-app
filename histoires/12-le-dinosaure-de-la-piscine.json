@@ -1,0 +1,25 @@
+{
+  "titre": "Le dinosaure de la piscine",
+  "titre_en": "The Dinosaur at the Pool",
+  "heros": "tractopelle",
+  "couleur": "jaune",
+  "decor": "vacances",
+  "copains": [],
+  "miniature": {"type": "perso", "id": "trex"},
+  "scenes": [
+    {"texte": "Aujourd'hui, il fait chaud ! {prenom} va à la piscine avec ses copains Jean-Eudes et Célestin.", "texte_en": "Today it's hot! {prenom} is going to the pool with his friends Jean-Eudes and Célestin.", "action": "parler", "decor": "vacances", "amis": ["arthur", "jean-eudes", "celestin"], "humeur": {"arthur": "joie", "jean-eudes": "joie", "celestin": "joie"}},
+    {"texte": "{nom} les accompagne. Tout le monde est en maillot de bain !", "texte_en": "{nom} comes along. Everyone is wearing a swimsuit!", "action": "parler", "decor": "vacances", "amis": [], "bulle": {"qui": "jean-eudes", "texte": "On saute ?", "texte_en": "Shall we jump?"}},
+    {"texte": "Un, deux, trois… Plouf ! Tout le monde saute dans l'eau.", "texte_en": "One, two, three… Splash! Everyone jumps into the water.", "action": "piscine", "decor": "vacances", "amis": [], "interactif": true, "clics": 3, "consigne": "Touche pour sauter dans la piscine !", "consigne_en": "Tap to jump into the pool!"},
+    {"texte": "Boum… boum… boum… Le sol se met à trembler. Qu'est-ce que c'est ?", "texte_en": "Boom… boom… boom… The ground starts to shake. What is it?", "action": "parler", "decor": "vacances", "amis": [], "humeur": {"arthur": "peur", "jean-eudes": "peur", "celestin": "peur"}},
+    {"texte": "C'est un énorme dinosaure ! Il s'appelle Rexou, et il veut se baigner, lui aussi.", "texte_en": "It's a huge dinosaur! His name is Rexou, and he wants to swim too.", "action": "parler", "decor": "vacances", "amis": ["trex"], "humeur": {"arthur": "peur", "jean-eudes": "peur", "celestin": "peur"}, "bulle": {"qui": "trex", "texte": "Moi aussi, je veux jouer !", "texte_en": "I want to play too!"}},
+    {"texte": "Mais Rexou est si gros qu'il prend toute la place ! Célestin a une idée : un grand défi.", "texte_en": "But Rexou is so big that he takes up all the room! Célestin has an idea: a big challenge.", "action": "parler", "decor": "vacances", "amis": [], "bulle": {"qui": "celestin", "texte": "Si on gagne, on partage la piscine !", "texte_en": "If we win, we share the pool!"}},
+    {"texte": "Premier défi : il faut compter sans se tromper. Aide {prenom} à toucher les chiffres dans l'ordre !", "texte_en": "First challenge: count without making a mistake. Help {prenom} tap the numbers in order!", "action": "chiffres", "decor": "vacances", "amis": [], "interactif": true},
+    {"texte": "Bravo ! Rexou est épaté. Il fait un énorme plouf de joie : tout le monde est éclaboussé !", "texte_en": "Well done! Rexou is amazed. He makes a huge splash of joy: everyone gets soaked!", "action": "parler", "decor": "vacances", "amis": [], "humeur": {"arthur": "joie", "jean-eudes": "joie", "celestin": "joie", "trex": "joie"}},
+    {"texte": "Deuxième défi : écrire le prénom de {prenom} avec les lettres. Touche-les dans l'ordre !", "texte_en": "Second challenge: spell {prenom}'s name with the letters. Tap them in order!", "action": "lettres", "decor": "vacances", "amis": [], "interactif": true},
+    {"texte": "Gagné ! Rexou est d'accord : la piscine, c'est pour tout le monde.", "texte_en": "You won! Rexou agrees: the pool is for everyone.", "action": "calin", "decor": "vacances", "amis": [], "interactif": true, "clics": 3},
+    {"texte": "Rexou souffle des bulles géantes dans l'eau. Jean-Eudes et Célestin rigolent !", "texte_en": "Rexou blows giant bubbles in the water. Jean-Eudes and Célestin giggle!", "action": "bulles", "decor": "vacances", "amis": [], "interactif": true, "clics": 3},
+    {"texte": "Après la baignade, c'est l'heure du goûter. Rexou a très faim !", "texte_en": "After swimming, it's snack time. Rexou is very hungry!", "action": "manger", "decor": "vacances", "amis": [], "interactif": true, "clics": 3},
+    {"texte": "Hourra ! Rexou est devenu le copain de la piscine.", "texte_en": "Hooray! Rexou has become the pool's new friend.", "action": "fete", "decor": "vacances", "amis": [], "interactif": true, "clics": 4},
+    {"texte": "Le soir, tout le monde rentre, fatigué mais content. À demain, Rexou !", "texte_en": "In the evening, everyone goes home, tired but happy. See you tomorrow, Rexou!", "action": "parler", "decor": "vacances", "amis": [], "nuit": true}
+  ]
+}

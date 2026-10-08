@@ -13,6 +13,23 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
+## Jeux pour apprendre (adaptés à l'âge)
+- `"action": "chiffres"` : des bulles 1, 2, 3… à toucher dans l'ordre (3 ans : 1-3, 4 ans : 1-5, 5 ans : 1-7 ;
+  6 ans et plus : 3 petites additions « 2 + 3 = ? »). Pas de main qui montre la réponse (un petit halo après 7 s).
+- `"action": "lettres"` + `"mot": "{prenom}"` (par défaut le prénom) : toucher les lettres du mot dans l'ordre
+  (3 ans : 3 premières lettres, 4-5 ans : 5, 6 ans et plus : 8), avec quelques lettres « intruses ».
+- L'âge vient de la date de naissance d'Arthur (Personnages → Plus → 🎂), sinon 3 ans.
+- Ces jeux vont bien dans les « défis » d'une histoire (ex. `histoires/12-le-dinosaure-de-la-piscine.json`).
+
+## Voix de la famille, dictée, miniature, partage
+- « 🎙 Raconter avec ma voix » (écran de départ d'une histoire) : on enregistre chaque écran au micro,
+  pour TOUTES les histoires (clé IndexedDB `fichier#numéro`, ou `idHistoire:vid` pour celles de l'appli).
+- « 🎤 Raconter » (accueil) : dictée du navigateur → `decoupeRecit()` (coupe aux points, à « chapitre »,
+  « et puis », « ensuite »…) → `etapesDepuisTexte()` → l'histoire se lance directement, sans l'éditeur.
+- `"miniature": {"type": "perso", "id": "trex"}` (même format qu'un élément) : l'image de la carte d'accueil.
+- « 📤 Envoyer / 📥 Recevoir » (éditeur) : fichier `.tracto.json` avec les voix ; à la réception, tous
+  les textes repassent par le filtre pour enfants.
+
 ## Écrans composés à la main (`"action": "libre"` + `elements`)
 Chaque écran peut être composé librement : décor + images posées où l'on veut. Avec l'action
 `libre`, l'écran ne montre QUE ses `elements` (le véhicule n'apparaît que si on pose `"heros"`) ;

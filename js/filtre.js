@@ -7,7 +7,8 @@ const MOTS_INTERDITS = [
   // gros mots / insultes (fr)
   "merde", "putain", "pute", "connard", "connasse", "con", "conne", "salope", "salaud", "encule", "enculer", "batard",
   "bite", "couille", "cul", "nique", "niquer", "ntm", "fdp", "pd", "chier", "chiotte", "bordel", "debile", "abruti",
-  "imbecile", "cretin", "ta gueule", "tg", "ferme la",
+  "imbecile", "cretin", "ta gueule", "tg", "ferme la", "foutre", "fous le camp", "va te faire", "emmerde", "emmerder",
+  "merdique", "pouffiasse", "petasse", "trou du cul", "cul", "zizi",
   // violence / peur (fr)
   "tuer", "tue", "tuent", "meurtre", "mort", "morte", "mourir", "meurt", "sang", "saigne", "arme", "armes", "pistolet",
   "fusil", "couteau", "epee", "bombe", "guerre", "gifle",
@@ -23,7 +24,7 @@ const MOTS_INTERDITS = [
   "zombie", "demon", "devil", "nightmare", "horror", "corpse", "suicide", "sex", "sexy", "naked", "nude", "porn",
   "kiss on the mouth", "boobs", "beer", "wine", "alcohol", "drunk", "drug", "drugs", "weed", "cocaine", "cigarette", "smoke",
 ];
-const RACINES_INTERDITES = ["encul", "niqu", "salop", "connar", "pornogr", "masturb", "fuck", "shit", "bitch", "nazi", "hitler", "terroris"];
+const RACINES_INTERDITES = ["encul", "niqu", "salop", "connar", "foutr", "emmerd", "merdi", "pornogr", "masturb", "fuck", "shit", "bitch", "nazi", "hitler", "terroris"];
 
 function normaliseFiltre(t) {
   return String(t).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
