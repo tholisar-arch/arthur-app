@@ -26,7 +26,12 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
   pour TOUTES les histoires (clé IndexedDB `fichier#numéro`, ou `idHistoire:vid` pour celles de l'appli).
 - « 🎤 Raconter » (accueil) : dictée du navigateur → `decoupeRecit()` (coupe aux points, à « chapitre »,
   « et puis », « ensuite »…) → `etapesDepuisTexte()` → l'histoire se lance directement, sans l'éditeur.
-- `"miniature": {"type": "perso", "id": "trex"}` (même format qu'un élément) : l'image de la carte d'accueil.
+- Miniatures (cartes de l'accueil) : bouton « 🖼 Miniature » (écran de départ de n'importe quelle histoire, ou 🖼 dans
+  l'éditeur) → `js/miniature.js` : fond (📷 photo de l'appareil, un lieu, une couleur), images posées et glissées au doigt,
+  couleur du bandeau. Gardé sur l'appareil (`localStorage` `tracto.miniatures.v1` par fichier ; photo dans IndexedDB
+  `mini:<fichier>`). Dans un JSON du dépôt : `"miniature": {"type": "perso", "id": "trex"}` (une image) ou
+  `{"fond": {"type": "decor", "id": "foret"}, "bande": "vert", "elements": [{"type": "perso", "id": "arthur", "x": 0.5, "y": 0.88, "s": 0.6}]}`
+  (`x`, `y` de 0 à 1 dans la zone image, `y` = le sol ; `s` = hauteur en part de la zone).
 - « 📤 Envoyer / 📥 Recevoir » (éditeur) : fichier `.tracto.json` avec les voix ; à la réception, tous
   les textes repassent par le filtre pour enfants.
 

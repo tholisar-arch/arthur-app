@@ -552,10 +552,15 @@ class Ecriture {
 
     // --- titre, véhicule, couleur
     const rt = [265, 76, 310, 54];
-    vignette([581, 76, 56, 54], !!e.miniature, () => {
-      const it = e.miniature || { type: "heros" }, [mw, mh] = tailleElement(it);
-      dessineElement(ctx, { ...it, x: 609, y: 126, s: Math.min(48 / mw, 44 / mh), f: 1 }, t, { kind: e.heros, col: COULEURS[e.couleur] });
-    }, () => { this.choixMini = true; joue("pop"); }, [255, 140, 30]);
+    { // la miniature de l'histoire : on l'ouvre en grand pour la personnaliser
+      const r = [581, 76, 56, 54], hm = { fichier: "moi-" + e.id, heros: e.heros, perso: e.id };
+      rrect(ctx, ...r, 10, [255, 255, 255], 2, [235, 150, 60]);
+      ctx.save(); ctx.beginPath(); ctx.roundRect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4, 8); ctx.clip(); ctx.translate(r[0] + 2, r[1] + 2); ctx.scale(52 / 165, 50 / 178);
+      dessineZoneMiniature(ctx, hm, miniatureDe(hm), 0, 0, 165, 178, t, COULEURS[e.couleur]);
+      ctx.restore();
+      ecrit(ctx, "🖼", 15, [0, 0, 0], [r[0] + r[2] - 10, r[1] + 10]);
+      z.push({ r, action: () => { joue("pop"); this.app.miniEd.ouvre({ ...normalise(compileHistoire(e), "moi-" + e.id, e.date), perso: e.id }, "ecrire"); } });
+    }
     rrect(ctx, ...rt, 12, [255, 255, 255], 2, [205, 195, 180]);
     ecrit(ctx, "✎ " + (coupe(ctx, e.titre, 22, 280)[0] || ""), 22, CONTOUR, [rt[0] + 14, rt[1] + 15], null, true);
     z.push({ r: rt, action: () => this.renomme() });
@@ -764,32 +769,7 @@ class Ecriture {
     bouton([717, 650, 56, 52], "▶", [150, 160, 175], () => this.deplaceScene(1), 20, this.sc < e.etapes.length - 1);
     bouton([783, 650, 180, 52], tr("supprimerScene"), [210, 120, 90], () => this.enleveScene(), 17, e.etapes.length > 1);
     bouton([973, 650, 160, 52], tr("supprimerHistoire"), [210, 80, 80], () => this.supprime(), 18);
-    if (this.choixMini) this.dessineMini(ctx, t);
     this.messageBas(ctx);
-  }
-  dessineMini(ctx, t) { // choisir l'image de l'histoire sur l'accueil
-    const z = this.zones, e = this.histoire(), heros = { kind: e.heros, col: COULEURS[e.couleur] };
-    z.length = 0; // seule la fenêtre répond
-    ctx.fillStyle = "rgba(60,45,30,0.4)"; ctx.fillRect(0, 0, W, H_);
-    rrect(ctx, 150, 90, 980, 560, 24, [255, 250, 240], 4, [235, 150, 60]);
-    ecrit(ctx, tr("miniTitre"), 28, [200, 110, 40], [W / 2, 128]);
-    const items = [null, { type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })),
-      Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id })),
-      Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id })));
-    items.slice(0, 60).forEach((it, k) => {
-      const r = [176 + (k % 12) * 78, 160 + Math.floor(k / 12) * 84, 72, 78];
-      const on = it ? e.miniature && e.miniature.type === it.type && e.miniature.id === it.id : !e.miniature;
-      rrect(ctx, ...r, 12, on ? [255, 230, 180] : [255, 255, 255], on ? 4 : 2, on ? [235, 130, 40] : [215, 205, 190]);
-      if (!it) ecrit(ctx, tr("miniAuto"), 17, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
-      else {
-        const [mw, mh] = tailleElement(it);
-        ctx.save(); ctx.beginPath(); ctx.rect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4); ctx.clip();
-        dessineElement(ctx, { ...it, x: r[0] + r[2] / 2, y: r[1] + r[3] - 6, s: Math.min(62 / mw, 66 / mh), f: 1 }, t, heros);
-        ctx.restore();
-      }
-      z.push({ r, action: () => { e.miniature = it; this.choixMini = false; this.sauve(); joue("magie"); } });
-    });
-    z.push({ r: [0, 0, W, H_], action: () => { this.choixMini = false; } }); // toucher à côté : on ferme
   }
   // --- envoyer une histoire à la famille (avec les voix enregistrées), ou en recevoir une
   async partage() {
@@ -800,7 +780,9 @@ class Ecriture {
       const et = e.etapes[i], blob = await Memoire.lit(et.vid ? cleVoix(e, et) : `moi-${e.id}#${i}`);
       if (blob) voix[i] = await new Promise((ok) => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(blob); });
     }
-    const json = JSON.stringify({ format: "tracto-histoire", version: 1, histoire: e, voix });
+    const photo = await Memoire.lit("mini:moi-" + e.id); // la photo de la miniature
+    const photoUrl = photo ? await new Promise((ok) => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(photo); }) : null;
+    const json = JSON.stringify({ format: "tracto-histoire", version: 1, histoire: e, voix, photo: photoUrl });
     const nom = (sansAccent(e.titre).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "histoire") + ".tracto.json";
     const fichier = new File([json], nom, { type: "application/json" });
     try {
@@ -835,6 +817,8 @@ class Ecriture {
         await Memoire.met(cleVoix(e, et), await (await fetch(url)).blob());
         et.voix = true;
       }
+      if (typeof paquet.photo === "string" && paquet.photo.startsWith("data:image/")) await Memoire.met("mini:moi-" + e.id, await (await fetch(paquet.photo)).blob());
+      if (e.miniature) sauveMiniature({ fichier: "moi-" + e.id }, normaliseMini(e.miniature));
       this.ajoute(e);
       this.dit(tr("importOk", { titre: e.titre }));
       this.app.dessine();

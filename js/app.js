@@ -680,7 +680,9 @@ class App {
     this.bLangue = new Bouton([18, 16, 150, 54], () => tr("langue"), [60, 160, 160], 22);
     this.bEcrire = new Bouton([176, 16, 140, 54], () => "✎ " + tr("ecrire"), [235, 130, 70], 22);
     this.bRaconter = new Bouton([324, 16, 170, 54], () => tr("raconter"), [220, 90, 120], 22);
-    this.bNarrer = new Bouton([24, 652, 300, 54], () => tr("narrBouton"), [220, 90, 120], 20);
+    this.bNarrer = new Bouton([24, 652, 300, 54], () => tr("narrBouton") + (this.nbVoix ? ` (${this.nbVoix})` : ""), [220, 90, 120], 20);
+    this.bMini = new Bouton([24, 586, 300, 54], () => tr("miniBouton"), [235, 150, 60], 20);
+    this.miniEd = new EditeurMiniature(this);
     this.ecriture = new Ecriture(this);
     this.modeSuppr = false; // mode « supprimer des histoires » de l'accueil
     this.bSuppr = new Bouton([W - 350, 626, 210, 48], () => (this.modeSuppr ? tr("termine") : tr("supprimerBouton")), [200, 90, 80], 20);
@@ -888,6 +890,7 @@ class App {
   rondsCouleurs() { return Object.keys(COULEURS).map((_, k) => [355 + k * 95, 352]); }
   touche(p) {
     if (this.etat === "perso") return this.atelier.touche(p);
+    if (this.etat === "miniature") return this.miniEd.touche(p);
     if (this.etat === "narrer") {
       if (this.bRetour.touche(p)) return this.fermeNarration();
       for (const z of this.zonesNarr || []) if (dans(z.r, p)) { joue("clic"); return z.action(); }
@@ -919,6 +922,7 @@ class App {
     } else if (this.etat === "config") {
       if (this.bRetour.touche(p)) return this.menu();
       if (this.bNarrer.touche(p)) { joue("pop"); return this.ouvreNarration(); }
+      if (this.bMini.touche(p)) { joue("pop"); return this.miniEd.ouvre(this.histoire, "config"); }
       if (this.bGo.touche(p)) {
         joue("klaxon");
         const depart = this.departScene != null ? this.departScene : this.chapDepart ? this.histoire.chapitres[this.chapDepart].debut : 0;
@@ -946,7 +950,7 @@ class App {
     if (this.etat === "histoire") {
       if (e.key === "Escape") this.menu();
       else if (e.key === "ArrowRight" && !this.fin && !this.carte) this.sceneSuivante();
-    } else if (["config", "perso", "ecrire"].includes(this.etat) && e.key === "Escape") this.menu();
+    } else if (["config", "perso", "ecrire", "miniature"].includes(this.etat) && e.key === "Escape") this.menu();
   }
 
   // ------------------------------------------------ boucle
@@ -977,6 +981,7 @@ class App {
     else if (this.etat === "perso") this.atelier.dessine(ctx, this.t);
     else if (this.etat === "ecrire") this.ecriture.dessine(ctx, this.t);
     else if (this.etat === "narrer") this.dessineNarration(ctx);
+    else if (this.etat === "miniature") this.miniEd.dessine(ctx, this.t);
     else this.dessineHistoire(ctx);
   }
   dessineMenu(ctx) {
@@ -989,28 +994,7 @@ class App {
     this.cartes().forEach((r, k) => {
       const h = liste[k];
       if (!h) return;
-      const [x, y, w, hh] = r, erreur = !!h.erreur;
-      rrect(ctx, x, y + 8, w, hh, 24, [200, 170, 110]);
-      rrect(ctx, x, y, w, hh, 24, erreur ? [255, 235, 235] : [255, 255, 255]);
-      const col = erreur ? [220, 90, 90] : COULEURS[h.couleur] || COULEURS[COULEUR_DEFAUT[h.heros]];
-      ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, hh, 24); ctx.clip(); rrect(ctx, x, y, w, 22, 0, col); ctx.restore();
-      rrect(ctx, x, y, w, hh, 24, null, 4);
-      if (h.miniature) { // l'image choisie par les parents
-        const [mw, mh] = tailleElement(h.miniature);
-        ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, hh, 24); ctx.clip();
-        dessineElement(ctx, { ...h.miniature, x: x + 85, y: y + hh - 22, s: Math.min(150 / mw, 140 / mh), f: 1 }, this.t, { kind: h.heros, col });
-        ctx.restore();
-      } else dessineVehicule(ctx, h.heros, col, x + 85, y + hh - 22, this.t, 0, 0, 0.5);
-      const lignes = coupe(ctx, titreDe(h), 26, w - 190).slice(0, 4), y0 = y + 40 + (4 - lignes.length) * 16;
-      lignes.forEach((l, i) => ecrit(ctx, l, 26, CONTOUR, [x + 165, y0 + i * 34], null, true));
-      if (erreur) ecrit(ctx, tr("illisible"), 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);
-      else {
-        const duree = dureeHistoire(h), info = h.chapitres.length > 1 ? tr("chapitresN", { n: h.chapitres.length }) : tr("images", { n: h.scenes.length });
-        ecrit(ctx, info + (duree >= 3 ? " · " + tr("minutes", { n: duree }) : "") + (traduite(h) ? "" : "  (FR)"), 18, [150, 140, 130], [x + 165, y + hh - 32], null, true);
-      }
-      if (h.perso) { rrect(ctx, x + 10, y + 30, 64, 24, 8, [235, 130, 70]); ecrit(ctx, "✎ " + tr("moi"), 14, [255, 255, 255], [x + 42, y + 42]); }
-      if (this.modeSuppr) { rond(ctx, x + w - 8, y + 8, 22, [220, 70, 70], 4); ecrit(ctx, "✕", 24, [255, 255, 255], [x + w - 8, y + 8]); }
-      else if (!erreur && estNouvelle(h)) { etoile(ctx, x + w - 4, y - 2, 34, [255, 210, 50], 0.2); ecrit(ctx, tr("nouveau"), 15, CONTOUR, [x + w - 4, y]); }
+      dessineCarte(ctx, h, ...r, this.t, { suppr: this.modeSuppr, nouveau: true });
     });
     if (this.charge && !this.histoires.length) ecrit(ctx, tr("aucune"), 30, CONTOUR, [W / 2, 330]);
     if (!this.charge) ecrit(ctx, tr("chargement"), 30, CONTOUR, [W / 2, 330]);
@@ -1056,9 +1040,9 @@ class App {
       if (titre) ecrit(ctx, "« " + coupe(ctx, titre, 22, 300)[0] + " »", 22, [200, 110, 40], [1095, 440]);
     }
     rrect(ctx, 0, 640, W, 80, 0, [200, 170, 120]);
+    this.nbVoix = this.histoire.scenes.filter((d) => this.voixPerso.has(d.voixPerso || d.cleVoix)).length;
     this.bNarrer.dessine(ctx);
-    const nbVoix = this.histoire.scenes.filter((d) => this.voixPerso.has(d.voixPerso || d.cleVoix)).length;
-    if (nbVoix) ecrit(ctx, tr("narrCompte", { n: nbVoix }), 16, [255, 255, 255], [174, 630], [150, 110, 70]);
+    this.bMini.dessine(ctx);
     dessineVehicule(ctx, this.choixVeh, col, 470, 645 + Math.sin(this.t * 12) * 1.5, this.t, 0, this.t * 4, 0.8);
     const v = textes(this.choixVeh, this.choixCol, this.prenom);
     ecrit(ctx, `${v.nom}, ${v.heros}`, 28, CONTOUR, [1075, 535]);
@@ -1154,11 +1138,12 @@ async function demarre() {
     app.dessine(); // redessine tout de suite : les zones à toucher sont à jour pour le toucher suivant
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (app.etat !== "ecrire" || !app.ecriture.drag) return;
+    const ed = app.etat === "ecrire" ? app.ecriture : app.etat === "miniature" ? app.miniEd : null; // glisser une image au doigt
+    if (!ed || !ed.drag) return;
     const b = canvas.getBoundingClientRect();
-    app.ecriture.glisse([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
+    ed.glisse([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
   });
-  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => app.ecriture.lache());
+  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => { app.ecriture.lache(); app.miniEd.lache(); });
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
   // iPhone : selon la version d'iOS, le son n'est autorisé qu'au lever du doigt ou au « clic »
   for (const ev of ["touchend", "click"]) document.addEventListener(ev, () => Audio_.debloque(), { passive: true });
