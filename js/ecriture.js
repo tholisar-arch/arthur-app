@@ -556,7 +556,7 @@ class Ecriture {
       const r = [581, 76, 56, 54], hm = { fichier: "moi-" + e.id, heros: e.heros, perso: e.id };
       rrect(ctx, ...r, 10, [255, 255, 255], 2, [235, 150, 60]);
       ctx.save(); ctx.beginPath(); ctx.roundRect(r[0] + 2, r[1] + 2, r[2] - 4, r[3] - 4, 8); ctx.clip(); ctx.translate(r[0] + 2, r[1] + 2); ctx.scale(52 / 165, 50 / 178);
-      dessineZoneMiniature(ctx, hm, miniatureDe(hm), 0, 0, 165, 178, t, COULEURS[e.couleur]);
+      dessineZoneMiniature(ctx, hm, miniatureDe(hm), 0, 0, 165, 178, t, COULEURS[camionDe(hm).col]);
       ctx.restore();
       ecrit(ctx, "🖼", 15, [0, 0, 0], [r[0] + r[2] - 10, r[1] + 10]);
       z.push({ r, action: () => { joue("pop"); this.app.miniEd.ouvre({ ...normalise(compileHistoire(e), "moi-" + e.id, e.date), perso: e.id }, "ecrire"); } });

@@ -5,7 +5,6 @@
   "couleur": "jaune",
   "decor": "vacances",
   "copains": [],
-  "miniature": {"type": "perso", "id": "trex"},
   "scenes": [
     {"texte": "Aujourd'hui, il fait chaud ! {prenom} va à la piscine avec ses copains Jean-Eudes et Célestin.", "texte_en": "Today it's hot! {prenom} is going to the pool with his friends Jean-Eudes and Célestin.", "action": "parler", "decor": "vacances", "amis": ["arthur", "jean-eudes", "celestin"], "humeur": {"arthur": "joie", "jean-eudes": "joie", "celestin": "joie"}},
     {"texte": "{nom} les accompagne. Tout le monde est en maillot de bain !", "texte_en": "{nom} comes along. Everyone is wearing a swimsuit!", "action": "parler", "decor": "vacances", "amis": [], "bulle": {"qui": "jean-eudes", "texte": "On saute ?", "texte_en": "Shall we jump?"}},

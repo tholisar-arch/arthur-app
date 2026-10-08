@@ -26,7 +26,9 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
   pour TOUTES les histoires (clé IndexedDB `fichier#numéro`, ou `idHistoire:vid` pour celles de l'appli).
 - « 🎤 Raconter » (accueil) : dictée du navigateur → `decoupeRecit()` (coupe aux points, à « chapitre »,
   « et puis », « ensuite »…) → `etapesDepuisTexte()` → l'histoire se lance directement, sans l'éditeur.
-- Miniatures (cartes de l'accueil) : bouton « 🖼 Miniature » (écran de départ de n'importe quelle histoire, ou 🖼 dans
+- Miniatures : par défaut, AUTOMATIQUES — la carte montre le dernier camion (et sa couleur) choisi pour cette histoire
+  (`localStorage` `tracto.camions.v1`, retenu à « C'est parti ! », reproposé sur l'écran de départ). Ne pas mettre de
+  `miniature` dans les JSON du dépôt (sauf demande). Personnalisation possible en plus : bouton « 🖼 Miniature » (écran de départ de n'importe quelle histoire, ou 🖼 dans
   l'éditeur) → `js/miniature.js` : fond (📷 photo de l'appareil, un lieu, une couleur), images posées et glissées au doigt,
   couleur du bandeau. Gardé sur l'appareil (`localStorage` `tracto.miniatures.v1` par fichier ; photo dans IndexedDB
   `mini:<fichier>`). Dans un JSON du dépôt : `"miniature": {"type": "perso", "id": "trex"}` (une image) ou

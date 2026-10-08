@@ -724,8 +724,9 @@ class App {
   ouvreConfig(h) {
     this.prechargeVoixPerso(h);
     this.histoire = h;
-    this.choixVeh = h.heros;
-    this.choixCol = COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros];
+    const camion = camionDe(h); // le dernier camion choisi pour cette histoire
+    this.choixVeh = camion.veh;
+    this.choixCol = camion.col;
     this.chapDepart = h.chapitres.length > 1 ? borne(litProgression(h), 0, h.chapitres.length - 1) : 0;
     this.etat = "config";
     this.voix.dire(...this.phraseTitre(h));
@@ -735,6 +736,7 @@ class App {
   }
   lance(depart = 0) { // depart = numéro de la première scène (pour commencer à un chapitre)
     const h = this.histoire;
+    retientCamion(h, this.choixVeh, this.choixCol); // la miniature montrera ce camion
     this.valeurs = textes(this.choixVeh, this.choixCol, this.prenom);
     this.monde = new Monde(this.choixVeh, this.choixCol, h.scenes[depart].decor);
     for (const k of h.copains) if (k !== this.choixVeh) { const c = this.monde.ajouteCopain(k); if (c) c.x = c.cible; }

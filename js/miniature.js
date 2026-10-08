@@ -53,8 +53,8 @@ function dessineCouverture(ctx, img, x, y, w, h) { // l'image remplit le cadre (
 
 // --- le dessin d'une carte (accueil et aperçu de l'éditeur)
 const ZONE_MINI = [0, 22, 165, 178]; // la partie image de la carte (sous le bandeau), pour une carte de 350 × 200
-function dessineZoneMiniature(ctx, h, mini, zx, zy, zw, zh, t, colHeros) {
-  if (!mini) return dessineVehicule(ctx, h.heros, colHeros, zx + 85, zy + zh - 22, t, 0, 0, 0.5);
+function dessineZoneMiniature(ctx, h, mini, zx, zy, zw, zh, t, colHeros, kind = camionDe(h).veh) {
+  if (!mini) return dessineVehicule(ctx, kind, colHeros, zx + 85, zy + zh - 22, t, 0, 0, 0.5); // le dernier camion choisi
   ctx.save(); ctx.beginPath(); ctx.rect(zx, zy, zw, zh); ctx.clip();
   const f = mini.fond;
   if (f && f.type === "decor") { const sw = (VH * zw) / zh; ctx.drawImage(fondDecor(f.id), (VW - sw) / 2, 0, sw, VH, zx, zy, zw, zh); }
@@ -64,7 +64,7 @@ function dessineZoneMiniature(ctx, h, mini, zx, zy, zw, zh, t, colHeros) {
     const [w, hg] = tailleElement(el);
     let sc = (el.s * zh) / hg;
     if (el.auto) sc = Math.min(sc, (0.95 * zw) / w);
-    dessineElement(ctx, { ...el, x: zx + el.x * zw, y: zy + el.y * zh, s: sc }, t, { kind: h.heros, col: colHeros });
+    dessineElement(ctx, { ...el, x: zx + el.x * zw, y: zy + el.y * zh, s: sc }, t, { kind, col: colHeros });
   }
   ctx.restore();
 }
@@ -72,7 +72,7 @@ function dessineCarte(ctx, h, x, y, w, hh, t, options = {}) {
   const erreur = !!h.erreur, mini = erreur ? null : options.mini !== undefined ? options.mini : miniatureDe(h);
   rrect(ctx, x, y + 8, w, hh, 24, [200, 170, 110]);
   rrect(ctx, x, y, w, hh, 24, erreur ? [255, 235, 235] : [255, 255, 255]);
-  const colHeros = erreur ? [220, 90, 90] : COULEURS[h.couleur] || COULEURS[COULEUR_DEFAUT[h.heros]];
+  const camion = camionDe(h), colHeros = erreur ? [220, 90, 90] : COULEURS[camion.col];
   const col = (mini && mini.bande && COULEURS_BANDE[mini.bande]) || colHeros;
   ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, hh, 24); ctx.clip();
   if (!erreur) dessineZoneMiniature(ctx, h, mini, x + ZONE_MINI[0], y + ZONE_MINI[1], ZONE_MINI[2], hh - ZONE_MINI[1], t, colHeros);
@@ -167,7 +167,7 @@ class EditeurMiniature {
   lache() { if (this.drag && this.drag.bouge) this.sauve(); this.drag = null; }
 
   dessine(ctx, t) {
-    const z = (this.zones = []), h = this.h, heros = { kind: h.heros, col: COULEURS[h.couleur] || COULEURS[COULEUR_DEFAUT[h.heros]] };
+    const z = (this.zones = []), h = this.h, cam = camionDe(h), heros = { kind: cam.veh, col: COULEURS[cam.col] };
     const bouton = (r, texte, col, action, taille = 20, actif = true) => {
       rrect(ctx, r[0], r[1] + 4, r[2], r[3], 14, fonce(actif ? col : [190, 190, 190], 0.65));
       rrect(ctx, ...r, 14, actif ? col : [205, 205, 205], 3);
@@ -243,4 +243,17 @@ class EditeurMiniature {
     bouton([40, 640, 260, 60], tr("miniDefaut"), [150, 160, 175], () => this.parDefaut(), 22);
     bouton([W - 300, 640, 260, 60], tr("miniFini"), [70, 185, 90], () => this.ferme(), 24);
   }
+}
+
+// le dernier camion (et sa couleur) choisi pour chaque histoire : la miniature le montre, l'écran de départ le propose
+const CLE_CAMIONS = "tracto.camions.v1";
+function litCamions() { try { return JSON.parse(localStorage.getItem(CLE_CAMIONS) || "{}"); } catch (e) { return {}; } }
+function camionDe(h) {
+  const c = (h && h.fichier && litCamions()[h.fichier]) || {};
+  const veh = VEHICULES.includes(c.veh) ? c.veh : h.heros, col = COULEURS[c.col] ? c.col : COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[veh];
+  return { veh, col };
+}
+function retientCamion(h, veh, col) {
+  const tous = litCamions(); tous[h.fichier] = { veh, col };
+  try { localStorage.setItem(CLE_CAMIONS, JSON.stringify(tous)); } catch (e) { /* stockage indisponible */ }
 }
