@@ -40,22 +40,20 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
-## Style des dessins : dessin animé avec un peu de volume
-- `teinte()` (dessins.js) : chaque forme pleine de `rrect`/`poly` reçoit un dégradé vertical (clair en haut, un peu
-  plus foncé en bas), chaque `rond`/`ovale` un reflet arrondi (lumière en haut à gauche). Pas sur les très grands fonds.
-- Vitres (`VITRE`) : deux reflets en biais (`refletVitre`) ; pneus : reflet ; bras/jambes : liseré clair.
-- Décor : ciel en dégradé, brume à l'horizon, herbe et cailloux au sol, ombres douces, halo du soleil, vrai croissant
-  de lune, voile bleu la nuit, arbres en bouquet de feuillage, dessous gris des nuages.
-- Personnages (`personne()`, style « livre d'images moderne ») : visage presque de face, un peu tourné vers où l'on
-  va (`off`), grands yeux (iris, pupille, deux éclats, paupière, ligne des cils ; clignent), sourcils doux, petit nez
-  (ombre + reflet), joues rosées fondues, deux oreilles, cou ; cheveux avec volume, reflet et mèches (carré / longs /
-  couettes derrière la tête, frange par-dessus) ; bras et jambes d'une seule pièce qui s'affinent (`membre(A, B, C)` :
-  épaule -> coude -> poignet, sans articulations visibles), manches et pantalons dessinés de la même façon, épaules
-  tombantes, petites mains avec pouce, baskets avec semelle claire. Le côté du fond de chaque forme est dans l'ombre
-  (`pen.forme(c, cmds, contour, cote)`). Outils : `pen.forme`, `pen.chemin`, `pen.trace`, `pen.courbe` ;
-  coordonnées de la tête en « rayons » via `tete()` / `pts()`.
-- `RELIEF.on = false` : retour au dessin tout plat. La boucle (app.js) le coupe toute seule si le dessin dépasse
-  ~13 ms par image (vieille tablette). Dessiner de nouvelles choses avec les primitives : le volume vient tout seul.
+## Style des dessins : « entre Peppa Pig et Trotro »
+- `STYLE_DESSIN.plat = true` (dessins.js) : couleurs plates (pas de dégradés, reflets, brume ni herbe), contours
+  sombres bien marqués (`bordure` : teinte très foncée de la couleur, mêlée de `CONTOUR`, trait 1,3 fois plus
+  épais). Décors tout simples : collines rondes, arbres « sucettes », ciel uni — comme dans Peppa Pig.
+- Personnages (`personne()`) : grosse tête ronde de trois quarts avec un petit nez rond qui dépasse vers l'avant,
+  les deux yeux ronds (blanc + point noir) côte à côte du côté du regard (clignent), une joue rose bien ronde, une
+  bouche en simple trait courbé (ouverte quand on est content, « o » quand on a peur), sourcils qui bougent avec
+  l'humeur, une oreille en « C » ; cheveux d'une forme plate avec une frange en petites vagues ; corps en tunique ou
+  en robe cloche (salopette façon Trotro avec deux gros boutons) ; bras et jambes simples et un peu dodus, mains
+  rondes, chaussures ovales pointées vers l'avant. Proportions : grosses têtes, petits corps (`styleDe`).
+- `STYLES[id].adulte` dit si le personnage est un adulte (ne plus tester `L > 70`).
+- Le mode « volume et lumière » (dégradés, reflets des vitres, brume, herbe, ombres douces, arbres en bouquet)
+  existe toujours : `STYLE_DESSIN.plat = false` (alors `RELIEF.on = true`). La boucle (app.js) coupe `RELIEF`
+  si le dessin dépasse ~13 ms par image.
 
 ## Le héros
 L'appli est « Les aventures de [héros] » (« d' » devant une voyelle). Le héros = le personnage `arthur` de l'atelier

@@ -141,7 +141,7 @@ class Atelier {
       const r = [20, 84 + i * 64, 275, 56], choisi = id === this.sel;
       rrect(ctx, ...r, 14, choisi ? [255, 248, 215] : [255, 255, 255], choisi ? 5 : 3, choisi ? [255, 140, 30] : CONTOUR);
       ctx.save(); ctx.beginPath(); ctx.rect(r[0] + 4, r[1] + 3, 64, r[3] - 6); ctx.clip();
-      const s2 = STYLES[id], ech = s2.L > 70 ? 0.4 : 0.52;
+      const s2 = STYLES[id], ech = s2.adulte ? 0.42 : 0.55;
       personne(ctx, r[0] + 36, r[1] + 30 + (s2.L + s2.T + s2.R - 6) * ech, ech, t, 1, 0, 0, null, id);
       ctx.restore();
       ecrit(ctx, PERSONNAGES[id].nom, 24, CONTOUR, [r[0] + 78, r[1] + (id === "arthur" ? 6 : 14)], null, true);
