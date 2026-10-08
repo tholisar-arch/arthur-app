@@ -830,7 +830,7 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
     haut: couleurDe("habits", p.haut, "bleu"), bas: couleurDe("habits", p.bas, "jean"),
     chaussures: couleurDe("chaussures", p.chaussures, "noir"),
     robe: typeHaut === "robe", cils: !!p.cils, lunettes: !!p.lunettes, couronne: !!p.couronne, moustache: !!p.moustache,
-    barbe: !!p.barbe, muscle: corp === "costaud", rond: corp === "rond", dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
+    barbe: !!p.barbe, petiteBarbe: !!p.petiteBarbe && !p.barbe, muscle: corp === "costaud", rond: corp === "rond", dessin: DESSINS_TSHIRT.includes(p.dessin) ? p.dessin : null,
   };
 }
 let PERSONNAGES = {};
@@ -921,8 +921,9 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   bras(1);
 
   // --- la tête : grosse et ronde, avec un petit nez rond qui dépasse vers l'avant, une oreille
-  pen.forme(peau, tete([["M", 0.0, -1.0], ["C", 0.58, -1.0, 0.98, -0.62, 1.0, -0.1], ["C", 0.98, 0.5, 0.62, 0.92, 0.02, 0.92],
-    ["C", -0.6, 0.92, -0.98, 0.52, -0.98, -0.04], ["C", -0.98, -0.62, -0.58, -1.0, 0.0, -1.0], ["Z"]]));
+  const visage = [["M", 0.0, -1.0], ["C", 0.58, -1.0, 0.98, -0.62, 1.0, -0.1], ["C", 0.98, 0.5, 0.62, 0.92, 0.02, 0.92],
+    ["C", -0.6, 0.92, -0.98, 0.52, -0.98, -0.04], ["C", -0.98, -0.62, -0.58, -1.0, 0.0, -1.0], ["Z"]];
+  pen.forme(peau, tete(visage));
   pen.forme(peau, tete([["M", 0.86, 0.02], ["C", 1.0, -0.12, 1.22, 0.0, 1.16, 0.17], ["C", 1.12, 0.32, 0.92, 0.32, 0.86, 0.22]])); // le nez rond
 
   // --- les cheveux : une forme simple et plate, frange en petites vagues
@@ -976,6 +977,15 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   for (const u of [0.24, 0.62]) { const lev = peur ? 0.08 : joie ? 0.05 : 0; pen.courbe(cerne(cheveux), pts([[u - 0.13, ey - er - 0.1 - lev], [u, ey - er - 0.17 - lev], [u + 0.13, ey - er - 0.1 - lev + (peur ? (u > 0.5 ? -0.05 : 0.05) : 0)]]), adulte ? 2.2 : 1.8); }
   pen.circle([248, 150, 165], tx + 0.36 * R, ty + 0.3 * R, 0.16 * R); // la joue rose
   if (st.barbe) pen.forme(cheveux, tete([["M", -0.6, 0.1], ["C", -0.55, 0.8, -0.1, 1.08, 0.3, 1.05], ["C", 0.8, 1.0, 1.0, 0.6, 0.98, 0.3], ["Q", 0.7, 0.62, 0.36, 0.6], ["Q", -0.1, 0.55, -0.6, 0.1], ["Z"]]));
+  if (st.petiteBarbe) { // barbe légère : une ombre de poils sur la mâchoire et autour de la bouche, sans contour
+    ctx.save(); pen.chemin(tete(visage)); ctx.clip();
+    pen.chemin(tete([["M", -0.62, 0.12], ["C", -0.56, 0.78, -0.1, 1.0, 0.3, 0.98], ["C", 0.78, 0.94, 0.98, 0.6, 0.98, 0.3], ["Q", 0.86, 0.44, 0.74, 0.42],
+      ["Q", 0.56, 0.42, 0.46, 0.52], ["Q", 0.4, 0.66, 0.6, 0.8], ["Q", 0.8, 0.82, 0.9, 0.7], ["Q", 0.6, 0.7, -0.1, 0.62], ["Q", -0.48, 0.48, -0.62, 0.12], ["Z"]]));
+    ctx.fillStyle = css(cheveux, 0.4); ctx.fill();
+    const r = hasard(7);
+    for (let k = 0; k < 26; k++) { const a = r() * PI * 0.9 + 0.1, rr = 0.72 + r() * 0.2; pen.circle(fonce(cheveux, 0.8), tx + (0.2 + Math.cos(a) * rr * 0.85) * R, ty + (0.3 + Math.sin(a) * rr * 0.75) * R, 0.022 * R); }
+    ctx.restore();
+  }
   if (st.moustache || st.barbe) pen.forme(cheveux, tete([["M", 0.5, 0.5], ["Q", 0.72, 0.34, 1.0, 0.42], ["Q", 0.94, 0.56, 0.74, 0.54], ["Q", 0.62, 0.52, 0.5, 0.5], ["Z"]]));
   const levres = st.cils ? [215, 70, 100] : CONTOUR;
   if (peur) pen.ellipse([150, 50, 60], tx + 0.6 * R, ty + 0.52 * R, tx + 0.76 * R, ty + 0.72 * R, true);

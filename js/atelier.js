@@ -247,7 +247,9 @@ class Atelier {
       const bascule = (champ) => this.modifie({ [champ]: !p[champ] });
       titre(tr("accessoires"), 148);
       choix(148, [["lunettes", tr("lunettes")], ["couronne", tr("couronne")], ["cils", tr("cils")]], (v) => !!p[v], bascule);
-      choix(234, [["moustache", tr("moustache")], ["barbe", tr("barbe")]], (v) => !!p[v], bascule);
+      // barbe et petite barbe : l'une ou l'autre
+      choix(234, [["moustache", tr("moustache")], ["barbe", tr("barbe")], ["petiteBarbe", tr("petiteBarbe")]], (v) => !!p[v],
+        (v) => (v === "moustache" ? bascule(v) : this.modifie({ barbe: v === "barbe" && !p.barbe, petiteBarbe: v === "petiteBarbe" && !p.petiteBarbe })));
       if (p.age !== "adulte") { // la date de naissance : les jeux s'adaptent à l'âge
         titre(tr("naissance"), 340);
         const nais = p.naissance ? new Date(p.naissance) : null, ok = nais && !isNaN(nais);

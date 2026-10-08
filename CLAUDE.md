@@ -50,6 +50,8 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   l'humeur, une oreille en « C » ; cheveux d'une forme plate avec une frange en petites vagues ; corps en tunique ou
   en robe cloche (salopette façon Trotro avec deux gros boutons) ; bras et jambes simples et un peu dodus, mains
   rondes, chaussures ovales pointées vers l'avant. Proportions : grosses têtes, petits corps (`styleDe`).
+- Barbe : `barbe` (pleine) ou `petiteBarbe` (barbe légère : ombre de poils transparente + petits points, découpée au
+  visage) — l'une ou l'autre (atelier › Plus).
 - `STYLES[id].adulte` dit si le personnage est un adulte (ne plus tester `L > 70`).
 - Le mode « volume et lumière » (dégradés, reflets des vitres, brume, herbe, ombres douces, arbres en bouquet)
   existe toujours : `STYLE_DESSIN.plat = false` (alors `RELIEF.on = true`). La boucle (app.js) coupe `RELIEF`
