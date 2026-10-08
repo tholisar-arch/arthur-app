@@ -701,7 +701,7 @@ class App {
     this.video.width = VW; this.video.height = VH;
     this.vctx = this.video.getContext("2d");
     this.cfg = cfg;
-    this.prenom = cfg.prenom || "Arthur";
+
     this.voix = new Voix(cfg);
     this.t = 0; this.etat = "menu"; this.page = 0;
     this.histoires = []; this.charge = false;
@@ -728,6 +728,14 @@ class App {
     this.ancienne.width = VW; this.ancienne.height = VH;
     this.fondu = 0; this.ouverture = 0;
     this.rechargeHistoires();
+  }
+  get prenom() { // le héros des histoires : le premier personnage (« arthur »), avec le prénom qu'on lui a donné
+    const p = PERSONNAGES.arthur;
+    return (p && p.nom) || this.cfg.prenom || "Arthur";
+  }
+  titreAccueil() {
+    const n = this.prenom, de = /^[aeiouyhàâäéèêëîïôöûü]/i.test(n) ? "d'" : "de ";
+    return tr("titreAccueil", { prenom: n, de });
   }
   async rechargeHistoires() {
     this.atelier.local = await chargePersonnages(); // avant les histoires : elles peuvent citer Jean-Eudes, Célestin…
@@ -940,7 +948,7 @@ class App {
       if (this.bRaconter.touche(p)) return this.verrouParent(this.bRaconter, () => { this.ecriture.ouvre(); this.ecriture.ouvreLibre(true); });
       if (this.bLangue.touche(p)) { // français <-> anglais
         changeLangue(LANGUE === "fr" ? "en" : "fr"); joue("pop"); this.voix.stop();
-        this.voix.dire(tr("titreAccueil", { prenom: this.prenom }));
+        this.voix.dire(this.titreAccueil());
         return this.prechargeMenu();
       }
       if (this.bSuppr.touche(p)) { if (this.modeSuppr) { this.modeSuppr = false; joue("clic"); return; } return this.verrouParent(this.bSuppr, () => { this.modeSuppr = true; }); }
@@ -1060,7 +1068,9 @@ class App {
     if (this.etat === "menu" || this.etat === "config") this.dessineVerrou(ctx); // l'anneau du verrou parents, par-dessus
   }
   dessineMenu(ctx) {
-    ecrit(ctx, tr("titreAccueil", { prenom: this.prenom }), 40, [255, 200, 40], [767, 46], [200, 80, 40]);
+    const titre = this.titreAccueil();
+    if (document.title !== titre) document.title = titre;
+    ecrit(ctx, titre, 40, [255, 200, 40], [767, 46], [200, 80, 40]);
     this.bRaconter.dessine(ctx);
     this.bPerso.dessine(ctx);
     this.bLangue.dessine(ctx);
@@ -1076,7 +1086,13 @@ class App {
     const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
     ovale(ctx, -200, 590, W + 400, 260, [150, 210, 95], 4); // une colline verte et un chemin beige
     rrect(ctx, 0, 662, W, 34, 0, [228, 210, 165]);
-    VEHICULES.forEach((kind, k) => dessineVehicule(ctx, kind, COULEUR_DEFAUT[kind], mod(k * 230 + this.t * 70, W + 300) - 150, 680, this.t + k, 0, this.t * 3, 0.38));
+    const defile = ["tractopelle", "licorne", "benne", "dino", "toupie", "dragon", "pompier", "trex", "bulldozer", "licorne", "grue", "stego"], pas = 190;
+    defile.forEach((kind, k) => {
+      const x = mod(k * pas + this.t * 70, defile.length * pas) - 150;
+      if (x < -150 || x > W + 150) return;
+      if (VEHICULES.includes(kind)) dessineVehicule(ctx, kind, COULEUR_DEFAUT[kind], x, 680, this.t + k, 0, this.t * 3, 0.38);
+      else { const [, h] = tailleElement({ type: "perso", id: kind }); dessineAmi(ctx, kind, x, 684, this.t + k, 1, this.t * 6 + k, 0, Math.min(0.45, 88 / h), "joie"); }
+    });
     if (pages > 1) {
       for (const [x, d] of [[65, -1], [W - 65, 1]]) poly(ctx, [[x - 28 * d, 625], [x + 28 * d, 655], [x - 28 * d, 685]], [110, 140, 220], 4);
       ecrit(ctx, `Page ${this.page + 1}/${pages}`, 22, [110, 90, 60], [W / 2, 680]);

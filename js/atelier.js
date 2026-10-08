@@ -123,7 +123,8 @@ class Atelier {
       const s2 = STYLES[id], ech = s2.L > 70 ? 0.4 : 0.52;
       personne(ctx, r[0] + 36, r[1] + 30 + (s2.L + s2.T + s2.R - 6) * ech, ech, t, 1, 0, 0, null, id);
       ctx.restore();
-      ecrit(ctx, PERSONNAGES[id].nom, 24, CONTOUR, [r[0] + 78, r[1] + 14], null, true);
+      ecrit(ctx, PERSONNAGES[id].nom, 24, CONTOUR, [r[0] + 78, r[1] + (id === "arthur" ? 6 : 14)], null, true);
+      if (id === "arthur") ecrit(ctx, tr("herosMot"), 14, [220, 120, 30], [r[0] + 78, r[1] + 34], null, true);
       z.push({ r, action: () => { this.sel = id; joue("clic"); app.voix.dire(PERSONNAGES[id].nom); } });
     });
     bouton([20, 84 + 8 * 64, 275, 56], tr("nouveauPerso"), [70, 185, 90], () => this.nouveau(), 24);
@@ -137,6 +138,7 @@ class Atelier {
     rrect(ctx, 312, 80, 395, 555, 22, [215, 240, 255], 4);
     rrect(ctx, 316, 560, 387, 71, 0, [150, 205, 110]);
     ecrit(ctx, p.nom, 34, [255, 255, 255], [510, 116], [90, 120, 200]);
+    if (this.sel === "arthur") { rrect(ctx, 390, 140, 240, 30, 12, [255, 230, 160], 2, [235, 150, 60]); ecrit(ctx, tr("herosMot"), 17, [180, 90, 30], [510, 155]); }
     const ech = 380 / (st.L + st.T + 2 * st.R), salut = Math.sin(t * 1.4) > 0.6;
     dessineAmi(ctx, this.sel, 510, 590, t, 1, 0, 0, ech, salut ? "joie" : null);
     bouton([318, 648, 186, 52], tr("renommer"), [110, 140, 220], () => this.renomme(), 22);

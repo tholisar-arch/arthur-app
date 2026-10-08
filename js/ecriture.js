@@ -439,7 +439,7 @@ class Ecriture {
     d.style.cssText = "position:fixed;left:0;right:0;top:0;height:100dvh;background:rgba(60,45,30,.45);display:flex;align-items:center;justify-content:center;z-index:10;touch-action:auto;-webkit-user-select:text;user-select:text;font-family:Fredoka,'Comic Sans MS',sans-serif";
     d.innerHTML = `
       <style>
-        .fen{background:#fffaf0;border-radius:20px;padding:14px 18px;width:min(860px,95vw);height:calc(100% - 16px);max-height:780px;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px;overflow:hidden}
+        .fen{position:relative;background:#fffaf0;border-radius:20px;padding:14px 18px;width:min(860px,95vw);height:calc(100% - 16px);max-height:780px;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px;overflow:hidden}
         .fen .ligne{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
         .fen button{font:inherit;border:0;color:#fff;border-radius:12px;font-size:18px;padding:8px 16px;cursor:pointer}
         .fen input[type=text],.fen textarea{font:inherit;border:2px solid #e6d8c2;border-radius:12px;box-sizing:border-box}
@@ -456,16 +456,19 @@ class Ecriture {
         <div class="ligne">
           ${voix ? `<button id="libreMicro" style="background:#dc5a78;font-size:20px;padding:10px 22px">${tr("dicteeGo")}</button>` : ""}
           <button id="libreChapitre" style="background:#eb8246">${tr("chapNouveau")}</button>
-          <button id="libreJoli" style="background:#5aa0d8">${tr("rendreJoli")}</button>
           <input id="libreTitre" type="text" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="flex:1;min-width:180px;font-size:18px;padding:8px 12px">
         </div>
         <textarea id="libreTexte" placeholder="${tr("libreExemple")}"></textarea>
         <div id="libreErreur" style="color:#b23c32;font-size:15px;min-height:18px;flex-shrink:0"></div>
-        <div class="ligne" style="justify-content:space-between">
-          <label style="font-size:16px;color:#7a6a58;display:flex;gap:8px;align-items:center"><input id="libreLongue" type="checkbox" style="width:22px;height:22px"> ${tr("iaLongue")}</label>
-          <div class="ligne">
-            <button id="libreCreer" style="background:#46b95a">${tr("iaSans")}</button>
-            <button id="libreAvecIA" style="background:#8a5ad2;font-size:20px;padding:10px 20px">${tr("iaAvec")}</button>
+        <div class="ligne" style="justify-content:flex-end">
+          <button id="libreCreer" style="background:#46b95a;font-size:22px;padding:12px 28px">${tr("finiBouton")}</button>
+        </div>
+        <div id="libreQuestion" style="display:none;position:absolute;inset:0;background:rgba(60,45,30,.45);align-items:center;justify-content:center">
+          <div style="background:#fffaf0;border-radius:22px;padding:24px;width:min(560px,90%);box-shadow:0 10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:14px;text-align:center">
+            <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr("interTitre", { prenom: this.app.prenom })}</div>
+            <div style="font-size:16px;color:#7a6a58;line-height:1.35">${tr("interAide", { prenom: this.app.prenom })}</div>
+            <button id="interOui" style="background:#46b95a;font-size:22px;padding:14px">${tr("interOui", { prenom: this.app.prenom })}</button>
+            <button id="interNon" style="background:#6e8cdc;font-size:22px;padding:14px">${tr("interNon")}</button>
           </div>
         </div>
       </div>`;
@@ -476,19 +479,17 @@ class Ecriture {
     if (vv) { vv.addEventListener("resize", this.ajusteLibre); vv.addEventListener("scroll", this.ajusteLibre); this.ajusteLibre(); }
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
-    d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
-    d.querySelector("#libreAvecIA").onclick = () => this.ecritAvecIA();
-    d.querySelector("#libreJoli").onclick = () => { // enlève les « euh », les répétitions… et montre le résultat
-      const zone = d.querySelector("#libreTexte"), avant = zone.value, apres = textePropre(avant);
-      zone.value = apres; zone.dispatchEvent(new Event("input")); joue(apres !== avant ? "magie" : "clic");
-    };
+    d.querySelector("#libreCreer").onclick = () => this.demandeInteraction();
+    d.querySelector("#interOui").onclick = () => this.creeDepuisTexte(true);
+    d.querySelector("#interNon").onclick = () => this.creeDepuisTexte(false);
+
     // le brouillon est gardé (si on ferme la fenêtre, ou si l'iPad recharge l'appli)
     try {
       const b = JSON.parse(localStorage.getItem(CLE_BROUILLON) || "null");
-      if (b && b.texte) { d.querySelector("#libreTexte").value = b.texte; if (b.titre) d.querySelector("#libreTitre").value = b.titre; d.querySelector("#libreLongue").checked = !!b.longue; }
+      if (b && b.texte) { d.querySelector("#libreTexte").value = b.texte; if (b.titre) d.querySelector("#libreTitre").value = b.titre; }
     } catch (e) { /* pas de brouillon */ }
-    const garde = () => { try { localStorage.setItem(CLE_BROUILLON, JSON.stringify({ texte: d.querySelector("#libreTexte").value, titre: d.querySelector("#libreTitre").value, longue: d.querySelector("#libreLongue").checked })); } catch (e) { /* rien */ } };
-    for (const id of ["#libreTexte", "#libreTitre", "#libreLongue"]) d.querySelector(id).addEventListener("input", garde);
+    const garde = () => { try { localStorage.setItem(CLE_BROUILLON, JSON.stringify({ texte: d.querySelector("#libreTexte").value, titre: d.querySelector("#libreTitre").value })); } catch (e) { /* rien */ } };
+    for (const id of ["#libreTexte", "#libreTitre"]) d.querySelector(id).addEventListener("input", garde);
     if (voix) d.querySelector("#libreMicro").onclick = () => this.dicte();
     d.querySelector("#libreChapitre").onclick = () => { // insère « 📖 Titre » sur sa propre ligne, là où est le curseur
       const zone = d.querySelector("#libreTexte"), titre = window.prompt(tr("promptChapitre"), "");
@@ -521,45 +522,28 @@ class Ecriture {
     r.onend = () => { this.reco = null; if (this.libre) bouton.textContent = tr("dicteeGo"); };
     try { r.start(); this.reco = r; bouton.textContent = tr("dicteeStop"); } catch (e) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); }
   }
-  // ------------------------------------------------ l'IA gratuite écrit l'histoire, automatiquement (api/histoire.py)
-  async ecritAvecIA() {
-    const d = this.libre, erreur = (m, neutre = false) => { const z = d.querySelector("#libreErreur"); z.textContent = m; z.style.color = neutre ? "#7a5a30" : "#b23c32"; };
-    const texte = textePropre(d.querySelector("#libreTexte").value), titre = d.querySelector("#libreTitre").value.trim();
-    if (texte.length < 10) return erreur(tr("libreVide"));
-    const refus = texteRefuse(texte, 8000) || texteRefuse(titre, 80);
-    if (refus) return erreur(tr("refuse", { raison: refus }));
-    if (this.reco) this.reco.stop();
-    const bouton = d.querySelector("#libreAvecIA"), debut = Date.now();
-    bouton.disabled = true; d.querySelector("#libreCreer").disabled = true;
-    const minuteur = setInterval(() => { bouton.textContent = tr("iaEcrit", { s: Math.round((Date.now() - debut) / 1000) }); }, 500);
-    erreur(tr("iaPatience"), true);
-    try {
-      const rep = await fetch("api/histoire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        texte, titre, prenom: this.app.prenom, longue: d.querySelector("#libreLongue").checked,
-        personnages: Object.entries(PERSONNAGES).map(([id, p]) => ({ id, nom: p.nom })),
-        catalogue: { // tout ce que l'appli sait montrer en plus (activités, lieux, animaux)
-          actions: Object.entries(ACTIVITES).map(([id, A]) => ({ id, nom: A.fr, lieu: A.decor })),
-          lieux: Object.entries(LIEUX_EXTRA).map(([id, [nom]]) => ({ id, nom })),
-          animaux: Object.keys(ANIMAUX).map((id) => ({ id, nom: NOMS_ANIMAUX.fr[id] })) } }) });
-      const brut = await rep.json().catch(() => ({}));
-      if (rep.status === 503) throw new Error(tr("iaNonConfigure"));
-      if (!rep.ok) throw new Error(tr("iaRatee"));
-      const e = histoireDeIA(brut, titre); // vérifiée : format, personnages, filtre pour enfants
-      if (typeof e === "string") throw new Error(e);
-      this.ajoute(e);
-      try { localStorage.removeItem(CLE_BROUILLON); } catch (err) { /* rien */ }
-      this.fermeLibre();
-      this.essaie(); // on passe directement à l'histoire
-    } catch (err) { erreur(err.message && !/fetch|network|load/i.test(err.message) ? err.message : tr("iaHorsLigne")); }
-    finally { clearInterval(minuteur); if (this.libre) { bouton.disabled = false; bouton.textContent = tr("iaAvec"); d.querySelector("#libreCreer").disabled = false; } }
+  lignesDuRecit() { // le récit, nettoyé (« euh », répétitions…) et découpé en écrans
+    const brut = this.libre.querySelector("#libreTexte").value;
+    return (this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean))
+      .map((l) => (/^(📖|#)/.test(l) ? l : nettoieRecit(l))).filter(Boolean);
   }
-  creeDepuisTexte() {
+  demandeInteraction() {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
-    const titre = d.querySelector("#libreTitre").value.trim() || tr("titreDefaut");
-    const brut = d.querySelector("#libreTexte").value;
-    let lignes = (this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean))
-      .map((l) => (/^(📖|#)/.test(l) ? l : nettoieRecit(l))).filter(Boolean); // sans « euh » ni bégaiements
+    if (this.reco) this.reco.stop();
+    const lignes = this.lignesDuRecit();
     if (!lignes.length) return erreur(tr("libreVide"));
+    for (let i = 0; i < lignes.length; i++) { const refus = texteRefuse(lignes[i]); if (refus) return erreur(tr("libreLigne", { n: i + 1, raison: refus })); }
+    d.querySelector("#libreQuestion").style.display = "flex"; joue("pop");
+  }
+  creeDepuisTexte(interaction = true) {
+    const d = this.libre, erreur = (m) => { d.querySelector("#libreQuestion").style.display = "none"; d.querySelector("#libreErreur").textContent = m; joue("clic"); };
+    const saisi = d.querySelector("#libreTitre").value.trim(), auto = !saisi || /^(mon histoire|my story)\s*\d*$/i.test(saisi);
+    const brut = d.querySelector("#libreTexte").value;
+    let lignes = this.lignesDuRecit(); // sans « euh » ni bégaiements
+    if (!lignes.length || !brut.trim()) return erreur(tr("libreVide"));
+    // un titre tout seul si on n'en a pas donné : le début de l'histoire
+    const premiere = (lignes.find((l) => !/^(📖|#)/.test(l)) || "").replace(/[.!?…]+$/, "");
+    const titre = auto && premiere ? (premiere.length > 32 ? premiere.slice(0, 32).replace(/\s+\S*$/, "") + "…" : premiere) : saisi || tr("titreDefaut");
     const refusTitre = texteRefuse(titre, 80);
     if (refusTitre) return erreur(tr("refuse", { raison: refusTitre }));
     for (let i = 0; i < lignes.length; i++) {
@@ -569,13 +553,13 @@ class Ecriture {
     const trop = lignes.length > MAX_SCENES;
     lignes = lignes.slice(0, MAX_SCENES);
     const texte = lignes.join(" ");
+    const etapes = appliqueInteraction(etapesDepuisTexte(lignes, this.app.prenom), interaction);
     this.ajoute({ id: Date.now().toString(36), date: new Date().toISOString(), titre, heros: vehiculesCites(texte)[0] || "tractopelle",
-      couleur: "jaune", etapes: etapesDepuisTexte(lignes, this.app.prenom).map((et) => ({ ...et, vid: nouvelId() })) });
-    const dictee = this.dictee;
+      couleur: "jaune", etapes: etapes.map((et) => ({ ...et, vid: nouvelId() })) });
     try { localStorage.removeItem(CLE_BROUILLON); } catch (err) { /* rien */ }
     this.fermeLibre();
-    if (dictee) return this.essaie(); // raconté à voix haute : on passe directement à l'histoire (sans l'éditeur)
     if (trop) this.dit(tr("libreTrop"));
+    this.essaie(); // l'histoire se met en place toute seule : on la joue tout de suite
   }
 
   touche(p) {
@@ -956,38 +940,6 @@ function positionsApercu(sc, presents) { // où le moteur placera chacun (pour l
   return pos;
 }
 
-// ------------------------------------------------ une histoire écrite par une IA -> une histoire de l'appli (modifiable)
-function histoireDeIA(brut, titre) {
-  let h;
-  try { h = normalise(brut, "ia", new Date().toISOString()); } catch (e) { return tr("iaIllisible"); }
-  const textes = [h.titre, h.titre_en];
-  for (const d of h.scenes) {
-    textes.push(d.texte, d.texte_en, d.partie, d.partie_en);
-    if (d.consigne !== CONSIGNES[d.action]) textes.push(d.consigne, d.consigne_en);
-    if (d.bulle) textes.push(d.bulle.texte, d.bulle.texte_en);
-  }
-  for (const t of textes) { const refus = t && texteRefuse(String(t), 400); if (refus) return tr("refuse", { raison: refus }); }
-  const presents = new Set();
-  const etapes = h.scenes.map((d) => {
-    for (const k of d.amis) presents.add(k);
-    const et = {
-      action: d.action, decor: d.decor, presents: [...presents], interactif: d.interactif, vid: nouvelId(),
-      texteLibre: { fr: d.texte, en: d.texte_en || null }, humeur: "auto", humeurs: d.humeur, nuit: d.nuit,
-      meteo: d.meteo || "aucune", copains: d.copains, clics: d.interactif || d.clics === 0 ? d.clics : null,
-      consigne: d.consigne && d.consigne !== CONSIGNES[d.action] ? { fr: d.consigne, en: d.consigne_en || null } : null,
-      ...(d.bulle ? { bulle: { qui: d.bulle.qui, fr: d.bulle.texte, en: d.bulle.texte_en } } : {}),
-      ...(d.partie != null ? { partie: { fr: d.partie, en: d.partie_en || null } } : {}),
-      ...(Object.keys(d.positions).length ? { positions: d.positions } : {}),
-      ...(d.objet ? { objet: d.objet } : {}), ...(d.mot ? { mot: d.mot } : {}), ...(d.vehicule ? { vehicule: d.vehicule } : {}),
-      ...(d.cache_heros ? { cacheHeros: true } : {}),
-    };
-    for (const k of d.partent) presents.delete(k);
-    return et;
-  });
-  return { id: nouvelId(), date: new Date().toISOString(), titre: h.titre === "ia" ? titre || tr("titreDefaut") : h.titre,
-    titre_en: h.titre_en, heros: h.heros, couleur: COULEURS[h.couleur] ? h.couleur : COULEUR_DEFAUT[h.heros], etapes, parIA: true };
-}
-
 // ------------------------------------------------ le brouillon du récit (gardé tant que l'histoire n'est pas créée)
 const CLE_BROUILLON = "tracto.brouillon.v1";
 
@@ -1024,4 +976,12 @@ function nettoieRecit(texte) {
 }
 function textePropre(texte) { // tout un récit, ligne par ligne (les lignes de chapitre restent telles quelles)
   return String(texte || "").split("\n").map((l) => (/^\s*(📖|#)/.test(l) ? l.trim() : nettoieRecit(l))).filter((l, i, t) => l || (i > 0 && t[i - 1])).join("\n").trim();
+}
+
+// « Avec interaction ? » : oui -> l'enfant touche l'écran aux moments d'action ; non -> on regarde et on écoute
+function appliqueInteraction(etapes, oui) {
+  if (!oui) return etapes.map((et) => ({ ...et, interactif: false }));
+  const out = etapes.map((et) => ({ ...et, interactif: et.interactif || !["parler", "rouler"].includes(et.action) }));
+  if (!out.some((et) => et.interactif) && out.length) out[out.length - 1].interactif = true;
+  return out;
 }

@@ -82,6 +82,23 @@ const ANIMAUX = {
     for (let k = 0; k < 4; k++) pen.circle(crin, 44 - k * 7, -150 + k * 16, 9);
     oeilA(pen, hx, hy - 6, 5); pen.circle(fonce(col, 0.6), hx + 34, hy + 8, 2.5);
   },
+  licorne(ctx, x, g, s, t, f, marche, mange) {
+    const col = [255, 250, 252], arc = [[255, 140, 170], [255, 200, 90], [140, 210, 250], [190, 150, 240]], pen = new Pen(ctx, x, g, s, f);
+    arc.forEach((c, k) => pen.bras(c, [-58, -110 + k * 6], [-84 + k * 3, -60 + k * 8 + 4 * Math.sin(t * 3 + k)], 7)); // la queue arc-en-ciel
+    pattes4(pen, col, [-42, -26, 26, 42], -80, -4, 12, marche);
+    for (const lx of [-42, -26, 26, 42]) pen.ellipse([200, 170, 230], lx - 8, -10, lx + 8, 0, false);
+    pen.ellipse(col, -64, -138, 60, -70);
+    pen.bras(col, [36, -120], [62, -170], 30);
+    const hx = 72, hy = -176 + 12 * mange;
+    pen.ellipse(col, hx - 22, hy - 22, hx + 40, hy + 18);
+    pen.ellipse([255, 225, 235], hx + 14, hy - 6, hx + 42, hy + 18);
+    pen.poly(col, [[hx - 16, hy - 18], [hx - 12, hy - 40], [hx - 2, hy - 20]]);
+    pen.poly([255, 215, 90], [[hx + 2, hy - 22], [hx + 14, hy - 66], [hx + 16, hy - 20]]); // la corne dorée
+    for (let k = 1; k < 4; k++) pen.line([235, 175, 60], [hx + 4 + k * 2.5, hy - 22 - k * 11], [hx + 12 + k * 1.2, hy - 26 - k * 11], 2);
+    arc.forEach((c, k) => pen.circle(c, 46 - k * 7, -152 + k * 15, 9)); // la crinière
+    oeilA(pen, hx, hy - 6, 5); joueA(pen, hx + 10, hy + 6, 5);
+    if (Math.sin(t * 2) > 0.7) etoile(ctx, x + f * (hx + 18) * s, g + (hy - 70) * s, 6 * s, [255, 230, 120], t);
+  },
   poule(ctx, x, g, s, t, f, marche, mange) {
     const col = [255, 255, 250], pen = new Pen(ctx, x, g, s, f), pique = 10 * mange;
     for (const lx of [-8, 8]) { const sw = Math.sin(marche + (lx > 0 ? PI : 0)) * 6; pen.bras([240, 170, 40], [lx, -22], [lx + sw, -2], 4); }
@@ -185,20 +202,20 @@ const ANIMAUX = {
 // leur taille (pour l'ombre, la bouche des bulles et l'écran libre) : [largeur, hauteur, x de la bouche, y de la bouche]
 const MESURES_ANIMAUX = {
   chien: [110, 90, 52, -50], lapin: [80, 140, 34, -60], vache: [200, 170, 80, -100], cochon: [130, 100, 60, -56],
-  mouton: [120, 100, 54, -58], cheval: [180, 220, 100, -160], poule: [80, 100, 36, -60], canard: [80, 80, 36, -56],
+  mouton: [120, 100, 54, -58], cheval: [180, 220, 100, -160], licorne: [180, 250, 100, -160], poule: [80, 100, 36, -60], canard: [80, 80, 36, -56],
   lion: [150, 150, 66, -88], elephant: [230, 210, 120, -130], girafe: [140, 300, 76, -258], singe: [90, 150, 6, -96],
   ours: [150, 160, 70, -96], pingouin: [80, 130, 20, -90],
 };
 const NOMS_ANIMAUX = {
-  fr: { chien: "le chien", lapin: "le lapin", vache: "la vache", cochon: "le cochon", mouton: "le mouton", cheval: "le cheval", poule: "la poule",
+  fr: { chien: "le chien", lapin: "le lapin", vache: "la vache", cochon: "le cochon", mouton: "le mouton", cheval: "le cheval", licorne: "la licorne", poule: "la poule",
     canard: "le canard", lion: "le lion", elephant: "l'éléphant", girafe: "la girafe", singe: "le singe", ours: "l'ours", pingouin: "le pingouin" },
-  en: { chien: "the dog", lapin: "the bunny", vache: "the cow", cochon: "the pig", mouton: "the sheep", cheval: "the horse", poule: "the hen",
+  en: { chien: "the dog", lapin: "the bunny", vache: "the cow", cochon: "the pig", mouton: "the sheep", cheval: "the horse", licorne: "the unicorn", poule: "the hen",
     canard: "the duck", lion: "the lion", elephant: "the elephant", girafe: "the giraffe", singe: "the monkey", ours: "the bear", pingouin: "the penguin" },
 };
 const MOTS_ANIMAUX = [ // pour les reconnaître dans un texte (français et anglais, singulier et pluriel)
   ["chien", "\\b(chiens?|chiots?|toutous?|dogs?|puppy|puppies)\\b"], ["lapin", "\\b(lapins?|lapereaux?|bunny|bunnies|rabbits?)\\b"],
   ["vache", "\\b(vaches?|veaux?|cows?|calf)\\b"], ["cochon", "\\b(cochons?|porcelets?|pigs?|piggy)\\b"],
-  ["mouton", "\\b(moutons?|agneaux?|brebis|sheep|lambs?)\\b"], ["cheval", "\\b(chevaux|cheval|poneys?|horses?|pony|ponies)\\b"],
+  ["licorne", "\\b(licornes?|unicorns?)\\b"], ["mouton", "\\b(moutons?|agneaux?|brebis|sheep|lambs?)\\b"], ["cheval", "\\b(chevaux|cheval|poneys?|horses?|pony|ponies)\\b"],
   ["poule", "\\b(poules?|poussins?|coqs?|hens?|chickens?|chicks?)\\b"], ["canard", "\\b(canards?|canetons?|ducks?|ducklings?)\\b"],
   ["lion", "\\b(lions?|lionnes?)\\b"], ["elephant", "\\b(elephants?|elephanteaux?)\\b"], ["girafe", "\\b(girafes?|giraffes?)\\b"],
   ["singe", "\\b(singes?|monkeys?)\\b"], ["ours", "\\b(ours|oursons?|bears?|teddy bear)\\b"], ["pingouin", "\\b(pingouins?|manchots?|penguins?)\\b"],

@@ -13,46 +13,17 @@ depuis l'iPad, de « l'ajouter ». Le travail de Claude :
 5. Commit + push sur la branche principale → Vercel redéploie tout seul (~1 min).
    L'appli recharge la liste des histoires à chaque retour à l'accueil.
 
-## Écrire une histoire avec une IA gratuite, automatiquement
-Accueil → « 🎤 Raconter » (ou « 📝 Texte libre ») : les parents racontent (dictée ou clavier), puis
-« ✨ L'IA l'écrit (gratuit) » : l'appli envoie le récit à `api/histoire.py` (Vercel, Python), qui demande l'histoire
-à une IA au palier GRATUIT avec les consignes du format (FR + EN, chapitres si « longue histoire ») :
-- `GEMINI_API_KEY` : Google Gemini (clé gratuite sur https://aistudio.google.com/apikey), essayé en premier ;
-  si le modèle (`GEMINI_MODELE`, défaut `gemini-2.5-flash`) n'existe plus, le « flash » le plus récent est pris.
-- `GROQ_API_KEY` (facultatif) : Groq (clé gratuite sur https://console.groq.com/keys), en secours.
-Clés dans Vercel → Settings → Environment Variables (jamais dans le code), puis Redeploy. Sans clé : message
-clair et « ⚡ Tout de suite » (sans IA, mots-clés). Seul le récit est envoyé ; les consignes sont côté serveur.
-La réponse est vérifiée par `histoireDeIA()` (`normalise` + filtre pour enfants), devient une histoire de l'appli
-modifiable, et se lance directement. `maxDuration` 300 s.
+## Raconter une histoire dans l'appli (sans IA)
+Accueil → « 🎤 Raconter » (appui long, verrou parents) : on raconte (dictée ou clavier) ; les « euh » et répétitions
+s'enlèvent tout seuls (`nettoieRecit`). « ✅ C'est fini ! » → une question : « Est-ce que [héros] touche l'écran ? »
+Oui = les moments d'action (tout sauf `parler`/`rouler`) deviennent interactifs ; Non = l'histoire se déroule seule
+(`appliqueInteraction`). L'histoire se crée et se lance aussitôt (titre automatique = début du récit si on n'en donne pas).
+Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 
-## Robustesse, parents, hors connexion, dictée propre
-- La boucle d'animation ne s'arrête jamais : une erreur dans un écran → on passe à l'écran suivant (console.error).
-- Verrou parents : « ✎ Écrire », « 🎤 Raconter », « Personnages », « Supprimer », « 🖼 Miniature » et
-  « 🎙 Raconter avec ma voix » s'ouvrent par un appui long (`DUREE_VERROU` 0,8 s) ; appui court = astuce.
-- Hors connexion : `sw.js` (réseau d'abord pour les fichiers de l'appli, cache pour les voix `/api/voix`).
-- Dictée : `nettoieRecit()` enlève les hésitations (euh, bah, du coup, tu vois…), les bégaiements (« le le »),
-  les mots coupés, et l'oral « le chat il dort » → « le chat dort » (garde « vroum vroum », « très très »).
-  Appliqué à chaque phrase dictée, à la création, et au texte envoyé à l'IA ; bouton « ✨ Rendre joli ».
-  « …, touche pour glisser » devient la consigne de l'écran au lieu d'être lu dans l'histoire.
-- Placement : chaque activité a sa largeur (`ZONES_ACTIVITES`) ; les personnages se mettent à côté, jamais dessus,
-  et rapetissent un peu s'il y a trop de monde (`echelleFoule`).
-
-## La vie de tous les jours : activités, lieux, animaux (`js/activites.js`, `js/animaux.js`)
-Ajouter une activité = une entrée dans `ACTIVITES` (dessin, endroit à toucher, son, textes FR/EN, mots-clés,
-lieu habituel) : elle est alors disponible partout (moteur générique dans `Scene`, texte libre / dictée,
-éditeur rangé par thèmes `CATEGORIES_ACTIONS`, écran libre, IA gratuite via le « catalogue »).
-- **Activités** (`action`) : au parc `toboggan`, `balancoire`, `ballon` (foot), `cerfvolant`, `flaques` ; jeux `cubes`,
-  `puzzle`, `danse`, `musique` ; maison `gateau` (anniversaire, bougies), `bain`, `dents`, `ranger`, `cuisine`, `peinture`,
-  `livre`, `sapin` (Noël) ; `docteur`, `courses` ; nature `jardiner`, `peche`, `nourrir` (les animaux présents),
-  `bonhomme` (de neige), `coquillages`, `glace` ; `laver` (laver le camion) ; voyages `train`, `avion`, `bateau`,
-  `fusee` (compte à rebours dit à voix haute). `clics` = nombre de touchers (ex. bougies du gâteau).
-- **Lieux** (`decor`) : `parc`, `zoo`, `maison` (intérieur), `magasin`, `docteur`, `gare` (rails), `espace`,
-  `aeroport`. À l'intérieur (`maison`, `magasin`, `docteur`), le camion reste dehors sauf pour les travaux.
-- **Animaux** (`amis`) : `chien`, `lapin`, `vache`, `cochon`, `mouton`, `cheval`, `poule`, `canard`, `lion`,
-  `elephant`, `girafe`, `singe`, `ours`, `pingouin` (reconnus aussi au pluriel et en anglais ; « madame Lapin » → lapin).
-- Texte libre / dictée : une activité sans lieu cité se passe à son lieu habituel (le toboggan au parc) ; en changeant
-  de lieu, les animaux (sauf chien et chat) restent là-bas. Les personnages se placent selon leur taille,
-  les grands derrière, les petits devant.
+## Le héros
+L'appli est « Les aventures de [héros] » (« d' » devant une voyelle). Le héros = le personnage `arthur` de l'atelier
+(« ⭐ Héros de l'histoire ») : son prénom (`app.prenom`) et son allure servent partout ({prenom}, titres, voix, âge des jeux).
+Le défilé en bas de l'accueil mélange camions, dinosaures, dragon et licornes (`licorne` = nouvel animal).
 
 ## Jeux pour apprendre (adaptés à l'âge)
 - `"action": "chiffres"` : des bulles 1, 2, 3… à toucher dans l'ordre (3 ans : 1-3, 4 ans : 1-5, 5 ans : 1-7 ;
