@@ -155,8 +155,15 @@ function etapesDepuisTexte(lignes, prenom) {
     const partants = (depart ? cites(depart[1]) : []).concat(adieu ? cites(adieu[2]) : []);
     // « un dinosaure arrive à la piscine » : le dinosaure vient, on reste à la piscine
     let lieu = devineDecor(texte);
+    const activite = ACTIVITES[devineAction(texte, i === 0, i === lignes.length - 1)];
+    if (!lieu && activite && activite.decor && (!decor || decor === "campagne" || INTERIEURS.has(decor) !== INTERIEURS.has(activite.decor))) lieu = activite.decor;
     if (lieu === "dinosaures" && decor && !/volcan|pays|ile|monde|terre|vallee|chez les dino/.test(sa)) lieu = null;
-    decor = lieu || decor || "campagne";
+    const nouveauLieu = lieu || decor || "campagne";
+    if (decor && nouveauLieu !== decor) { // on change d'endroit : les animaux du zoo, de la ferme… restent là-bas (sauf s'ils sont cités)
+      const cites2 = new Set(cites(texte));
+      for (const id of [...presents]) if (!STYLES[id] && !["chien", "chat"].includes(id) && !cites2.has(id)) presents.delete(id);
+    }
+    decor = nouveauLieu;
     pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
       texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: vehiculesCites(texte), clics: null, consigne: null,
@@ -520,7 +527,11 @@ class Ecriture {
     try {
       const rep = await fetch("api/histoire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         texte, titre, prenom: this.app.prenom, longue: d.querySelector("#libreLongue").checked,
-        personnages: Object.entries(PERSONNAGES).map(([id, p]) => ({ id, nom: p.nom })) }) });
+        personnages: Object.entries(PERSONNAGES).map(([id, p]) => ({ id, nom: p.nom })),
+        catalogue: { // tout ce que l'appli sait montrer en plus (activités, lieux, animaux)
+          actions: Object.entries(ACTIVITES).map(([id, A]) => ({ id, nom: A.fr, lieu: A.decor })),
+          lieux: Object.entries(LIEUX_EXTRA).map(([id, [nom]]) => ({ id, nom })),
+          animaux: Object.keys(ANIMAUX).map((id) => ({ id, nom: NOMS_ANIMAUX.fr[id] })) } }) });
       const brut = await rep.json().catch(() => ({}));
       if (rep.status === 503) throw new Error(tr("iaNonConfigure"));
       if (!rep.ok) throw new Error(tr("iaRatee"));
@@ -645,7 +656,8 @@ class Ecriture {
       rrect(ctx, ...r, 10, et.nuit ? CIELS.nuit[0] : (CIELS[et.decor] || CIELS.campagne)[0], on ? 5 : 2, on ? [255, 140, 30] : [205, 195, 180]);
       rrect(ctx, r[0] + 3, r[1] + 42, r[2] - 6, 19, 6, sol[0]);
       ecrit(ctx, String(i + 1), 18, [255, 255, 255], [r[0] + 14, r[1] + 14], [90, 90, 110]);
-      ecrit(ctx, tr("actions")[et.action] || et.action, 15, CONTOUR, [r[0] + r[2] / 2, r[1] + 51]);
+      const nomAction = tr("actions")[et.action] || et.action, tailleNom = ctx.measureText && nomAction.length > 11 ? 12 : 15;
+      ecrit(ctx, coupe(ctx, nomAction, tailleNom, 86)[0] || nomAction, tailleNom, CONTOUR, [r[0] + r[2] / 2, r[1] + 51]);
       if (et.interactif) rond(ctx, r[0] + r[2] - 14, r[1] + 14, 8, [255, 210, 60], 2);
       if (et.partie && i > 0) { rrect(ctx, r[0] - 5, r[1] - 4, 8, r[3] + 8, 4, [235, 130, 40]); ecrit(ctx, "📖", 13, [0, 0, 0], [r[0] + 36, r[1] + 14]); }
       if (et.bulle && et.bulle.fr) ecrit(ctx, "💬", 14, [0, 0, 0], [r[0] + r[2] - 34, r[1] + 15]);
@@ -688,28 +700,33 @@ class Ecriture {
     const Y = 306;
     if (this.onglet === "lieu") {
       titre(tr("lieu"), 268, Y);
-      LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 9) * 111, Y + 20 + Math.floor(i / 9) * 46, 104, 40], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 16));
-      titre(tr("action"), 268, Y + 110);
-      ACTIONS_ECRITURE.forEach((a, i) => puce([265 + (i % 9) * 111, Y + 130 + Math.floor(i / 9) * 44, 104, 38], tr("actions")[a], et.action === a, () => this.choisitAction(a), [255, 200, 60], 15));
-      ecrit(ctx, tr("moment"), 18, [110, 90, 70], [800, Y + 86]);
-      puce([850, Y + 66, 112, 40], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90]);
-      puce([968, Y + 66, 112, 40], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230]);
+      LIEUX_ECRITURE.forEach((l, i) => puce([265 + (i % 11) * 90, Y + 20 + Math.floor(i / 11) * 40, 85, 36], tr("lieux")[l], et.decor === l, () => this.change({ decor: l }), [140, 200, 240], 14));
+      titre(tr("action"), 268, Y + 106);
+      puce([1030, Y + 100, 110, 34], "☀ " + tr("jour"), !et.nuit, () => this.change({ nuit: false }), [255, 215, 90], 16);
+      puce([1150, Y + 100, 110, 34], "☾ " + tr("nuitMot"), !!et.nuit, () => this.change({ nuit: true }), [150, 160, 230], 16);
+      if (this.catEtape !== this.sc + ":" + this.id) { // le thème de l'action de cet écran
+        this.catEtape = this.sc + ":" + this.id;
+        this.catAction = (CATEGORIES_ACTIONS.find(([, , l]) => l.includes(et.action)) || CATEGORIES_ACTIONS[0])[0];
+      }
+      CATEGORIES_ACTIONS.forEach(([c, icone], k) => puce([265 + k * 166, Y + 134, 160, 36], icone + " " + NOMS_CATEGORIES[LANGUE][c], this.catAction === c, () => { this.catAction = c; joue("clic"); }, [255, 170, 90], 16));
+      CATEGORIES_ACTIONS.find(([c]) => c === this.catAction)[2].forEach((a, i) =>
+        puce([265 + (i % 9) * 111, Y + 180 + Math.floor(i / 9) * 44, 104, 38], tr("actions")[a] || a, et.action === a, () => this.choisitAction(a), [255, 200, 60], 14));
     } else if (this.onglet === "qui") {
       titre(tr("quiEstLa"), 268, Y);
-      Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).slice(0, 14).forEach((id, i) => {
-        const on = et.presents.includes(id);
-        vignette([265 + i * 71, Y + 20, 66, 66], on, () => {
-          if (STYLES[id]) { const st = STYLES[id], ech = st.L > 70 ? 0.36 : 0.48; personne(ctx, 298 + i * 71, Y + 50 + (st.L + st.T + st.R - 6) * ech, ech, t, 1, 0, 0, null, id); }
-          else dessineAmi(ctx, id, 298 + i * 71, Y + 82, t, 1, 0, 0, id === "dino" ? 0.33 : 0.42);
+      Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).slice(0, 32).forEach((id, i) => {
+        const on = et.presents.includes(id), r = [265 + (i % 16) * 62, Y + 20 + Math.floor(i / 16) * 64, 58, 58];
+        vignette(r, on, () => {
+          const [w, h] = tailleElement({ type: "perso", id }), ech = Math.min(50 / w, 52 / h);
+          dessineAmi(ctx, id, r[0] + 29, r[1] + 55, t, 1, 0, 0, ech);
         }, () => this.change({ presents: on ? et.presents.filter((x) => x !== id) : et.presents.concat([id]) }));
       });
-      titre(tr("humeurMot"), 268, Y + 108);
+      titre(tr("humeurMot"), 268, Y + 154);
       [["auto", tr("humAuto")], ["joie", tr("humJoie")], ["calme", tr("humCalme")], ["peur", tr("humPeur")]].forEach(([h, nom], i) =>
-        puce([265 + i * 130, Y + 128, 122, 40], nom, (et.humeur || "auto") === h, () => this.change({ humeur: h })));
-      titre(tr("enginsCopains"), 268, Y + 190);
+        puce([265 + i * 130, Y + 174, 122, 38], nom, (et.humeur || "auto") === h, () => this.change({ humeur: h })));
+      titre(tr("enginsCopains"), 268, Y + 226);
       VEHICULES.forEach((k, i) => {
         const on = (et.copains || []).includes(k);
-        vignette([265 + i * 92, Y + 210, 86, 66], on, () => dessineVehicule(ctx, k, COULEUR_DEFAUT[k], 308 + i * 92, Y + 266, t, 0, 0, 0.3),
+        vignette([265 + i * 92, Y + 246, 86, 60], on, () => dessineVehicule(ctx, k, COULEUR_DEFAUT[k], 308 + i * 92, Y + 298, t, 0, 0, 0.28),
           () => this.change({ copains: on ? et.copains.filter((x) => x !== k) : (et.copains || []).concat([k]) }));
       });
     } else if (this.onglet === "toucher") {
@@ -792,11 +809,18 @@ class Ecriture {
       // la palette d'images
       const xd = cadre[0] + cadre[2] + 14;
       [["perso", tr("catPerso")], ["engin", tr("catEngins")], ["objet", tr("catObjets")]].forEach(([c, nom], k) =>
-        puce([xd + k * 126, Y + 2, 120, 38], nom, this.categorie === c, () => { this.categorie = c; }, [140, 200, 240], 16));
+        puce([xd + k * 126, Y + 2, 120, 38], nom, this.categorie === c, () => { this.categorie = c; this.pagePalette = 0; }, [140, 200, 240], 16));
       const items = this.categorie === "perso" ? Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id }))
         : this.categorie === "engin" ? [{ type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })))
         : Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id }));
-      items.slice(0, 24).forEach((it, k) => {
+      const pages = Math.ceil(items.length / 23), page = (this.pagePalette = (this.pagePalette || 0) % Math.max(1, pages));
+      const visibles = pages > 1 ? items.slice(page * 23, page * 23 + 23) : items.slice(0, 24);
+      if (pages > 1) { // la dernière case : page suivante
+        const r = [xd + (23 % 6) * 62, Y + 48 + Math.floor(23 / 6) * 59, 56, 54];
+        rrect(ctx, ...r, 10, [255, 230, 180], 2, [235, 150, 60]); ecrit(ctx, `▶ ${page + 1}/${pages}`, 13, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+        z.push({ r, action: () => { this.pagePalette = (page + 1) % pages; joue("clic"); } });
+      }
+      visibles.forEach((it, k) => {
         const r = [xd + (k % 6) * 62, Y + 48 + Math.floor(k / 6) * 59, 56, 54];
         rrect(ctx, ...r, 10, it.type === "objet" ? [225, 240, 252] : [255, 255, 255], 2, [205, 195, 180]);
         const [w, h] = tailleElement(it), ech = Math.min(48 / w, 44 / h);

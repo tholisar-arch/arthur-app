@@ -156,10 +156,23 @@ class handler(BaseHTTPRequestHandler):
         if len(texte) < 10:
             return self._json(400, {"erreur": "texte trop court"})
         persos = [f'{p.get("id")} = {p.get("nom")}' for p in (q.get("personnages") or [])[:40] if isinstance(p, dict)]
+        cat = q.get("catalogue") if isinstance(q.get("catalogue"), dict) else {}
+        def liste(cle, avec_lieu=False):  # seulement des identifiants simples et des noms courts (pas de consignes cachées)
+            out = []
+            for e in (cat.get(cle) or [])[:80]:
+                if isinstance(e, dict) and re.fullmatch(r"[a-z_]{2,20}", str(e.get("id", ""))):
+                    nom = re.sub(r"[^\w '’-]", "", str(e.get("nom", "")), flags=re.UNICODE)[:30]
+                    lieu = f", lieu habituel {e.get('lieu')}" if avec_lieu and re.fullmatch(r"[a-z_]{2,20}", str(e.get("lieu", ""))) else ""
+                    out.append(f"{e['id']} ({nom}{lieu})")
+            return ", ".join(out)
+        en_plus = "".join(f"\n{titre} : {txt}" for titre, txt in (
+            ("Actions en plus (le moment où l'enfant touche fait avancer l'activité)", liste("actions", True)),
+            ("Lieux en plus (decor)", liste("lieux")), ("Animaux en plus (amis)", liste("animaux"))) if txt)
         demande = (f"Prénom de l'enfant : {str(q.get('prenom') or 'Arthur')[:40]}\n"
                    f"Personnages de la famille (identifiant = nom) : {', '.join(persos) or 'arthur = Arthur'}\n"
                    f"Titre souhaité : {str(q.get('titre') or '')[:80] or '(à toi de choisir)'}\n"
-                   f"Histoire longue en chapitres : {'oui' if q.get('longue') else 'non'}\n\n"
+                   f"Histoire longue en chapitres : {'oui' if q.get('longue') else 'non'}{en_plus}\n"
+                   "Utilise volontiers ces actions, lieux et animaux en plus quand ils correspondent au récit.\n\n"
                    f"Ce que racontent les parents :\n{texte}")
         try:
             histoire = ecrit_histoire(demande)

@@ -517,6 +517,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     poly(ctx, [[px - 28, horizon - 232], [px + 28, horizon - 232], [px, horizon - 262]], [220, 70, 70], 3);
     for (let k = 0; k < 3; k++) { const cx = boucle(k * 380 + 380, scroll, 0.6, W); rrect(ctx, cx, horizon - 34, 46, 40, 3, [200, 150, 90], 3); trait(ctx, [cx, horizon - 14], [cx + 46, horizon - 14], 2, [150, 105, 60]); }
   }
+  else if (DECORS_EXTRA[nom]) DECORS_EXTRA[nom].fond(ctx, W, H, horizon, scroll, t, nuit); // parc, zoo, maison, gare, espace…
   const [herbe, route] = SOLS[nom];
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
@@ -532,6 +533,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       if (k % 3 === 0) rond(ctx, x, horizon + 25 + r2() * (G - horizon + 30), 3 + r2.int(0, 3), [180, 145, 105]);
     }
   }
+  if (DECORS_EXTRA[nom] && DECORS_EXTRA[nom].devant) DECORS_EXTRA[nom].devant(ctx, W, H, horizon, scroll, t, nuit, G);
   for (let k = 0; k < 6; k++) {
     const x = boucle(k * 230 + 60, scroll, 1.25, W, 120), y = H - 8;
     if (nom === "chantier") { poly(ctx, [[x - 16, y], [x + 16, y], [x, y - 44]], [255, 130, 30]); rrect(ctx, x - 8, y - 26, 16, 7, 0, [255, 255, 255]); }

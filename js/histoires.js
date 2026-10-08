@@ -87,6 +87,7 @@ function action(nom, defaut = "parler") { const n = sansAccent(nom).trim(); retu
 
 function devineAction(texte, premiere, derniere) {
   const n = sansAccent(texte);
+  for (const [motif, id] of typeof MOTS_ACTIVITES === "undefined" ? [] : MOTS_ACTIVITES) if (motif.test(n)) return id; // toboggan, gâteau, bain, train…
   if (a("\\b(compte|comptent|compter|chiffres?|1, 2, 3|un, deux, trois)\\b", n)) return "chiffres";
   if (a("\\b(lettres?|epele|alphabet)\\b", n)) return "lettres";
   if (a("artifice|\\bfete\\b|hourra|bravo|\\bgagne", n)) return "fete";
@@ -118,6 +119,7 @@ function devineAction(texte, premiere, derniere) {
 }
 function devineDecor(texte) {
   const n = sansAccent(texte);
+  for (const [motif, d] of typeof MOTS_DECORS_EXTRA === "undefined" ? [] : MOTS_DECORS_EXTRA) if (new RegExp(motif).test(n)) return d; // parc, zoo, gare…
   for (const [motif, d] of [["\\bpms\\b|societe", "pms"], ["\\bjardin", "jardin"], ["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["pays des dino|ile des dino|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
     ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["\\bport\\b|bateau|\\bphare", "port"], ["foret|\\bbois\\b", "foret"], ["\\bmontagnes?\\b(?! de)|cascade", "montagne"], ["\\bferme|grange|tracteur|vache", "ferme"], ["campagne|\\bchamps?\\b|prairie", "campagne"], ["chantier", "chantier"], ["dinosaure|dino\\b", "dinosaures"]]) // un lieu nommé passe avant les dinosaures cités
     if (a(motif, n)) return d;

@@ -216,11 +216,18 @@ class EditeurMiniature {
       });
     } else if (this.onglet === "images") {
       [["perso", tr("catPerso")], ["engin", tr("catEngins")], ["objet", tr("catObjets")]].forEach(([c, nom], k) =>
-        puce([X + k * 146, 158, 140, 40], nom, this.cat === c, () => { this.cat = c; }, [140, 200, 240]));
+        puce([X + k * 146, 158, 140, 40], nom, this.cat === c, () => { this.cat = c; this.page = 0; }, [140, 200, 240]));
       const items = this.cat === "perso" ? Object.keys(PERSONNAGES).concat(ANIMAUX_ECRITURE).filter((id) => id in AMIS_DESSIN).map((id) => ({ type: "perso", id }))
         : this.cat === "engin" ? [{ type: "heros", id: "" }].concat(VEHICULES.map((id) => ({ type: "engin", id, col: COULEUR_DEFAUT[id] })))
         : Object.keys(OBJETS_DECOR).map((id) => ({ type: "objet", id }));
-      items.slice(0, 30).forEach((it, k) => {
+      const pages = Math.ceil(items.length / 29), page = (this.page = (this.page || 0) % Math.max(1, pages));
+      const visibles = pages > 1 ? items.slice(page * 29, page * 29 + 29) : items.slice(0, 30);
+      if (pages > 1) { // la dernière case : page suivante
+        const r = [X + (29 % 6) * 72, 210 + Math.floor(29 / 6) * 64, 66, 58];
+        rrect(ctx, ...r, 10, [255, 230, 180], 2, [235, 150, 60]); ecrit(ctx, `▶ ${page + 1}/${pages}`, 14, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
+        z.push({ r, action: () => { this.page = (page + 1) % pages; joue("clic"); } });
+      }
+      visibles.forEach((it, k) => {
         const r = [X + (k % 6) * 72, 210 + Math.floor(k / 6) * 64, 66, 58];
         rrect(ctx, ...r, 10, it.type === "objet" ? [225, 240, 252] : [255, 255, 255], 2, [205, 195, 180]);
         const [w, hg] = tailleElement(it), ech = Math.min(56 / w, 48 / hg);

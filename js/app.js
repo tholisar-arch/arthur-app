@@ -140,11 +140,12 @@ class Scene {
     if (d.decor !== m.decor) m.scroll = 0;
     m.decor = d.decor; m.nuit = this.act === "dormir" || !!d.nuit;
     for (const v of [hero, ...m.copains]) v.outil = v.dx = v.dy = 0;
-    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "pont", "arbre", "panne", "chercher", "chiffres", "lettres"].includes(this.act);
+    const aFaire = this.inter || ["trou", "feu", "deblayer", "construire", "copains", "fete", "manger", "spectacle", "bulles", "calin", "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "pont", "arbre", "panne", "chercher", "chiffres", "lettres"].includes(this.act) || !!ACTIVITES[this.act];
+    const A = (this.A = ACTIVITES[this.act] || null); // une activité de tous les jours (activites.js)
     this.n = aFaire ? d.clics : 0;
-    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420, pont: 300, arbre: 420, panne: 380, chercher: 130, chiffres: 200, lettres: 200 }[this.act];
+    const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420, pont: 300, arbre: 420, panne: 380, chercher: 130, chiffres: 200, lettres: 200 }[this.act] ?? (A ? A.poste ?? 200 : 430);
     this.altitude = 0; this.ouvert = 0; this.veloX = 440; this.pedale = 0;
-    this.cacheHeros = !!d.cache_heros || this.act === "libre";
+    this.cacheHeros = !!d.cache_heros || this.act === "libre" || !!(A && A.sansEngin) || (INTERIEURS.has(d.decor) && !AVEC_ENGIN.has(this.act));
     this.elements = (d.elements || []).map((e) => ({ ...e, saut: 0 }));
     this.aToucher = this.elements.filter((e) => e.toucher);
     if (this.act === "libre") { hero.x = -400; if (this.inter && this.aToucher.length) this.n = this.aToucher.length; }
@@ -157,7 +158,7 @@ class Scene {
       hero.cible = 150;
     } else hero.cible = poste;
     if (this.cacheHeros) hero.cible = -320; // la scène est pour les personnages
-    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770, piscine: 610, cueillir: 640, chateau: 680, route: 560, fenetres: 760, cadeau: 640, pont: 640, arbre: 720, panne: 760 }[this.act] || 0;
+    this.cx = { trou: 720, feu: 770, deblayer: 730, construire: 770, piscine: 610, cueillir: 640, chateau: 680, route: 560, fenetres: 760, cadeau: 640, pont: 640, arbre: 720, panne: 760 }[this.act] || (A ? A.cx ?? 640 : 0);
     this.niveau = 0; this.etages = 0;
     if (this.act === "cueillir") { // le camion benne vient se garer pour recevoir les mûres
       const col = hero.col === COULEURS.orange ? COULEURS.bleu : COULEURS.orange;
@@ -188,13 +189,18 @@ class Scene {
     for (const a of m.amis) if (d.partent.includes(a.kind)) { a.part = true; a.cible = a.x < VW / 2 ? -200 : VW + 200; }
     const ecarts = this.act === "manger" ? [-280, 300, -430, 440] : [-250, 250, -420, 420];
     const restants = m.amis.filter((a) => !a.part);
-    const reparties = restants.length >= 3 ? placesReparties(restants.length, poste, this.cacheHeros) : null; // beaucoup de monde : on s'étale
+    const larg = A ? A.largeur ?? 300 : 0, interdits = A ? [[this.cx - larg / 2 - 40, this.cx + larg / 2 + 40]].concat(this.cacheHeros ? [] : [[poste - 170, poste + 200]]) : null;
+    const largeurs = restants.map((a) => largeurAmi(a.kind));
+    const reparties = A && restants.length ? placesLibres(restants.length, interdits, largeurs) // loin de l'activité et du camion
+      : restants.length >= 3 ? placesReparties(restants.length, poste, this.cacheHeros, largeurs) : null; // beaucoup de monde : on s'étale
     restants.forEach((a, i) => {
       const aGauche = { arbre: [150, 80, 220, 40], pont: [120, 60, 180, 30], panne: [130, 60, 200, 30], chercher: [300, 240, 340, 200], chiffres: [400, 540, 680, 820], lettres: [400, 540, 680, 820] }[this.act]; // loin de l'obstacle
       a.cible = borne(d.positions[a.kind] ?? (reparties ? reparties[i] : aGauche ? aGauche[i % 4] : poste + ecarts[i % 4]), 70, VW - 70);
       if (nouveaux.includes(a) && a.cible < VW / 2) a.x = -150; // arrive par le côté où il va se placer
     });
     for (const a of m.amis) { a.mange = a.dy = 0; a.humeur = d.humeur[a.kind] || null; }
+    const enfants = m.amis.filter((a) => !a.part);
+    this.acteurAct = (enfants.find((a) => a.kind === "arthur") || enfants.find((a) => STYLES[a.kind] && STYLES[a.kind].L <= 70) || enfants[0] || { kind: "arthur" }).kind;
     if (this.act === "manger") { this.mangeurs = [hero, ...m.amis]; this.n = this.mangeurs.length; this.qte = this.mangeurs.map(() => 1); }
     this.total = this.n || 5; // nombre de planches du pont
     this.espacement = Math.max(1.3, (this.duree - 2) / Math.max(1, this.n));
@@ -214,6 +220,7 @@ class Scene {
     else app.voix.dire((parole + " " + this.consigne).trim(), this.langue);
   }
   faiseur() { return this.acteur || this.m.hero; }
+  etatAct() { return { k: this.etages, n: this.n, p: this.p, t: this.m.t, acteur: this.acteurAct, sc: this, fini: this.fini_t !== null ? this.t - this.fini_t : null }; }
   pret() { if (this.cacheHeros && !this.acteur) return true; const f = this.faiseur(); return Math.abs(f.x - f.cible) < 6; }
   posRepas(i) {
     const v = this.mangeurs[i];
@@ -255,6 +262,7 @@ class Scene {
     if (this.act === "copains") return [VW - 120, G - 120];
     if (this.act === "fete" || this.act === "dormir") return [VW / 2, 150];
     if (this.jeu) { const b = this.jeu.cibleBulle(); return b ? this.jeu.pos(b, this.m.t) : [VW / 2, 150]; }
+    if (this.A) return this.A.cible(this);
     if (this.act === "libre") {
       const el = this.aToucher[Math.min(this.fait, this.aToucher.length - 1)];
       if (!el) return [VW / 2, G - 150];
@@ -295,6 +303,11 @@ class Scene {
     else if (this.act === "cadeau") { this.dureeEtape = 1.4; joue("magie"); }
     else if (this.act === "fenetres") joue("pop");
     else if (this.act === "pont") joue("pop");
+    else if (this.A) {
+      this.dureeEtape = this.A.duree || 0.9;
+      joue(typeof this.A.son === "function" ? this.A.son(this.fait) : this.A.son || "pop");
+      if (this.A.parole) this.app.voix.dire(this.A.parole(this.fait, this.n), this.langue);
+    }
     else if (this.jeu) {
       this.dureeEtape = 0.45;
       const [x, y] = this.cible(), b = this.jeu.reussit(this.t);
@@ -422,6 +435,15 @@ class Scene {
       this.elTouche.saut = 70 * Math.abs(Math.sin(PI * q));
       if (p >= 0.5 && !this.evt) { this.evt = true; const [x, y] = this.cible(); m.eclat(x, y, 18, null, 260, "etoile", 0.8, 100); }
     }
+    if (this.A) { // tout le monde participe : petits sauts de joie
+      m.amis.forEach((a, i) => { if (!(this.A.prendActeur && a.kind === this.acteurAct)) a.dy = -Math.abs(Math.sin(PI * q * 2 + i)) * 12; });
+      if (!this.cacheHeros && this.act !== "laver") v.dy = -Math.abs(Math.sin(PI * q)) * 14;
+      if (p >= 0.5 && !this.evt) {
+        this.evt = true; this.etages++;
+        const [x, y] = this.cible(); m.eclat(x, y, 16, this.A.couleurs || null, 220, "etoile", 0.7, 120);
+        if (this.A.effet) this.A.effet(this, m);
+      }
+    }
     if (this.act === "pont") {
       v.outil = Math.sin(PI * q);
       if (p >= 0.5 && !this.evt) {
@@ -487,6 +509,7 @@ class Scene {
       m.eclat(this.cx, G - 120, 12, [[255, 100, 140], [255, 150, 180]], 160, "coeur", 1.2, -50);
     }
     if (["trou", "feu", "deblayer", "construire", "cueillir", "chateau", "route", "fenetres", "pont", "arbre", "panne"].includes(this.act)) { joue("magie"); const [x, y] = this.cible(); m.eclat(x, y - 40, 25); }
+    if (this.A) { joue("magie"); m.eclat(this.cx, G - 160, 30); if (this.A.fin) this.A.fin(this, m); }
     if (this.inter) { joue("bravo"); m.eclat(VW / 2, 200, 40, null, 420); this.app.voix.dire(rendu(choix(tr("bravos")), this.valeurs)); }
   }
   maj(dt) {
@@ -594,6 +617,7 @@ class Scene {
     else if (this.act === "fenetres") maisonAOuvrir(ctx, this.cx, G, this.etages, this.n, m.t);
     else if (this.act === "cadeau") cadeau(ctx, this.cx, G, this.ouvert, m.t);
     else if (this.act === "pont") pont(ctx, this.cx, G, this.etages, this.total);
+    else if (this.A) this.A.dessin(ctx, this.cx, G, this.etatAct());
     else if (this.act === "panne") vehiculeEnPanne(ctx, this.panneKind, this.panneCol, this.repare ? -999 : this.cx, G, 1 - this.niveau, m.t, false);
     else if (this.act === "cueillir") {
       buisson(ctx, this.cx, G, 1 - this.niveau);
@@ -604,9 +628,11 @@ class Scene {
       buissonCachette(ctx, x, G, k === this.ici ? this.secoue : 0);
       if (k === this.cachettes.length - 1 && this.trouve && !estAmi(this.objet)) objetPerdu(ctx, this.objet, x, G + 14, m.t); // trouvé : devant le buisson
     });
-    for (const a of m.amis) {
+    const parTaille = [...m.amis].sort((a, b) => (TAILLE_AMI[b.kind] || [0, STYLES[b.kind] ? 150 : 80])[1] - (TAILLE_AMI[a.kind] || [0, STYLES[a.kind] ? 150 : 80])[1]);
+    for (const a of parTaille) { // les grands derrière, les petits devant
       if (this.act === "voler") break; // ils sont sur le véhicule (dessinés plus bas)
       if (this.act === "velo" && this.cyclistes().includes(a)) continue; // sur le vélo (dessinés plus bas)
+      if (this.A && this.A.prendActeur && a.kind === this.acteurAct) continue; // l'activité le dessine (sur le toboggan…)
       const dansLEau = this.act === "piscine" && a.kind === "papi" ? 44 : 0; // Papi est dans la piscine
       dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, 1, a.humeur);
     }
@@ -1174,12 +1200,19 @@ function decodeVoix(blob) { // un enregistrement du micro -> un son prêt à jou
   return blob.arrayBuffer().then((ab) => (Audio_.ctx ? new Promise((ok, ko) => Audio_.ctx.decodeAudioData(ab, ok, ko)) : null));
 }
 
-function placesReparties(n, poste, sansVehicule) { // n places bien espacées sur toute la largeur, en évitant le véhicule
+function placesReparties(n, poste, sansVehicule, largeurs) { // n places bien espacées sur toute la largeur, en évitant le véhicule
   const zones = sansVehicule ? [[70, VW - 70]] : [[70, poste - 170], [poste + 200, VW - 70]].filter(([a, b]) => b - a > 40);
-  const total = zones.reduce((t, [a, b]) => t + b - a, 0), pas = total / n, out = [];
+  return placesDansZones(zones, n, largeurs);
+}
+function placesDansZones(zones, n, largeurs) { // chacun prend une place à sa taille (un éléphant plus qu'un canard)
+  const l = largeurs && largeurs.length === n ? largeurs : Array(n).fill(1), somme = l.reduce((a, b) => a + b, 0) || 1;
+  const total = zones.reduce((t, [a, b]) => t + b - a, 0), out = [];
+  let cumul = 0;
   for (let k = 0; k < n; k++) {
-    let d = pas * (k + 0.5);
+    let d = ((cumul + l[k] / 2) / somme) * total; cumul += l[k];
     for (const [a, b] of zones) { if (d <= b - a) { out.push(Math.round(a + d)); break; } d -= b - a; }
+    if (out.length < k + 1) out.push(Math.round(zones[zones.length - 1][1]));
   }
   return out;
 }
+const largeurAmi = (kind) => (STYLES[kind] ? 70 : (TAILLE_AMI[kind] || [90])[0] * 0.75); // la place qu'il prend sur l'écran

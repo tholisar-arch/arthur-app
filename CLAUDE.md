@@ -25,6 +25,23 @@ clair et « ⚡ Tout de suite » (sans IA, mots-clés). Seul le récit est envoy
 La réponse est vérifiée par `histoireDeIA()` (`normalise` + filtre pour enfants), devient une histoire de l'appli
 modifiable, et se lance directement. `maxDuration` 300 s.
 
+## La vie de tous les jours : activités, lieux, animaux (`js/activites.js`, `js/animaux.js`)
+Ajouter une activité = une entrée dans `ACTIVITES` (dessin, endroit à toucher, son, textes FR/EN, mots-clés,
+lieu habituel) : elle est alors disponible partout (moteur générique dans `Scene`, texte libre / dictée,
+éditeur rangé par thèmes `CATEGORIES_ACTIONS`, écran libre, IA gratuite via le « catalogue »).
+- **Activités** (`action`) : au parc `toboggan`, `balancoire`, `ballon` (foot), `cerfvolant`, `flaques` ; jeux `cubes`,
+  `puzzle`, `danse`, `musique` ; maison `gateau` (anniversaire, bougies), `bain`, `dents`, `ranger`, `cuisine`, `peinture`,
+  `livre`, `sapin` (Noël) ; `docteur`, `courses` ; nature `jardiner`, `peche`, `nourrir` (les animaux présents),
+  `bonhomme` (de neige), `coquillages`, `glace` ; `laver` (laver le camion) ; voyages `train`, `avion`, `bateau`,
+  `fusee` (compte à rebours dit à voix haute). `clics` = nombre de touchers (ex. bougies du gâteau).
+- **Lieux** (`decor`) : `parc`, `zoo`, `maison` (intérieur), `magasin`, `docteur`, `gare` (rails), `espace`,
+  `aeroport`. À l'intérieur (`maison`, `magasin`, `docteur`), le camion reste dehors sauf pour les travaux.
+- **Animaux** (`amis`) : `chien`, `lapin`, `vache`, `cochon`, `mouton`, `cheval`, `poule`, `canard`, `lion`,
+  `elephant`, `girafe`, `singe`, `ours`, `pingouin` (reconnus aussi au pluriel et en anglais ; « madame Lapin » → lapin).
+- Texte libre / dictée : une activité sans lieu cité se passe à son lieu habituel (le toboggan au parc) ; en changeant
+  de lieu, les animaux (sauf chien et chat) restent là-bas. Les personnages se placent selon leur taille,
+  les grands derrière, les petits devant.
+
 ## Jeux pour apprendre (adaptés à l'âge)
 - `"action": "chiffres"` : des bulles 1, 2, 3… à toucher dans l'ordre (3 ans : 1-3, 4 ans : 1-5, 5 ans : 1-7 ;
   6 ans et plus : 3 petites additions « 2 + 3 = ? »). Pas de main qui montre la réponse (un petit halo après 7 s).
