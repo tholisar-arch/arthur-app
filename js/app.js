@@ -122,7 +122,7 @@ class Monde { // ce qui reste d'une scène à l'autre
 }
 
 const DUREE_FONDU = 0.75;
-const DUREE_VERROU = 0.8; // secondes d'appui pour ouvrir un bouton des parents // fondu entre deux scènes (secondes)
+const DUREE_VERROU = 0.7; // secondes d'appui pour ouvrir un bouton des parents // fondu entre deux scènes (secondes)
 const RAYON_CIBLE = 100; // taille de la zone à toucher autour de la cible (en pixels de l'image)
 const estimeDuree = (texte) => texte.length / 11 + 1;
 
@@ -992,14 +992,30 @@ class App {
 
   // ------------------------------------------------ boucle
   // ------------------------------------------------ verrou parents : appui long sur les boutons des grands
-  verrouParent(bouton, action) { this.appui = { bouton, action, t: 0 }; joue("clic"); }
-  lacheParent() {
-    if (this.appui && this.appui.t < DUREE_VERROU) { this.astuceVerrou = 2.5; } // appui trop court : on explique
-    this.appui = null;
+  // mesuré à l'horloge (pas aux images : l'iPad peut ralentir l'animation) ; s'ouvre tout seul au bout du temps
+  verrouParent(bouton, action) {
+    if (this.appui) clearTimeout(this.appui.minuteur);
+    this.appui = { bouton, action, debut: performance.now() };
+    this.appui.minuteur = setTimeout(() => this.ouvreVerrou(), DUREE_VERROU * 1000);
+    joue("clic");
+  }
+  tenuVerrou() { return this.appui ? (performance.now() - this.appui.debut) / 1000 : 0; }
+  ouvreVerrou() {
+    const a = this.appui;
+    if (!a) return;
+    clearTimeout(a.minuteur); this.appui = null; this.astuceVerrou = 0;
+    joue("magie"); a.action(); this.dessine();
+  }
+  lacheParent(type) {
+    if (!this.appui) return;
+    if (type === "pointercancel" || type === "touchcancel") return; // l'iPad a interrompu le geste : le doigt est toujours là, on continue
+    if (this.tenuVerrou() >= DUREE_VERROU * 0.8) return this.ouvreVerrou();
+    clearTimeout(this.appui.minuteur); this.appui = null;
+    this.astuceVerrou = 2.5; // appui trop court : on explique
   }
   dessineVerrou(ctx) {
     if (this.appui) { // un anneau qui se remplit pendant l'appui
-      const [x, y, w, h] = this.appui.bouton.r, k = Math.min(1, this.appui.t / DUREE_VERROU);
+      const [x, y, w, h] = this.appui.bouton.r, k = Math.min(1, this.tenuVerrou() / DUREE_VERROU);
       ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) / 2 + 10, -PI / 2, -PI / 2 + 2 * PI * k);
       ctx.lineWidth = 8; ctx.strokeStyle = "rgba(255,150,40,0.9)"; ctx.lineCap = "round"; ctx.stroke();
     }
@@ -1012,7 +1028,7 @@ class App {
   }
   maj(dt) {
     this.t += dt;
-    if (this.appui) { this.appui.t += dt; if (this.appui.t >= DUREE_VERROU) { const a = this.appui.action; this.appui = null; joue("magie"); a(); } }
+    if (this.appui && this.tenuVerrou() >= DUREE_VERROU) this.ouvreVerrou();
     if (this.astuceVerrou > 0) this.astuceVerrou -= dt;
     this.fondu = Math.max(0, this.fondu - dt); this.ouverture = Math.max(0, this.ouverture - dt);
     this.atelier.messageT -= dt;
@@ -1202,7 +1218,9 @@ async function demarre() {
     const b = canvas.getBoundingClientRect();
     ed.glisse([((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H_]);
   });
-  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, () => { app.ecriture.lache(); app.miniEd.lache(); app.lacheParent(); });
+  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, (e) => { app.ecriture.lache(); app.miniEd.lache(); app.lacheParent(e.type); });
+  for (const ev of ["touchend", "touchcancel"]) canvas.addEventListener(ev, (e) => app.lacheParent(e.type), { passive: true });
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault()); // pas de menu « appui long » de l'iPad sur l'appli
   // hors connexion : l'appli et les voix déjà entendues restent disponibles (voiture, avion…)
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("keydown", (e) => { Audio_.debloque(); app.clavier(e); });
