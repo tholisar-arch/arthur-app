@@ -8,7 +8,7 @@ const CLE_HISTOIRES = "tracto.histoires.v1";
 const LIEUX_ECRITURE = ["chantier", "ville", "campagne", "jardin", "ecole", "vacances", "plage", "neige", "dinosaures", "foret", "montagne", "ferme", "port"];
 const ACTIONS_ECRITURE = ["libre", "chiffres", "lettres", "rouler", "parler", "trou", "feu", "deblayer", "construire", "copains", "manger", "spectacle", "bulles", "calin",
   "piscine", "cueillir", "chateau", "route", "voler", "fenetres", "cadeau", "velo", "fete", "dormir", "pont", "arbre", "panne", "chercher"];
-const ANIMAUX_ECRITURE = ["trex", "chat", "dino", "stego"];
+const ANIMAUX_ECRITURE = ["trex", "dino", "stego", "dragon", "chat"];
 const MAX_SCENES = 300; // largement de quoi faire une histoire de plus d'une demi-heure
 const METEOS = ["aucune", "pluie", "orage", "neige", "arcenciel", "etoiles"];
 const OBJETS = ["ballon", "doudou", "cle", "chat"];
@@ -47,8 +47,8 @@ const MODELES = {
   chercher: ["Quelque chose est perdu… On cherche derrière les buissons !", "Something is lost… Let's look behind the bushes!"],
 };
 const NOMS_PERSOS = { // comment on appelle chacun dans le texte
-  fr: { arthur: "{prenom}", trex: "Rexou", chat: "Moustache", dino: "le dinosaure", stego: "le stégosaure" },
-  en: { arthur: "{prenom}", papa: "Daddy", maman: "Mommy", papi: "Grandpa", mamie: "Grandma", trex: "Rexou", chat: "Whiskers", dino: "the dinosaur", stego: "the stegosaurus" },
+  fr: { arthur: "{prenom}", trex: "Rexou", chat: "Moustache", dino: "le diplodocus", stego: "le stégosaure", dragon: "le petit dragon" },
+  en: { arthur: "{prenom}", papa: "Daddy", maman: "Mommy", papi: "Grandpa", mamie: "Grandma", trex: "Rexou", chat: "Whiskers", dino: "the diplodocus", stego: "the stegosaurus", dragon: "the little dragon" },
 };
 const nomPerso = (id, l) => NOMS_PERSOS[l][id] || (PERSONNAGES[id] && PERSONNAGES[id].nom) || id;
 function liste(noms, l) { // « A, B et C » / « A, B and C »
@@ -71,7 +71,7 @@ function compileHistoire(e) {
       let k = 0;
       for (const id of presents) positions[id] = id === adulte ? 690 : id === "arthur" ? 380 : 70 + 90 * k++;
     } else if (cache) presents.forEach((id, k) => { positions[id] = Math.round(200 + (presents.length > 1 ? (580 * k) / (presents.length - 1) : 290)); });
-    else presents.forEach((id, k) => { positions[id] = k < 3 ? 70 + 95 * k : 900 - 95 * (k - 3); });
+    // sinon : c'est le moteur qui place tout le monde (bien espacé, en évitant le véhicule)
     for (const id of presents) if (et.positions && et.positions[id] != null) positions[id] = et.positions[id]; // placés à la main
     const humeur = {}, h = et.humeur || "auto";
     if (h === "joie" || h === "peur" || (h === "auto" && ACTIONS_JOYEUSES.includes(et.action))) for (const id of presents) humeur[id] = h === "peur" ? "peur" : "joie";
@@ -147,17 +147,22 @@ function etapesDepuisTexte(lignes, prenom) {
       return;
     }
     const sa = sansAccent(texte);
-    for (const id of amisCites(texte)) presents.add(id);
-    if (prenom && new RegExp("(^|[^a-z])" + sansAccent(prenom) + "([^a-z]|$)").test(sa)) presents.add("arthur");
+    const cites = (t) => amisCites(t).concat(prenom && new RegExp("(^|[^a-z])" + sansAccent(prenom) + "([^a-z]|$)").test(sansAccent(t)) ? ["arthur"] : []);
+    for (const id of cites(texte)) presents.add(id);
+    // ceux qui s'en vont : « Papy rentre à la maison », « au revoir Rexou »
+    const depart = sa.match(/(.*?)\b(s'en va|s'en vont|rentre(nt)? (a la maison|chez)|goes? home|leaves?)\b/), adieu = sa.match(/\b(au revoir|goodbye|bye bye)\b(.*)/);
+    const partants = (depart ? cites(depart[1]) : []).concat(adieu ? cites(adieu[2]) : []);
+    // « un dinosaure arrive à la piscine » : le dinosaure vient, on reste à la piscine
     let lieu = devineDecor(texte);
-    if (lieu === "dinosaures" && decor && !/volcan|pays|ile|monde|chez les dino/.test(sa)) { lieu = null; presents.add("trex"); }
+    if (lieu === "dinosaures" && decor && !/volcan|pays|ile|monde|terre|vallee|chez les dino/.test(sa)) lieu = null;
     decor = lieu || decor || "campagne";
     pousse({
       action: devineAction(texte, i === 0, i === lignes.length - 1), decor, presents: [...presents], interactif: MOTS_TOUCHER.test(brut),
-      texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: [], clics: null, consigne: null,
+      texteLibre: { fr: texte, en: null }, humeur: "auto", nuit: /\b(nuit|soir|dodo|dort|etoiles?)\b/.test(sa), copains: vehiculesCites(texte), clics: null, consigne: null,
       objet: /\bdoudou\b/.test(sa) ? "doudou" : /\bcles?\b/.test(sa) ? "cle" : /\b(chat|moustache|minou)\b/.test(sa) ? "chat" : null,
       meteo: /\barc[- ]en[- ]ciel\b/.test(sa) ? "arcenciel" : /\b(orage|tonnerre|eclairs?)\b/.test(sa) ? "orage" : /\b(pluie|pleut)\b/.test(sa) ? "pluie" : /\b(neige|neiger|flocons?)\b/.test(sa) ? "neige" : /\betoiles? filantes?\b/.test(sa) ? "etoiles" : "aucune",
     });
+    for (const id of partants) presents.delete(id); // encore là sur cet écran, plus au suivant
   });
   return etapes;
 }
@@ -273,7 +278,7 @@ class Ecriture {
       if (dans(boiteElement(els[k]), q)) { this.choixEl = k; this.drag = { k, dx: q[0] - els[k].x, dy: q[1] - els[k].y, cadre, bouge: false }; return; }
     }
     if (et.action !== "libre") { // les personnages présents (placés automatiquement) se déplacent aussi
-      const pos = compileHistoire(this.histoire()).scenes[this.sc].positions || {};
+      const pos = positionsApercu(compileHistoire(this.histoire()).scenes[this.sc], et.presents.filter(estAmi));
       for (const id of et.presents.filter(estAmi)) {
         const x = pos[id] ?? 470;
         if (Math.abs(q[0] - x) < 50 && q[1] > G - 220 && q[1] < G + 15) { this.choixEl = -1; this.drag = { perso: id, cadre, bouge: false }; return; }
@@ -713,7 +718,7 @@ class Ecriture {
       if (!libre) {
         if (!sceneC.cache_heros) dessineVehicule(ctx, e.heros, COULEURS[e.couleur], 430, G, t);
         for (const id of et.presents.filter(estAmi)) {
-          const x = sceneC.positions[id] ?? 470;
+          const x = positionsApercu(sceneC, et.presents.filter(estAmi))[id];
           dessineAmi(ctx, id, x, G, t, x < VW / 2 ? 1 : -1, 0, 0, 1, (sceneC.humeur || {})[id] || null);
         }
       }
@@ -866,4 +871,11 @@ function decoupeRecit(texte) {
   for (let k = morceaux.length - 2; k >= 0; k--) // les bouts trop courts (« et puis ») rejoignent la suite
     if (!morceaux[k].startsWith("📖") && !morceaux[k + 1].startsWith("📖") && morceaux[k].split(" ").length < 4) morceaux.splice(k, 2, morceaux[k] + " " + morceaux[k + 1]);
   return morceaux.slice(0, MAX_SCENES);
+}
+
+function positionsApercu(sc, presents) { // où le moteur placera chacun (pour l'aperçu de l'éditeur)
+  const pos = { ...(sc.positions || {}) }, libres = presents.filter((id) => pos[id] == null);
+  const places = presents.length >= 3 ? placesReparties(presents.length, 430, sc.cache_heros) : [180, 680];
+  libres.forEach((id) => { pos[id] = places[presents.indexOf(id)] ?? 470; });
+  return pos;
 }

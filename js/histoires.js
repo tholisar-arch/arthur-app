@@ -57,14 +57,24 @@ function vehiculesCites(texte) {
   for (const [motif, v] of ALIAS_VEHICULE) for (const m of n.matchAll(new RegExp("\\b(" + motif + ")\\b", "g"))) trouves.push([m.index, v]);
   return trouves.sort((x, y) => x[0] - y[0]).map((x) => x[1]);
 }
+// qui est cité dans un texte : prénoms, surnoms, pluriels, en français et en anglais
+const MOTS_PERSOS = [
+  ["papa", "\\b(papa|mon pere|daddy|dad)\\b"],
+  ["maman", "\\b(maman|ma mere|mommy|mummy|mom|mum)\\b"],
+  ["papi", "\\b(papi|papy|pepe|grand-?pere|grandpa|grand-?dad|grandfather)\\b"],
+  ["mamie", "\\b(mamie|mamy|mammy|grand-?mere|grandma|granny|grandmother)\\b"],
+  ["chat", "\\b(chats?|chatons?|minous?|moustache|cats?|kittens?|kitty|whiskers)\\b"],
+  ["trex", "tyrannosaures?|t-?rex|\\brexou\\b"],
+  ["dino", "diplodocus|brachiosaures?|brontosaures?|long[- ]cou|long[- ]neck"],
+  ["stego", "stegosaures?|stegosaurus|triceratops"],
+  ["dragon", "\\bdragons?\\b|\\bdragonnet"],
+];
 function amisCites(texte) {
   const n = sansAccent(texte), out = [];
-  if (a("tyrannosaure|t-rex|\\btrex\\b|\\brexou\\b", n)) out.push("trex");
-  if (a("\\bchats?\\b|\\bminou|\\bmoustache\\b", n)) out.push("chat");
-  if (a("\\bpapa\\b", n)) out.push("papa");
-  if (a("\\bmaman\\b", n)) out.push("maman");
-  if (a("\\bpap(i|y)\\b", n)) out.push("papi");
-  if (a("\\bmam(ie|y)\\b", n)) out.push("mamie");
+  for (const [id, motif] of MOTS_PERSOS) if (a(motif, n)) out.push(id);
+  // « des dinosaures », « les dinos » : toute la bande ; « un dinosaure » : Rexou
+  if (a("\\b(dinosaures|dinos|dinosaurs)\\b", n)) { for (const id of ["trex", "dino", "stego"]) if (!out.includes(id)) out.push(id); }
+  else if (a("\\b(dinosaure|dino|dinosaur)\\b", n) && !out.some((id) => ["trex", "dino", "stego"].includes(id))) out.push("trex");
   for (const [id, p] of Object.entries(PERSONNAGES)) { // personnages créés dans le configurateur (Jean-Eudes…)
     if (out.includes(id) || PERSONNAGES_DEFAUT[id] || !p.nom) continue;
     const nom = sansAccent(p.nom).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -108,8 +118,8 @@ function devineAction(texte, premiere, derniere) {
 }
 function devineDecor(texte) {
   const n = sansAccent(texte);
-  for (const [motif, d] of [["\\bpms\\b|societe", "pms"], ["\\bjardin", "jardin"], ["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["dinosaure|dino\\b|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
-    ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["\\bport\\b|bateau|\\bphare", "port"], ["foret|\\bbois\\b", "foret"], ["\\bmontagnes?\\b(?! de)|cascade", "montagne"], ["\\bferme|grange|tracteur|vache", "ferme"], ["campagne|\\bchamps?\\b|prairie", "campagne"], ["chantier", "chantier"]])
+  for (const [motif, d] of [["\\bpms\\b|societe", "pms"], ["\\bjardin", "jardin"], ["vacances|piscine", "vacances"], ["\\becole|\\brecre", "ecole"], ["pays des dino|ile des dino|volcan", "dinosaures"], ["\\bplage|\\bmer\\b", "plage"],
+    ["\\bneige|\\bski", "neige"], ["\\bville\\b", "ville"], ["\\bport\\b|bateau|\\bphare", "port"], ["foret|\\bbois\\b", "foret"], ["\\bmontagnes?\\b(?! de)|cascade", "montagne"], ["\\bferme|grange|tracteur|vache", "ferme"], ["campagne|\\bchamps?\\b|prairie", "campagne"], ["chantier", "chantier"], ["dinosaure|dino\\b", "dinosaures"]]) // un lieu nommé passe avant les dinosaures cités
     if (a(motif, n)) return d;
   return null;
 }

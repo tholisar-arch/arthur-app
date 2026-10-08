@@ -187,9 +187,11 @@ class Scene {
     const nouveaux = d.amis.map((k) => m.ajouteAmi(k)).filter(Boolean);
     for (const a of m.amis) if (d.partent.includes(a.kind)) { a.part = true; a.cible = a.x < VW / 2 ? -200 : VW + 200; }
     const ecarts = this.act === "manger" ? [-280, 300, -430, 440] : [-250, 250, -420, 420];
-    m.amis.filter((a) => !a.part).forEach((a, i) => {
+    const restants = m.amis.filter((a) => !a.part);
+    const reparties = restants.length >= 3 ? placesReparties(restants.length, poste, this.cacheHeros) : null; // beaucoup de monde : on s'étale
+    restants.forEach((a, i) => {
       const aGauche = { arbre: [150, 80, 220, 40], pont: [120, 60, 180, 30], panne: [130, 60, 200, 30], chercher: [300, 240, 340, 200], chiffres: [400, 540, 680, 820], lettres: [400, 540, 680, 820] }[this.act]; // loin de l'obstacle
-      a.cible = borne(d.positions[a.kind] ?? (aGauche ? aGauche[i % 4] : poste + ecarts[i % 4]), 70, VW - 70);
+      a.cible = borne(d.positions[a.kind] ?? (reparties ? reparties[i] : aGauche ? aGauche[i % 4] : poste + ecarts[i % 4]), 70, VW - 70);
       if (nouveaux.includes(a) && a.cible < VW / 2) a.x = -150; // arrive par le côté où il va se placer
     });
     for (const a of m.amis) { a.mange = a.dy = 0; a.humeur = d.humeur[a.kind] || null; }
@@ -1183,4 +1185,14 @@ function sauveProgression(h, chap) {
 
 function decodeVoix(blob) { // un enregistrement du micro -> un son prêt à jouer
   return blob.arrayBuffer().then((ab) => (Audio_.ctx ? new Promise((ok, ko) => Audio_.ctx.decodeAudioData(ab, ok, ko)) : null));
+}
+
+function placesReparties(n, poste, sansVehicule) { // n places bien espacées sur toute la largeur, en évitant le véhicule
+  const zones = sansVehicule ? [[70, VW - 70]] : [[70, poste - 170], [poste + 200, VW - 70]].filter(([a, b]) => b - a > 40);
+  const total = zones.reduce((t, [a, b]) => t + b - a, 0), pas = total / n, out = [];
+  for (let k = 0; k < n; k++) {
+    let d = pas * (k + 0.5);
+    for (const [a, b] of zones) { if (d <= b - a) { out.push(Math.round(a + d)); break; } d -= b - a; }
+  }
+  return out;
 }

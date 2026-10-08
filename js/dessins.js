@@ -808,7 +808,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
 }
 
 const AMIS_DESSIN = {
-  trex, chat,
+  trex, chat, dragon: (...a) => dragon(...a),
   dino: (ctx, x, g, s, t, f, marche) => dinoLongCou(ctx, x, g + Math.sin(marche) * 2, 0.62 * s, undefined, t, f),
   stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g + Math.sin(marche) * 2, 0.95 * s, undefined, t, f),
 };
@@ -827,6 +827,7 @@ function boucheAmi(kind, x, g, f = 1, s = 1) {
   if (kind === "dino") return [x + f * 112 * 0.62 * s, g - 207 * 0.62 * s];
   if (kind === "stego") return [x + f * 85 * 0.95 * s, g - 47 * 0.95 * s];
   if (kind === "trex") return [x + f * 95 * s, g - 150 * s];
+  if (kind === "dragon") return [x + f * 70 * s, g - 135 * s];
   if (STYLES[kind]) { const st = STYLES[kind]; return [x + f * st.R * 0.4 * s, g - (st.L + st.T + st.R * 0.5) * s]; }
   return [x, g - 60 * s];
 }
@@ -1114,7 +1115,7 @@ const OBJETS_DECOR = {
     poly(ctx, [[4, -112], [4, -34], [52, -34]], [255, 255, 255], 3);
   }],
 };
-const TAILLE_AMI = { trex: [230, 230], chat: [90, 80], dino: [300, 330], stego: [260, 170] };
+const TAILLE_AMI = { dragon: [260, 210], trex: [230, 230], chat: [90, 80], dino: [300, 330], stego: [260, 170] };
 function tailleElement(el) { // largeur et hauteur à la taille 1 (pour toucher l'image)
   if (el.type === "objet") return (OBJETS_DECOR[el.id] || [80, 80]).slice(0, 2);
   if (el.type === "engin" || el.type === "heros") return [300, 200];
@@ -1131,4 +1132,32 @@ function dessineElement(ctx, el, t, heros, saut = 0) {
   else if (el.type === "engin") dessineVehicule(ctx, el.id, COULEURS[el.col] || COULEURS[COULEUR_DEFAUT[el.id]], 0, 0, t);
   else if (el.id in AMIS_DESSIN) dessineAmi(ctx, el.id, 0, 0, t, 1, 0, 0, 1, el.humeur || null);
   ctx.restore();
+}
+
+// ------------------------------------------------------------ un petit dragon gentil (violet, petites ailes)
+function dragon(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) {
+  const col = [175, 125, 225], ventre = [255, 225, 160], pen = new Pen(ctx, x, g, s, f), bat = 12 * Math.sin(t * 5);
+  pen.poly(col, [[-28, -58], [-125, -36 + 6 * Math.sin(t * 3)], [-112, -52], [-24, -82]]); // la queue
+  pen.poly([255, 160, 90], [[-125, -36 + 6 * Math.sin(t * 3)], [-148, -50], [-122, -22]]);
+  pen.poly(clair(col, 0.35), [[-12, -112], [-78, -178 - bat], [-46, -126], [-92, -140 - bat], [-28, -98]]); // l'aile
+  [-18, 16].forEach((lx, k) => {
+    const sw = Math.sin(marche + k * PI) * 12;
+    pen.bras(fonce(col, 0.85), [lx, -50], [lx + sw, -12], 18);
+    pen.ellipse(fonce(col, 0.85), lx + sw - 15, -15, lx + sw + 19, 0);
+  });
+  pen.ellipse(col, -46, -122, 42, -34);
+  pen.ellipse(ventre, -14, -106, 33, -44, false);
+  for (let k = 0; k < 3; k++) pen.poly([255, 160, 90], [[-44 + k * 17, -114 + k * 3], [-36 + k * 17, -132 + k * 3], [-28 + k * 17, -116 + k * 3]]);
+  pen.bras(fonce(col, 0.85), [24, -92], [40, -80], 7);
+  const dy = 8 * mange;
+  pen.poly([255, 232, 150], [[4, -168 + dy], [-2, -196 + dy], [16, -172 + dy]]); // les petites cornes
+  pen.poly([255, 232, 150], [[26, -172 + dy], [28, -200 + dy], [40, -170 + dy]]);
+  pen.ellipse(col, -8, -178 + dy, 74, -116 + dy);
+  pen.ellipse(clair(col, 0.25), 40, -150 + dy, 80, -122 + dy);
+  pen.circle([255, 255, 255], 26, -154 + dy, 10, true);
+  pen.circle(CONTOUR, 29, -153 + dy, 5);
+  pen.circle([255, 255, 255], 31, -155 + dy, 2);
+  pen.circle(fonce(col, 0.55), 70, -142 + dy, 3);
+  pen.arc(CONTOUR, 38, -146 + dy, 72, -126 + dy, 0, PI, 3); // le sourire
+  pen.circle([255, 150, 170], 14, -134 + dy, 7);
 }

@@ -145,10 +145,16 @@ engin fait l'action), `amis` (personnages qui arrivent à pied et restent),
 la scène est pour les personnages). Mettre `"amis": []` quand on ne veut pas que
 des personnages soient ajoutés par mots-clés (papa, maman, chat…).
 
-Personnages (`amis`) : les animaux `trex` (Rexou), `chat` (Moustache), `dino` (long cou),
-`stego`, plus **tous les personnages de `personnages.json`** (par leur identifiant) :
+Personnages (`amis`) : les animaux `trex` (Rexou), `chat` (Moustache), `dino` (diplodocus, long cou),
+`stego`, `dragon` (petit dragon gentil), plus **tous les personnages de `personnages.json`** (par leur identifiant) :
 `arthur`, `papa`, `maman`, `papi`, `mamie`, `jean-eudes`, `celestin`, `enfant1`/`enfant2`/`enfant3`…
 Un prénom de `personnages.json` cité dans un texte (« Jean-Eudes ») ajoute le personnage tout seul.
+Reconnaissance automatique (`amisCites`, sans `amis` dans la scène) : surnoms et anglais (papy/pépé/grand-père,
+mamie/grand-mère, chaton, daddy, grandma…), « un dinosaure » = Rexou, « des dinosaures / les dinos » = trex + dino +
+stego, diplodocus, stégosaure, tricératops, dragon. Un lieu nommé (« au chantier ») l'emporte sur les dinosaures cités ;
+le décor `dinosaures` vient de « pays des dinosaures », « volcan »… En texte libre / dictée : les engins cités arrivent,
+« Papy rentre à la maison » / « au revoir Rexou » font partir les personnages. À partir de 3 personnages,
+ils sont répartis sur toute la largeur en évitant le véhicule.
 
 ### Créer ou décrire un personnage (`personnages.json`)
 Quand un parent décrit quelqu'un (« Jean-Eudes est blond aux yeux bleus »), ajouter/modifier
