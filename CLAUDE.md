@@ -20,6 +20,14 @@ Oui = les moments d'action (tout sauf `parler`/`rouler`) deviennent interactifs 
 (`appliqueInteraction`). L'histoire se crée et se lance aussitôt (titre automatique = début du récit si on n'en donne pas).
 Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 
+## Prénoms retrouvés à l'oreille, récit embelli
+- `nomsTrouves()` (histoires.js) : le héros et les personnages créés sont reconnus même mal écrits par la dictée
+  (phonétique simple du français + petite tolérance pour un mot à majuscule) : « Noam » = Noham, « Selestin » = Célestin,
+  « Jan Eudes » = Jean-Eudes ; les mots courants (ton, les, loup…) ne sont jamais pris pour des prénoms.
+  `corrigeNoms()` remet la bonne orthographe dans le texte ; `amisCites()` s'en sert pour faire apparaître le personnage.
+- `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
+  même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
+
 ## Le héros
 L'appli est « Les aventures de [héros] » (« d' » devant une voyelle). Le héros = le personnage `arthur` de l'atelier
 (« ⭐ Héros de l'histoire ») : son prénom (`app.prenom`) et son allure servent partout ({prenom}, titres, voix, âge des jeux).

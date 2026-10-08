@@ -75,11 +75,8 @@ function amisCites(texte) {
   // « des dinosaures », « les dinos » : toute la bande ; « un dinosaure » : Rexou
   if (a("\\b(dinosaures|dinos|dinosaurs)\\b", n)) { for (const id of ["trex", "dino", "stego"]) if (!out.includes(id)) out.push(id); }
   else if (a("\\b(dinosaure|dino|dinosaur)\\b", n) && !out.some((id) => ["trex", "dino", "stego"].includes(id))) out.push("trex");
-  for (const [id, p] of Object.entries(PERSONNAGES)) { // personnages créés dans le configurateur (Jean-Eudes…)
-    if (out.includes(id) || PERSONNAGES_DEFAUT[id] || !p.nom) continue;
-    const nom = sansAccent(p.nom).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (a("(^|[^a-z])" + nom + "([^a-z]|$)", n)) out.push(id);
-  }
+  // le héros et les personnages créés dans l'atelier (Jean-Eudes, Noham…), même mal orthographiés par la dictée
+  for (const { id } of nomsTrouves(texte)) if (!out.includes(id)) out.push(id);
   return out;
 }
 const decor = (nom, defaut = "chantier") => ALIAS_DECOR[sansAccent(nom).trim()] || defaut;
@@ -277,3 +274,39 @@ function dureeHistoire(h) {
 const titreChapitre = (h, k) => { const c = h.chapitres[k]; return (c && ((LANGUE === "en" && traduite(h) && c.titre_en) || c.titre)) || ""; };
 
 const borneNb = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ------------------------------------------------ retrouver un personnage même mal écrit (« Noam » pour « Noham »)
+// La dictée écrit les prénoms comme elle les entend : on compare donc les prénoms à l'oreille (phonétique simple du
+// français), avec une petite tolérance pour les prénoms écrits avec une majuscule.
+const MOTS_COURANTS = new Set(("ton mon son ta ma sa tes mes ses les des une un sur dans avec pour nous vous tout tous toute bon bonne non oui lui elle ils elles " +
+  "leur est et ou mais donc car puis alors aussi tres trop bien plus moins rien quand comme chez sous entre vers pres loin ici la le de du au aux en il on je tu " +
+  "va vont fait font dit voit veut peut a ont sont etait avait the and you he she it his her").split(" "));
+function phonetique(texte) {
+  let s = sansAccent(texte).replace(/[^a-z]/g, "");
+  s = s.replace(/ph/g, "f").replace(/ch/g, "x").replace(/qu/g, "k").replace(/ck/g, "k").replace(/c(?=[eiy])/g, "s").replace(/c/g, "k")
+    .replace(/gu(?=[eiy])/g, "g").replace(/g(?=[eiy])/g, "j").replace(/h/g, "").replace(/y/g, "i").replace(/eau|au/g, "o").replace(/ai|ei/g, "e")
+    .replace(/[ae]n|[ae]m(?=[^aeiou]|$)/g, "an").replace(/om(?=[^aeiou]|$)/g, "on").replace(/z/g, "s").replace(/w/g, "v").replace(/(.)\1+/g, "$1");
+  return s.length > 3 ? s.replace(/[estdx]+$/, "") : s;
+}
+function distanceMots(a, b) { // nombre de lettres à changer pour passer de a à b
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function nomsTrouves(texte) { // où sont cités le héros et les personnages créés : [{ id, debut, fin, nom, ecrit }]
+  const mots = [...String(texte || "").matchAll(/\p{L}[\p{L}'’]*/gu)], res = [];
+  for (const [id, p] of Object.entries(PERSONNAGES)) {
+    if (!p.nom || (PERSONNAGES_DEFAUT[id] && id !== "arthur")) continue; // papa, maman… sont trouvés par leurs mots
+    const parts = p.nom.split(/[\s-]+/).filter(Boolean), k = parts.length, cible = phonetique(p.nom);
+    if (!cible) continue;
+    for (let i = 0; i + k <= mots.length; i++) {
+      const fen = mots.slice(i, i + k), ecrit = fen.map((m) => m[0]).join(" ");
+      if (k === 1 && MOTS_COURANTS.has(sansAccent(ecrit))) continue;
+      const ph = phonetique(ecrit), majuscule = /^\p{Lu}/u.test(ecrit);
+      const proche = ph === cible || (majuscule && cible.length >= 4 && ph[0] === cible[0] && distanceMots(ph, cible) <= (cible.length >= 7 ? 2 : 1));
+      if (proche) res.push({ id, debut: fen[0].index, fin: fen[k - 1].index + fen[k - 1][0].length, nom: p.nom, ecrit });
+    }
+  }
+  return res;
+}

@@ -524,8 +524,8 @@ class Ecriture {
   }
   lignesDuRecit() { // le récit, nettoyé (« euh », répétitions…) et découpé en écrans
     const brut = this.libre.querySelector("#libreTexte").value;
-    return (this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean))
-      .map((l) => (/^(📖|#)/.test(l) ? l : nettoieRecit(l))).filter(Boolean);
+    return varieLiens((this.dictee ? decoupeRecit(brut) : brut.split(/\n+/).map((l) => l.trim()).filter(Boolean))
+      .map((l) => (/^(📖|#)/.test(l) ? corrigeNoms(l) : nettoieRecit(l))).filter(Boolean));
   }
   demandeInteraction() {
     const d = this.libre, erreur = (m) => { d.querySelector("#libreErreur").textContent = m; joue("clic"); };
@@ -946,7 +946,7 @@ const CLE_BROUILLON = "tracto.brouillon.v1";
 // ------------------------------------------------ un récit dicté -> un texte joli à lire (sans « euh », sans bégaiement)
 const SONS_GARDES = /^(vroum|miam|plouf|tchou|pin|pon|boum|bip|tut|clap|coin|meuh|ouaf|wouf|miaou|cocorico|hop|toc|ding|dong|zou|hihi|haha|ha|hi|oh|ah|non|oui|encore|tres|trop|vite|plus|beaucoup|bravo|hourra|chut|splash|vroom|yum|choo|beep|toot|wow|yes|no|very|so|more)$/;
 function nettoieRecit(texte) {
-  let t = " " + String(texte || "").replace(/\s+/g, " ") + " ";
+  let t = " " + String(texte || "").replace(/\s+/g, " ").replace(/(\p{L})\1{2,}/gu, "$1") + " "; // « alooors » -> « alors »
   const sans = (x) => sansAccent(x).replace(/[^a-z']/g, "");
   // les hésitations et les petits mots qui ne servent qu'à réfléchir
   t = t.replace(/[\s,]*\b(?:e+u+h+|e+u{2,}h*|h+e+u+h*|h+u+m+|h+m+|m+h+|bah|beh|bon ben|ben|du coup|en fait|enfin bref|bref|hein|comment dire|comment on dit|disons|you know|um+|uh+|erm+)\b[\s,…]*/gi, " ");
@@ -967,12 +967,34 @@ function nettoieRecit(texte) {
   t = mots.join(" ");
   // l'oral « le dinosaure il arrive » -> « le dinosaure arrive »
   const pasSujet = /^(alors|puis|ensuite|apres|soudain|quand|si|mais|donc|comme|qui|que|tout|et|enfin|maintenant|aujourd'hui|demain|ce|cette|la-bas|ici)$/;
-  t = t.replace(/(^\s*|[.!?…]\s+|\bet\s+)((?:(?:alors|et puis|puis|ensuite|après|apres|soudain|et)\s+)*)((?:(?:le|la|les|l'|un|une|mon|ma|mes|son|sa|ses|notre)\s*)?[\p{L}-]+)\s+(?:il|elle|ils|elles)\s+(?=\p{L})/giu,
+  const sansPronom = (x) => x.replace(/(^\s*|[.!?…]\s+|\bet\s+)((?:(?:alors|et puis|puis|ensuite|après|apres|soudain|et|bon|donc)\s+)*)((?:(?:le|la|les|l'|un|une|mon|ma|mes|son|sa|ses|notre)\s*)?[\p{L}-]+)\s+(?:il|elle|ils|elles)\s+(?=\p{L})/giu,
     (m, debut, adv, sujet) => (pasSujet.test(sansAccent(sujet.split(/\s|'/).pop())) ? m : debut + adv + sujet + " "));
+  t = sansPronom(t);
   // la ponctuation et les majuscules
   t = t.replace(/\s+([,.…])/g, "$1").replace(/([,.!?])(?:\s*[,.])+/g, "$1").replace(/^[\s,.;]+/, "").replace(/,\s*$/, "").trim();
+  // en début de phrase, « alors », « donc », « bon »… ne servent qu'à réfléchir : on les enlève
+  for (let avant = ""; avant !== t;) { avant = t; t = t.replace(/(^|[.!?…]\s+)((?:et puis|et apr[eè]s|et ensuite|puis|ensuite|apr[eè]s)\s+)?(?:et\s+)?(?:alors|donc|bon|bah|ben|en fait|du coup|enfin|voil[aà])(?![\p{L}])\s*,?\s*/giu, "$1$2").trim(); } // « bon alors donc… », « et puis alors… »
+  t = sansPronom(t); // « (Bon alors) Arthur il va » -> « Arthur va »
   t = t.replace(/(^|[.!?…]\s+)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+  return corrigeNoms(t);
+}
+function corrigeNoms(texte) { // « Noam » -> « Noham » : chaque personnage avec la bonne orthographe
+  let t = String(texte || "");
+  const trouves = nomsTrouves(t).sort((a, b) => b.debut - a.debut);
+  let limite = Infinity;
+  for (const n of trouves) { if (n.fin > limite) continue; if (n.ecrit !== n.nom) t = t.slice(0, n.debut) + n.nom + t.slice(n.fin); limite = n.debut; }
   return t;
+}
+function varieLiens(lignes) { // « Et puis… Et puis… Et puis… » -> « Ensuite… Puis… Après… » : plus joli à écouter
+  const liens = ["Ensuite", "Puis", "Après", "Plus tard"];
+  let k = 0, premier = true;
+  return lignes.map((l) => {
+    const m = l.match(/^(et puis|et apr[eè]s|et ensuite|puis|apr[eè]s|ensuite)(?![\p{L}])\s*,?\s*/iu);
+    if (!m) return l;
+    if (premier) { premier = false; return l; }
+    const lien = liens[k++ % liens.length];
+    return lien + " " + l.slice(m[0].length).replace(/^\p{Lu}(?!\p{Lu})/u, (c) => (nomsTrouves(l.slice(m[0].length)).some((n) => n.debut === 0) ? c : c.toLowerCase()));
+  });
 }
 function textePropre(texte) { // tout un récit, ligne par ligne (les lignes de chapitre restent telles quelles)
   return String(texte || "").split("\n").map((l) => (/^\s*(📖|#)/.test(l) ? l.trim() : nettoieRecit(l))).filter((l, i, t) => l || (i > 0 && t[i - 1])).join("\n").trim();
