@@ -110,6 +110,25 @@ class Pen {
     if (RELIEF.on && ww >= 4) trait(this.ctx, [pa[0] - ww * 0.18, pa[1] - ww * 0.12], [pb[0] - ww * 0.18, pb[1] - ww * 0.12], ww * 0.35, clair(c, 0.3), "round");
   }
   arc(c, x1, y1, x2, y2, a0, a1, w = 3) { const r = this.R(x1, y1, x2, y2); arcRect(this.ctx, ...r, a0, a1, this.w(w), c); }
+  forme(c, cmds, contour = true) { // forme en courbes : [["M", x, y], ["L", x, y], ["Q", cx, cy, x, y], ["C", c1x, c1y, c2x, c2y, x, y], ["Z"]]
+    const ctx = this.ctx; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const P = (u, v) => { const p = this.P(u, v); if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; return p; };
+    ctx.beginPath(); ctx.lineJoin = "round";
+    for (const [op, ...a] of cmds) {
+      if (op === "M") ctx.moveTo(...P(a[0], a[1]));
+      else if (op === "L") ctx.lineTo(...P(a[0], a[1]));
+      else if (op === "Q") { const q = P(a[0], a[1]), p = P(a[2], a[3]); ctx.quadraticCurveTo(q[0], q[1], p[0], p[1]); }
+      else if (op === "C") { const c1 = P(a[0], a[1]), c2 = P(a[2], a[3]), p = P(a[4], a[5]); ctx.bezierCurveTo(c1[0], c1[1], c2[0], c2[1], p[0], p[1]); }
+      else if (op === "Z") ctx.closePath();
+    }
+    if (c) { ctx.fillStyle = teinte(ctx, c, x0, y0, x1 - x0, y1 - y0); ctx.fill(); }
+    if (contour) bordure(ctx, c, this.w(3), CONTOUR);
+  }
+  courbe(c, [a, q, b], w = 2) { // trait courbe aux bouts ronds (sourcils, sourire…)
+    const ctx = this.ctx, pa = this.P(...a), pq = this.P(...q), pb = this.P(...b);
+    ctx.beginPath(); ctx.moveTo(pa[0], pa[1]); ctx.quadraticCurveTo(pq[0], pq[1], pb[0], pb[1]);
+    ctx.lineWidth = Math.max(1, w * this.s); ctx.strokeStyle = css(c); ctx.lineCap = "round"; ctx.stroke(); ctx.lineCap = "butt";
+  }
 }
 
 // ------------------------------------------------------------ pièces des véhicules
@@ -780,7 +799,7 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
   const adulte = p.age === "adulte", k = { petit: 0.92, moyen: 1, grand: 1.07 }[p.taille] || 1;
   const corp = CORPULENCES.includes(p.corpulence) ? p.corpulence : p.muscle ? "costaud" : "moyen";
   const kW = { mince: 0.86, moyen: 1, costaud: 1.25, rond: 1.25 }[corp];
-  const b = adulte ? { L: 92, T: 74, R: 23.5, W: 48 } : { L: 39, T: 41, R: 24.5, W: 33 };
+  const b = adulte ? { L: 88, T: 72, R: 28.5, W: 48 } : { L: 39, T: 41, R: 25.5, W: 33 }; // grosses têtes, comme dans les dessins animés
   const typeHaut = HAUTS.includes(p.haut_type) ? p.haut_type : p.robe ? "robe" : "teeshirt";
   const typeBas = typeHaut === "salopette" ? "pantalon" : BAS.includes(p.bas_type) ? p.bas_type : "pantalon";
   return {
@@ -796,55 +815,97 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
 let PERSONNAGES = {};
 const STYLES = {};
 
+// Style « Peppa » : de grandes formes lisses (courbes), tête de trois quarts tournée vers l'avant avec un petit nez
+// qui dépasse du profil, une oreille, les deux yeux du côté du regard, une joue rose ; corps en forme de vêtement
+// (tee-shirt aux épaules arrondies, robe en cloche), bras et jambes fins, petites mains et chaussures pointues.
+// Le bras et la jambe du fond sont un peu plus sombres : ça donne de la profondeur.
 function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const st = STYLES[style], pen = new Pen(ctx, x, g, s, f);
   const { L, T, R, W } = st, hanche = -L, epaule = -L - T, tx = 0, ty = epaule - R + 6;
-  if (st.coiffure === "long") pen.ellipse(st.cheveux, -R * 1.15, ty - R * 1.05, R * 1.15, epaule + T * 0.35);
-  if (st.coiffure === "milong") pen.ellipse(st.cheveux, -R * 1.12, ty - R * 1.05, R * 1.12, ty + R * 0.95);
-  // jambes (pantalon, short ou jupe) et chaussures
+  const joie = humeur === "joie", peur = humeur === "peur", adulte = L > 70, peau = st.peau, cheveux = st.cheveux;
+  const pts = (l) => l.map(([u, v]) => [tx + u * R, ty + v * R]);
+  const tete = (cmds) => cmds.map(([op, ...a]) => [op, ...a.map((n, i) => (i % 2 ? ty + n * R : tx + n * R))]); // coordonnées en « rayons de tête »
+  const fond = (c) => fonce(c, 0.84); // ce qui est derrière
   const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
-  const largJambe = st.L > 70 ? 7 : 5; // jambes très fines, comme dans les dessins animés
-  [-W * 0.22, W * 0.22].forEach((lx, k) => {
-    const sw = Math.sin(marche + k * PI) * L * 0.3;
-    pen.bras(jambeNue ? st.peau : st.typeBas === "short" ? st.peau : st.bas, [lx, hanche], [lx + sw, -7], largJambe);
-    if (st.typeBas === "short" && st.bas && !st.robe) pen.bras(st.bas, [lx, hanche], [lx + sw * 0.45, hanche + L * 0.45], largJambe * 1.15);
-    pen.ellipse(st.chaussures, lx + sw - largJambe * 0.9, -8, lx + sw + largJambe * 2.1, 1); // petites chaussures
-  });
-  const joie = humeur === "joie";
-  if (jupe) pen.poly(st.bas, [[-W * 0.5, hanche - 6], [W * 0.5, hanche - 6], [W * 0.85, hanche + L * 0.42], [-W * 0.85, hanche + L * 0.42]]);
-  // le corps
-  if (st.robe) {
-    pen.poly(st.haut, [[-W * 0.45, epaule], [W * 0.45, epaule], [W * 0.95, hanche + L * 0.4], [-W * 0.95, hanche + L * 0.4]]);
-    pen.poly(clair(st.haut, 0.4), [[-W * 0.3, hanche - 4], [W * 0.3, hanche - 4], [W * 0.36, hanche + 4], [-W * 0.36, hanche + 4]], false);
-  } else if (st.rond) pen.ellipse(st.haut, -W * 0.62, epaule - 2, W * 0.62, hanche + 10); // petit ventre tout rond
-  else pen.poly(st.haut, [[-W * 0.38, epaule], [W * 0.38, epaule], [W * 0.56, hanche + 6], [-W * 0.56, hanche + 6]]); // en trapèze
-  if (st.typeHaut === "pull") pen.rect(fonce(st.haut, 0.85), -W * (st.rond ? 0.45 : 0.5), hanche - 2, W * (st.rond ? 0.45 : 0.5), hanche + 6, 3, false);
-  if (st.typeHaut === "chemise") { // col et boutons
-    pen.poly(clair(st.haut, 0.5), [[-W * 0.28, epaule], [0, epaule + 10], [-W * 0.05, epaule + 2]]);
-    pen.poly(clair(st.haut, 0.5), [[W * 0.28, epaule], [0, epaule + 10], [W * 0.05, epaule + 2]]);
-    for (let b2 = 0; b2 < 3; b2++) pen.circle(fonce(st.haut, 0.6), 0, epaule + 16 + b2 * T * 0.22, Math.max(1.5, W * 0.045));
+  const manche = { teeshirt: 0.42, pull: 0.95, chemise: 0.95, debardeur: 0, salopette: 0.42, robe: 0.3 }[st.typeHaut];
+  const couette = (sx) => { // une couette, côté avant (sx = 1) ou arrière (sx = -1)
+    pen.forme(sx > 0 ? cheveux : fond(cheveux), tete([["M", sx * 0.8, -0.62], ["C", sx * 1.45, -0.78, sx * 1.7, 0.05, sx * 1.38, 0.6], ["C", sx * 1.28, 0.22, sx * 1.08, -0.02, sx * 0.88, -0.08], ["Z"]]));
+    const n = pen.P(tx + sx * 0.92 * R, ty - 0.5 * R); rond(ctx, n[0], n[1], 0.13 * R * s, [250, 90, 130], 2);
+  };
+
+  // --- derrière : les cheveux longs, la couette du fond
+  if (st.coiffure === "long") {
+    const yl = (epaule + T * 0.45 - ty) / R;
+    pen.forme(fond(cheveux), tete([["M", 0.1, -1.12], ["C", 0.95, -1.12, 1.22, -0.5, 1.14, 0.3], ["C", 1.1, yl - 0.4, 0.92, yl, 0.55, yl], ["L", -0.78, yl + 0.06],
+      ["C", -1.18, yl, -1.32, yl - 0.5, -1.24, 0.2], ["C", -1.22, -0.6, -0.8, -1.12, 0.1, -1.12], ["Z"]]));
   }
-  if (st.typeHaut === "salopette") { // bavette + bretelles dans la couleur du bas
-    const bv = st.bas || [70, 80, 120];
-    pen.rect(bv, -W * 0.32, epaule + T * 0.35, W * 0.32, hanche + 6, 4);
-    for (const sx of [-1, 1]) {
-      pen.line(bv, [sx * W * 0.3, epaule + T * 0.38], [sx * W * 0.36, epaule + 2], Math.max(3, W * 0.12));
-      pen.circle([250, 210, 80], sx * W * 0.24, epaule + T * 0.42, Math.max(1.5, W * 0.06));
+  if (st.coiffure === "couettes") couette(-1);
+
+  // --- les bras (celui du fond est dessiné avant le corps)
+  const unBras = (k) => {
+    const sx = k ? 1 : -1, sw = Math.sin(marche + k * PI) * 10, derriere = !k;
+    const larg = (adulte ? 5 : 4) * (st.muscle ? 1.5 : 1);
+    const demi = st.rond ? W * 0.6 : st.robe ? W * 0.46 : W * 0.5;
+    const ep = [sx * (demi - larg * 0.7), epaule + T * 0.17];
+    const main = joie ? [sx * (demi + 18), epaule - 30 - 6 * Math.sin(t * 8 + k)] : [sx * (demi + 4) + sw * 0.35, hanche - 2 + Math.abs(sw) * 0.15];
+    const coude = [(ep[0] + main[0]) / 2 + sx * larg * (joie ? 1.6 : 0.9), (ep[1] + main[1]) / 2];
+    const cP = derriere ? fond(peau) : peau, cH = derriere ? fond(st.haut) : st.haut;
+    const vers = (a, b, q) => [a[0] + (b[0] - a[0]) * q, a[1] + (b[1] - a[1]) * q];
+    pen.bras(cP, ep, coude, larg); pen.bras(cP, coude, main, larg * 0.92);
+    if (manche > 0.5) { pen.bras(cH, ep, coude, larg * 1.5); pen.bras(cH, coude, vers(coude, main, 0.8), larg * 1.4); pen.bras(fonce(cH, 0.9), vers(coude, main, 0.72), vers(coude, main, 0.8), larg * 1.5); }
+    else if (manche > 0) pen.bras(cH, ep, vers(ep, coude, manche * 1.6), larg * 1.85);
+    pen.ellipse(cP, main[0] - larg * 1.1, main[1] - larg * 1.25, main[0] + larg * 1.3, main[1] + larg * 1.2); // la main
+    pen.ellipse(cP, main[0] + larg * 0.55, main[1] - larg * 1.2, main[0] + larg * 1.35, main[1] - larg * 0.25); // le pouce
+  };
+  unBras(0);
+
+  // --- les jambes et les chaussures (pointées vers l'avant)
+  const largJ = adulte ? 6.5 : 5;
+  [0, 1].forEach((k) => {
+    const lx = (k ? 1 : -1) * W * 0.2, sw = Math.sin(marche + k * PI) * L * 0.28, derriere = !k;
+    const teinteDe = (c) => (derriere ? fond(c) : c);
+    const pied = [lx + sw, -largJ * 1.5];
+    if (jambeNue || st.typeBas === "short") pen.bras(teinteDe(peau), [lx, hanche], pied, largJ);
+    else { pen.bras(teinteDe(st.bas), [lx, hanche], pied, largJ * 1.35); }
+    if (st.typeBas === "short" && st.bas && !st.robe) pen.bras(teinteDe(st.bas), [lx, hanche], [lx + sw * 0.45, hanche + L * 0.42], largJ * 1.55);
+    const w = largJ, cx = pied[0], c = teinteDe(st.chaussures);
+    pen.forme(c, [["M", cx - w * 1.1, 0], ["L", cx + w * 2.2, 0], ["C", cx + w * 3.0, 0, cx + w * 2.9, -w * 1.7, cx + w * 1.5, -w * 1.85],
+      ["L", cx - w * 0.5, -w * 2.0], ["C", cx - w * 1.3, -w * 2.0, cx - w * 1.5, 0, cx - w * 1.1, 0], ["Z"]]);
+    pen.line(fonce(c, 0.7), [cx - w * 1.0, -1], [cx + w * 2.4, -1], 2);
+  });
+
+  // --- le corps, en forme de vêtement
+  if (jupe) pen.forme(st.bas, [["M", -0.5 * W, hanche - 6], ["L", 0.5 * W, hanche - 6], ["C", 0.7 * W, hanche + 0.15 * L, 0.84 * W, hanche + 0.34 * L, 0.88 * W, hanche + 0.42 * L],
+    ["Q", 0, hanche + 0.52 * L, -0.88 * W, hanche + 0.42 * L], ["C", -0.84 * W, hanche + 0.34 * L, -0.7 * W, hanche + 0.15 * L, -0.5 * W, hanche - 6], ["Z"]]);
+  if (st.robe) { // robe en cloche
+    pen.forme(st.haut, [["M", -0.28 * W, epaule], ["Q", 0, epaule + 7, 0.28 * W, epaule], ["C", 0.48 * W, epaule, 0.5 * W, epaule + 0.3 * T, 0.55 * W, epaule + 0.5 * T],
+      ["C", 0.75 * W, hanche, 0.95 * W, hanche + 0.28 * L, 1.0 * W, hanche + 0.42 * L], ["Q", 0, hanche + 0.54 * L, -1.0 * W, hanche + 0.42 * L],
+      ["C", -0.95 * W, hanche + 0.28 * L, -0.75 * W, hanche, -0.55 * W, epaule + 0.5 * T], ["C", -0.5 * W, epaule + 0.3 * T, -0.48 * W, epaule, -0.28 * W, epaule], ["Z"]]);
+    pen.forme(clair(st.haut, 0.35), [["M", -0.5 * W, epaule + 0.5 * T], ["Q", 0, epaule + 0.58 * T, 0.5 * W, epaule + 0.5 * T], ["L", 0.56 * W, epaule + 0.62 * T], ["Q", 0, epaule + 0.7 * T, -0.56 * W, epaule + 0.62 * T], ["Z"]], false);
+  } else {
+    const d = st.rond ? 0.62 : 0.56;
+    pen.forme(st.haut, [["M", -0.28 * W, epaule], ["Q", 0, epaule + 7, 0.28 * W, epaule], ["C", 0.46 * W, epaule, 0.52 * W, epaule + 0.12 * T, 0.52 * W, epaule + 0.3 * T],
+      st.rond ? ["C", 0.74 * W, epaule + 0.55 * T, 0.74 * W, hanche, d * W, hanche + 6] : ["L", d * W, hanche + 6], ["Q", 0, hanche + 12, -d * W, hanche + 6],
+      st.rond ? ["C", -0.74 * W, hanche, -0.74 * W, epaule + 0.55 * T, -0.52 * W, epaule + 0.3 * T] : ["L", -0.52 * W, epaule + 0.3 * T],
+      ["C", -0.52 * W, epaule + 0.12 * T, -0.46 * W, epaule, -0.28 * W, epaule], ["Z"]]);
+    if (st.typeHaut === "pull") { // bord côtelé
+      pen.forme(fonce(st.haut, 0.86), [["M", -d * W, hanche], ["Q", 0, hanche + 6, d * W, hanche], ["L", d * W, hanche + 6], ["Q", 0, hanche + 12, -d * W, hanche + 6], ["Z"]], false);
+    }
+    if (st.typeHaut === "chemise") { // col et boutons
+      pen.forme(clair(st.haut, 0.5), [["M", -0.3 * W, epaule], ["L", 0, epaule + 11], ["L", -0.08 * W, epaule + 2], ["Z"]]);
+      pen.forme(clair(st.haut, 0.5), [["M", 0.3 * W, epaule], ["L", 0, epaule + 11], ["L", 0.08 * W, epaule + 2], ["Z"]]);
+      for (let b2 = 0; b2 < 3; b2++) pen.circle(fonce(st.haut, 0.6), 0, epaule + 16 + b2 * T * 0.22, Math.max(1.5, W * 0.045));
+    }
+    if (st.typeHaut === "salopette") { // bavette, bretelles et boutons dans la couleur du bas
+      const bv = st.bas || [70, 80, 120];
+      pen.forme(bv, [["M", -d * W, hanche - 4], ["L", d * W, hanche - 4], ["L", d * W, hanche + 6], ["Q", 0, hanche + 12, -d * W, hanche + 6], ["Z"]]);
+      pen.forme(bv, [["M", -0.32 * W, epaule + T * 0.35], ["L", 0.32 * W, epaule + T * 0.35], ["L", 0.36 * W, hanche], ["L", -0.36 * W, hanche], ["Z"]]);
+      for (const sx of [-1, 1]) {
+        pen.line(bv, [sx * W * 0.3, epaule + T * 0.38], [sx * W * 0.38, epaule + 2], Math.max(3, W * 0.12));
+        pen.circle([250, 210, 80], sx * W * 0.24, epaule + T * 0.43, Math.max(1.5, W * 0.06));
+      }
     }
   }
-  // bras par-dessus le corps, avec les manches du haut
-  const manche = { teeshirt: 0.42, pull: 0.95, chemise: 0.95, debardeur: 0, salopette: 0.42, robe: 0.3 }[st.typeHaut];
-  const demiCorps = st.rond ? W * 0.6 : st.robe ? W * 0.45 : W * 0.5;
-  [-1, 1].forEach((sx, k) => {
-    const sw = Math.sin(marche + k * PI) * 10;
-    const larg = (st.L > 70 ? 6 : 4.5) * (st.muscle ? 1.6 : 1); // bras très fins
-    const ep = [sx * (demiCorps - larg * 0.2), epaule + 8];
-    const main = joie ? [sx * (demiCorps + 20), epaule - 32 - 6 * Math.sin(t * 8 + k)] : [sx * (demiCorps + larg * 0.55 + 2) + sw * 0.3, hanche - 4 + sw * 0.4];
-    pen.bras(st.peau, ep, main, larg);
-    if (st.muscle && manche < 0.5) pen.circle(st.peau, ep[0] + (main[0] - ep[0]) * 0.52, ep[1] + (main[1] - ep[1]) * 0.52, larg * 0.75, true);
-    if (manche > 0) pen.bras(st.haut, ep, [ep[0] + (main[0] - ep[0]) * manche, ep[1] + (main[1] - ep[1]) * manche], larg * 1.2);
-    pen.circle(st.peau, main[0], main[1], larg * 1.05, true);
-  });
   if (st.dessin) { // le dessin sur le tee-shirt
     const c = pen.P(0, epaule + T * 0.62);
     if (st.dessin === "tractopelle") dessineVehicule(ctx, "tractopelle", "jaune", c[0], c[1], t, 0.3, 0, 0.13 * s, f);
@@ -852,48 +913,78 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     else if (st.dessin === "etoile") etoile(ctx, c[0], c[1] - 4 * s, 10 * s, [255, 215, 60], 0);
     else if (st.dessin === "coeur") coeur(ctx, c[0], c[1] - 6 * s, 8 * s, [230, 60, 90]);
   }
-  pen.circle(st.peau, tx, ty, R, true);
-  if (st.coiffure === "chauve" || st.coiffure === "papi") { // cheveux sur les côtés, une petite mèche dessus
-    for (const sx of [-1, 1]) pen.ellipse(st.cheveux, sx * R * 0.75 - R * 0.35, ty - R * 0.55, sx * R * 0.75 + R * 0.35, ty + R * 0.15);
-    pen.ellipse(st.cheveux, -R * 0.25, ty - R * 1.08, R * 0.3, ty - R * 0.82);
-  } else if (st.coiffure === "herisse") { // cheveux en pics
-    const pts = [[-R * 1.02, ty - R * 0.05]];
-    for (let k = 0; k <= 6; k++) { const a = PI + (k / 6) * PI; pts.push([R * 1.05 * Math.cos(a) * (k % 2 ? 1.18 : 0.95), ty + R * (k % 2 ? 1.25 : 0.92) * Math.sin(a)]); }
-    pts.push([R * 1.02, ty - R * 0.3], [R * 0.3, ty - R * 0.6], [-R * 0.6, ty - R * 0.5], [-R * 0.8, ty]);
-    pen.poly(st.cheveux, pts);
-  } else if (st.coiffure === "boucle") { // cheveux bouclés
-    for (let k = 0; k <= 8; k++) { const a = PI * 0.95 + (k / 8) * PI * 1.1; pen.circle(st.cheveux, R * 0.95 * Math.cos(a), ty + R * 0.95 * Math.sin(a), R * 0.34, true); }
-    pen.circle(st.cheveux, 0, ty - R * 0.75, R * 0.45);
-  } else pen.poly(st.cheveux, [[-R * 1.02, ty - R * 0.05], [-R * 0.85, ty - R * 0.8], [-R * 0.2, ty - R * 1.12], [R * 0.6, ty - R], [R * 1.02, ty - R * 0.35], [R * 0.9, ty - R * 0.45], [R * 0.3, ty - R * 0.62], [-R * 0.2, ty - R * 0.45], [-R * 0.6, ty - R * 0.5], [-R * 0.8, ty]]);
-  if (st.coiffure === "chignon") pen.circle(st.cheveux, R * 0.1, ty - R * 1.15, R * 0.42, true);
-  if (st.coiffure === "couettes") for (const sx of [-1, 1]) { pen.circle(st.cheveux, sx * R * 1.15, ty - R * 0.2, R * 0.38, true); pen.circle([250, 90, 120], sx * R * 0.98, ty - R * 0.35, R * 0.13); }
+  unBras(1);
+
+  // --- la tête : l'oreille, le visage (avec le petit nez qui dépasse), les cheveux
+  pen.forme(peau, tete([["M", -0.8, -0.2], ["C", -1.14, -0.32, -1.2, 0.32, -0.84, 0.3], ["Z"]]));
+  pen.courbe(fonce(peau, 0.8), pts([[-0.9, -0.08], [-1.04, 0.04], [-0.9, 0.16]]), 1.6);
+  pen.forme(peau, tete([["M", 0.05, -1.0], ["C", 0.62, -1.0, 1.0, -0.66, 0.98, -0.06], ["C", 1.05, 0.04, 1.12, 0.17, 1.0, 0.25],
+    ["C", 0.97, 0.62, 0.64, 0.94, 0.08, 0.94], ["C", -0.55, 0.94, -0.95, 0.55, -0.95, -0.05], ["C", -0.95, -0.65, -0.52, -1.0, 0.05, -1.0], ["Z"]]));
+  // la frange : mèche balayée vers l'avant, une raie sur le côté, puis la patte devant l'oreille
+  const frange = [["Q", 0.86, -0.28, 0.55, -0.34], ["Q", 0.14, -0.4, -0.06, -0.66], ["Q", -0.3, -0.46, -0.5, -0.36]];
+  const calotte = (bas = 0.12) => pen.forme(cheveux, tete([["M", -0.98, bas], ["C", -1.08, -0.72, -0.5, -1.16, 0.12, -1.1], ["C", 0.72, -1.06, 1.06, -0.7, 1.0, -0.38],
+    ...frange, ["C", -0.6, -0.3, -0.68, -0.08, -0.7, bas], ["Z"]]));
+  const co = st.coiffure;
+  if (co === "chauve" || co === "papi") { // touffes sur les côtés, crâne qui brille
+    pen.forme(cheveux, tete([["M", -0.58, -0.7], ["C", -1.02, -0.66, -1.08, -0.1, -0.86, -0.16], ["C", -0.86, -0.36, -0.74, -0.52, -0.58, -0.7], ["Z"]]));
+    pen.forme(cheveux, tete([["M", 0.7, -0.68], ["C", 0.92, -0.6, 1.0, -0.4, 0.96, -0.26], ["C", 0.88, -0.36, 0.8, -0.5, 0.7, -0.68], ["Z"]]));
+    pen.courbe(clair(peau, 0.55), pts([[-0.3, -0.84], [0.05, -0.96], [0.36, -0.86]]), 3);
+  } else if (co === "herisse") { // pics sur le dessus
+    const c = [["M", -0.98, 0.12], ["L", -1.04, -0.42]];
+    for (let k = 0; k <= 8; k++) { const a = PI * 1.06 + (k / 8) * PI * 0.86, r = k % 2 ? 1.34 : 1.02; c.push(["L", r * Math.cos(a), -0.05 + r * Math.sin(a)]); }
+    c.push(["L", 1.0, -0.38], ...frange, ["C", -0.6, -0.3, -0.68, -0.08, -0.7, 0.12], ["Z"]);
+    pen.forme(cheveux, tete(c));
+  } else if (co === "boucle") { // boucles : un bord tout en vagues
+    const c = [["M", -0.98, 0.25]];
+    const n = 9; let a0 = PI * 0.93;
+    for (let k = 1; k <= n; k++) { const a1 = PI * 0.93 + (k / n) * PI * 1.18, am = (a0 + a1) / 2; c.push(["Q", 1.3 * Math.cos(am), -0.08 + 1.3 * Math.sin(am), 1.06 * Math.cos(a1), -0.08 + 1.06 * Math.sin(a1)]); a0 = a1; }
+    c.push(["Q", 0.9, -0.45, 0.66, -0.5], ["Q", 0.55, -0.68, 0.36, -0.52], ["Q", 0.2, -0.7, 0.0, -0.52], ["Q", -0.2, -0.68, -0.4, -0.48], ["Q", -0.72, -0.4, -0.68, 0.0], ["Q", -0.86, 0.1, -0.74, 0.25], ["Z"]);
+    pen.forme(cheveux, tete(c));
+  } else if (co === "milong" || co === "long") { // carré (ou le devant des cheveux longs)
+    pen.forme(cheveux, tete([["M", -1.02, 0.72], ["C", -1.16, -0.6, -0.55, -1.18, 0.15, -1.12], ["C", 0.85, -1.08, 1.16, -0.6, 1.1, 0.42], ["Q", 1.0, 0.5, 0.93, 0.36],
+      ["C", 0.96, -0.1, 0.9, -0.4, 0.66, -0.46], ...frange.slice(1), ["C", -0.72, -0.2, -0.78, 0.4, -0.76, 0.72], ["Z"]]));
+  } else calotte();
+  if (co === "chignon") { calotte(); const p = pen.P(tx - 0.3 * R, ty - 1.12 * R); rond(ctx, p[0], p[1], 0.42 * R * s, cheveux, 3); pen.courbe(fonce(cheveux, 0.8), pts([[-0.56, -1.1], [-0.3, -1.3], [-0.04, -1.1]]), 1.6); }
+  if (co === "couettes") couette(1);
   if (st.couronne) {
-    const y0 = ty - R * 0.95;
+    const y0 = ty - R * 0.98;
     pen.poly([255, 205, 50], [[-R * 0.6, y0], [-R * 0.7, y0 - R * 0.7], [-R * 0.3, y0 - R * 0.35], [0, y0 - R * 0.85], [R * 0.3, y0 - R * 0.35], [R * 0.7, y0 - R * 0.7], [R * 0.6, y0]]);
     for (const jx of [-0.45, 0, 0.45]) pen.circle([230, 60, 110], jx * R, y0 - R * 0.15, R * 0.09);
   }
-  const ey = ty - R * 0.05;
-  for (const ex of [-0.36, 0.36]) {
-    const cxe = tx + R * (ex + 0.12);
-    pen.ellipse([255, 255, 255], cxe - R * 0.16, ey - R * 0.2, cxe + R * 0.16, ey + R * 0.2);
-    pen.circle(st.yeux, cxe + R * 0.03, ey + R * 0.02, R * 0.12);
-    pen.circle([20, 20, 30], cxe + R * 0.04, ey + R * 0.03, R * 0.06);
-    if (st.cils) pen.line(CONTOUR, [cxe + R * 0.12, ey - R * 0.18], [cxe + R * 0.2, ey - R * 0.28], 2);
-    if (humeur === "peur") { const hi = ex > 0 ? R * 0.08 : 0; pen.line(CONTOUR, [cxe - R * 0.15, ey - R * 0.25 - hi], [cxe + R * 0.15, ey - R * 0.25 - (R * 0.08 - hi)], 2); }
+
+  // --- le visage : les yeux du côté du regard, les sourcils, la joue, le nez, la bouche
+  const ey = -0.14, cligne = mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur;
+  const sourcil = fonce(co === "chauve" || co === "papi" ? cheveux : cheveux, 0.85);
+  for (const [u, k] of [[0.1, 0], [0.56, 1]]) {
+    if (cligne) pen.courbe(CONTOUR, pts([[u - 0.13, ey + 0.02], [u, ey + 0.1], [u + 0.13, ey + 0.02]]), 2);
+    else {
+      pen.forme([255, 255, 255], tete([["M", u, ey - 0.2], ["C", u + 0.2, ey - 0.2, u + 0.2, ey + 0.2, u, ey + 0.2], ["C", u - 0.19, ey + 0.2, u - 0.19, ey - 0.2, u, ey - 0.2], ["Z"]]), false);
+      pen.circle(st.yeux, tx + (u + 0.04) * R, ty + (ey + 0.03) * R, R * 0.115);
+      pen.circle([25, 20, 30], tx + (u + 0.05) * R, ty + (ey + 0.04) * R, R * 0.06);
+      pen.circle([255, 255, 255], tx + (u + 0.085) * R, ty + (ey - 0.02) * R, R * 0.028);
+      if (st.cils) pen.courbe(CONTOUR, pts([[u + 0.1, ey - 0.16], [u + 0.2, ey - 0.22], [u + 0.25, ey - 0.3]]), 1.6);
+    }
+    const lev = peur ? (k ? -0.1 : -0.04) : joie ? -0.05 : 0;
+    pen.courbe(sourcil, pts([[u - 0.13, ey - 0.31 + lev + (peur && k ? 0.04 : 0)], [u + 0.01, ey - 0.45 + lev], [u + 0.15, ey - 0.33 + lev - (peur && !k ? 0.04 : 0)]]), adulte ? 2 : 1.7);
   }
   if (st.lunettes) {
-    for (const ex of [-0.36, 0.36]) pen.circle([255, 255, 255], tx + R * (ex + 0.12), ey, R * 0.27, true);
-    for (const ex of [-0.36, 0.36]) { const cxe = tx + R * (ex + 0.12); pen.circle(st.yeux, cxe + R * 0.03, ey + R * 0.02, R * 0.11); pen.circle([20, 20, 30], cxe + R * 0.04, ey + R * 0.03, R * 0.05); }
-    pen.line(CONTOUR, [tx - R * 0.03, ey], [tx + R * 0.21, ey], 2);
+    for (const u of [0.1, 0.56]) { const p = pen.P(tx + u * R, ty + ey * R); ctx.beginPath(); ctx.arc(p[0], p[1], R * 0.27 * s, 0, 2 * PI); ctx.fillStyle = "rgba(230,245,255,0.25)"; ctx.fill(); ctx.lineWidth = Math.max(1, 2.2 * s); ctx.strokeStyle = css([70, 60, 70]); ctx.stroke(); }
+    pen.courbe([70, 60, 70], pts([[0.37, ey], [0.33, ey - 0.06], [0.29, ey]]), 2);
+    pen.line([70, 60, 70], [tx - 0.17 * R, ty + ey * R], [tx - 0.82 * R, ty - 0.1 * R], 2);
   }
-  pen.circle([248, 165, 170], tx - R * 0.48, ty + R * 0.36, R * 0.12);
-  pen.circle([248, 165, 170], tx + R * 0.68, ty + R * 0.36, R * 0.12);
-  const mx = tx + R * 0.12, my = ty + R * 0.42;
-  if (st.barbe) pen.poly(st.cheveux, [[tx - R * 0.92, ty + R * 0.05], [tx - R * 0.55, ty + R * 0.75], [tx + R * 0.12, ty + R * 1.12], [tx + R * 0.8, ty + R * 0.75], [tx + R * 0.98, ty + R * 0.05], [tx + R * 0.6, ty + R * 0.35], [tx - R * 0.4, ty + R * 0.35]]);
-  if (st.moustache || st.barbe) pen.poly(st.cheveux, [[mx - R * 0.42, my - R * 0.02], [mx, my - R * 0.2], [mx + R * 0.42, my - R * 0.02], [mx, my - R * 0.06]]);
-  if (humeur === "peur") pen.ellipse([150, 60, 70], mx - R * 0.1, my - R * 0.06, mx + R * 0.1, my + R * 0.14, false);
-  else if (joie || mange > 0.3) pen.poly([170, 60, 70], [[mx - R * 0.3, my - R * 0.08], [mx + R * 0.3, my - R * 0.08], [mx, my + R * 0.3]]);
-  else pen.arc(st.cils ? [200, 70, 90] : CONTOUR, mx - R * 0.28, my - R * 0.25, mx + R * 0.28, my + R * 0.15, PI, 2 * PI, 3);
+  const rose = peau.map((v, i) => Math.round(lerp(v, [245, 125, 140][i], 0.42)));
+  pen.ellipse(rose, tx + 0.52 * R, ty + 0.24 * R, tx + 0.82 * R, ty + 0.5 * R, false);
+  pen.ellipse(rose, tx - 0.42 * R, ty + 0.28 * R, tx - 0.18 * R, ty + 0.48 * R, false);
+  pen.courbe(fonce(peau, 0.75), pts([[0.86, 0.08], [0.98, 0.26], [0.84, 0.3]]), 1.8); // la narine
+  if (st.barbe) pen.forme(cheveux, tete([["M", -0.82, 0.0], ["C", -0.82, 0.7, -0.3, 1.12, 0.2, 1.1], ["C", 0.75, 1.08, 1.0, 0.6, 0.98, 0.3], ["L", 0.82, 0.4],
+    ["Q", 0.45, 0.66, 0.2, 0.6], ["Q", -0.2, 0.5, -0.56, 0.12], ["Z"]]));
+  if (st.moustache || st.barbe) pen.forme(cheveux, tete([["M", 0.28, 0.46], ["Q", 0.5, 0.3, 0.8, 0.36], ["Q", 0.9, 0.48, 0.72, 0.47], ["Q", 0.5, 0.42, 0.28, 0.52], ["Z"]]));
+  const levres = st.cils ? [205, 75, 95] : peau.map((v, i) => Math.round(lerp(v, [140, 50, 55][i], 0.7)));
+  if (peur) pen.ellipse([150, 55, 65], tx + 0.36 * R, ty + 0.5 * R, tx + 0.56 * R, ty + 0.72 * R);
+  else if (joie || mange > 0.3) {
+    pen.forme([150, 50, 62], tete([["M", 0.16, 0.5], ["Q", 0.44, 0.56, 0.74, 0.46], ["Q", 0.55, 0.92, 0.16, 0.5], ["Z"]]));
+    pen.forme([240, 120, 130], tete([["M", 0.3, 0.68], ["Q", 0.45, 0.6, 0.58, 0.66], ["Q", 0.46, 0.76, 0.3, 0.68], ["Z"]]), false);
+  } else pen.courbe(levres, pts([[0.2, 0.52], [0.44, 0.7], [0.72, 0.48]]), adulte ? 2.6 : 2.2);
 }
 
 const AMIS_DESSIN = {

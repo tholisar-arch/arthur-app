@@ -46,6 +46,11 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - Vitres (`VITRE`) : deux reflets en biais (`refletVitre`) ; pneus : reflet ; bras/jambes : liseré clair.
 - Décor : ciel en dégradé, brume à l'horizon, herbe et cailloux au sol, ombres douces, halo du soleil, vrai croissant
   de lune, voile bleu la nuit, arbres en bouquet de feuillage, dessous gris des nuages.
+- Personnages (`personne()`, style « Peppa ») : formes lisses en courbes (`pen.forme`, `pen.courbe`), tête de trois
+  quarts tournée vers l'avant (petit nez qui dépasse du profil, oreille, yeux qui clignent, sourcils, joue rose),
+  cheveux d'une seule forme (frange balayée, carré, boucles en vagues, couettes, chignon…), corps en forme de vêtement
+  (tee-shirt aux épaules arrondies, robe en cloche), bras fins avec coude et petites mains, chaussures pointées vers
+  l'avant ; bras et jambe du fond plus sombres. Coordonnées de la tête en « rayons » via `tete()` / `pts()`.
 - `RELIEF.on = false` : retour au dessin tout plat. La boucle (app.js) le coupe toute seule si le dessin dépasse
   ~13 ms par image (vieille tablette). Dessiner de nouvelles choses avec les primitives : le volume vient tout seul.
 
