@@ -424,27 +424,44 @@ class Ecriture {
     if (this.libre) return;
     this.dictee = voix;
     const d = document.createElement("div");
-    d.style.cssText = "position:fixed;inset:0;background:rgba(60,45,30,.45);display:flex;align-items:center;justify-content:center;z-index:10;touch-action:auto;-webkit-user-select:text;user-select:text;font-family:Fredoka,'Comic Sans MS',sans-serif";
+    // la fenêtre tient toujours dans l'écran (même avec le clavier de l'iPad ouvert) : c'est la zone de texte qui s'adapte
+    d.style.cssText = "position:fixed;left:0;right:0;top:0;height:100dvh;background:rgba(60,45,30,.45);display:flex;align-items:center;justify-content:center;z-index:10;touch-action:auto;-webkit-user-select:text;user-select:text;font-family:Fredoka,'Comic Sans MS',sans-serif";
     d.innerHTML = `
-      <div style="background:#fffaf0;border-radius:22px;padding:22px;width:min(760px,92vw);max-height:94vh;overflow:auto;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:26px;font-weight:700;color:#e08a2c">${tr(voix ? "dicteeTitre" : "libreTitre")}</div>
-        <div style="font-size:15px;color:#7a6a58;line-height:1.35">${tr(voix ? "dicteeAide" : "libreAide", { prenom: this.app.prenom })}</div>
-        ${voix ? `<button id="libreMicro" style="font:inherit;font-size:24px;padding:16px;border:0;border-radius:18px;background:#dc5a78;color:#fff">${tr("dicteeGo")}</button>` : ""}
-        <input id="libreTitre" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="font:inherit;font-size:20px;padding:10px 14px;border:2px solid #e6d8c2;border-radius:12px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button id="libreChapitre" style="font:inherit;font-size:18px;padding:8px 18px;border:0;border-radius:12px;background:#eb8246;color:#fff">${tr("chapNouveau")}</button>
+      <style>
+        .fen{background:#fffaf0;border-radius:20px;padding:14px 18px;width:min(860px,95vw);height:calc(100% - 16px);max-height:780px;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px;overflow:hidden}
+        .fen .ligne{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+        .fen button{font:inherit;border:0;color:#fff;border-radius:12px;font-size:18px;padding:8px 16px;cursor:pointer}
+        .fen input[type=text],.fen textarea{font:inherit;border:2px solid #e6d8c2;border-radius:12px;box-sizing:border-box}
+        .fen textarea{flex:1 1 auto;min-height:70px;width:100%;font-size:18px;line-height:1.45;padding:10px 12px;resize:none}
+        .fen .aide{font-size:14px;color:#7a6a58;line-height:1.3;flex-shrink:0}
+        @media (max-height:560px){.fen .aide{display:none}.fen{padding:10px 14px;gap:6px}.fen button{font-size:16px;padding:6px 12px}}
+      </style>
+      <div class="fen">
+        <div class="ligne" style="justify-content:space-between">
+          <div style="font-size:24px;font-weight:700;color:#e08a2c">${tr(voix ? "dicteeTitre" : "libreTitre")}</div>
+          <button id="libreAnnuler" style="background:#b8b2a8">${tr("libreAnnuler")}</button>
         </div>
-        <textarea id="libreTexte" rows="12" placeholder="${tr("libreExemple")}" style="flex-shrink:0;min-height:150px;font:inherit;font-size:18px;line-height:1.5;padding:12px 14px;border:2px solid #e6d8c2;border-radius:12px;resize:vertical"></textarea>
-        <label style="font-size:17px;color:#7a6a58;display:flex;gap:8px;align-items:center"><input id="libreLongue" type="checkbox" style="width:22px;height:22px"> ${tr("iaLongue")}</label>
-        <div id="libreErreur" style="color:#b23c32;font-size:16px;min-height:20px"></div>
-        <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
-          <button id="libreAnnuler" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#b8b2a8;color:#fff">${tr("libreAnnuler")}</button>
-          <button id="libreCreer" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#46b95a;color:#fff">${tr("iaSans")}</button>
-          <button id="libreAvecIA" style="font:inherit;font-size:20px;padding:10px 22px;border:0;border-radius:14px;background:#8a5ad2;color:#fff">${tr("iaAvec")}</button>
+        <div class="aide">${tr(voix ? "dicteeAide" : "libreAide", { prenom: this.app.prenom })}</div>
+        <div class="ligne">
+          ${voix ? `<button id="libreMicro" style="background:#dc5a78;font-size:20px;padding:10px 22px">${tr("dicteeGo")}</button>` : ""}
+          <button id="libreChapitre" style="background:#eb8246">${tr("chapNouveau")}</button>
+          <input id="libreTitre" type="text" maxlength="80" placeholder="${tr("libreTitrePlace")}" style="flex:1;min-width:180px;font-size:18px;padding:8px 12px">
+        </div>
+        <textarea id="libreTexte" placeholder="${tr("libreExemple")}"></textarea>
+        <div id="libreErreur" style="color:#b23c32;font-size:15px;min-height:18px;flex-shrink:0"></div>
+        <div class="ligne" style="justify-content:space-between">
+          <label style="font-size:16px;color:#7a6a58;display:flex;gap:8px;align-items:center"><input id="libreLongue" type="checkbox" style="width:22px;height:22px"> ${tr("iaLongue")}</label>
+          <div class="ligne">
+            <button id="libreCreer" style="background:#46b95a">${tr("iaSans")}</button>
+            <button id="libreAvecIA" style="background:#8a5ad2;font-size:20px;padding:10px 20px">${tr("iaAvec")}</button>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(d);
     this.libre = d;
+    const vv = window.visualViewport;
+    this.ajusteLibre = () => { if (vv) { d.style.height = vv.height + "px"; d.style.top = vv.offsetTop + "px"; } };
+    if (vv) { vv.addEventListener("resize", this.ajusteLibre); vv.addEventListener("scroll", this.ajusteLibre); this.ajusteLibre(); }
     d.querySelector("#libreTitre").value = tr("titreDefaut") + " " + (this.histoires.length + 1);
     d.querySelector("#libreAnnuler").onclick = () => this.fermeLibre();
     d.querySelector("#libreCreer").onclick = () => this.creeDepuisTexte();
@@ -467,7 +484,8 @@ class Ecriture {
     };
     setTimeout(() => d.querySelector("#libreTexte").focus(), 50);
   }
-  fermeLibre() { if (this.reco) { try { this.reco.stop(); } catch (e) { /* déjà arrêtée */ } this.reco = null; } if (this.libre) { this.libre.remove(); this.libre = null; } }
+  fermeLibre() { if (this.reco) { try { this.reco.stop(); } catch (e) { /* déjà arrêtée */ } this.reco = null; } if (this.libre) { this.libre.remove(); this.libre = null; }
+    if (this.ajusteLibre && window.visualViewport) { visualViewport.removeEventListener("resize", this.ajusteLibre); visualViewport.removeEventListener("scroll", this.ajusteLibre); } }
   dicte() { // la dictée du navigateur (Safari, Chrome) : on parle, le texte s'écrit
     const d = this.libre, zone = d.querySelector("#libreTexte"), bouton = d.querySelector("#libreMicro");
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
