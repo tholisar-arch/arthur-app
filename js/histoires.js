@@ -276,17 +276,36 @@ const titreChapitre = (h, k) => { const c = h.chapitres[k]; return (c && ((LANGU
 const borneNb = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ------------------------------------------------ retrouver un personnage même mal écrit (« Noam » pour « Noham »)
-// La dictée écrit les prénoms comme elle les entend : on compare donc les prénoms à l'oreille (phonétique simple du
-// français), avec une petite tolérance pour les prénoms écrits avec une majuscule.
+// La dictée écrit les prénoms comme elle les entend, surtout les prénoms rares (« Noam » pour « Noham », « Maélis » pour
+// « Maëlys », « Ryan » pour « Rayane »…). On compare donc les mots aux prénoms des personnages « à l'oreille » : une
+// phonétique simple du français, puis une distance où une voyelle qui change compte peu et une consonne beaucoup.
+// Plus le mot ressemble à un prénom cité (majuscule au milieu d'une phrase, après « avec »…), plus on est tolérant.
 const MOTS_COURANTS = new Set(("ton mon son ta ma sa tes mes ses les des une un sur dans avec pour nous vous tout tous toute bon bonne non oui lui elle ils elles " +
   "leur est et ou mais donc car puis alors aussi tres trop bien plus moins rien quand comme chez sous entre vers pres loin ici la le de du au aux en il on je tu " +
-  "va vont fait font dit voit veut peut a ont sont etait avait the and you he she it his her").split(" "));
+  "va vont fait font dit voit veut peut a ont sont etait avait the and you he she it his her " +
+  "ce cet cette ces qui que quoi dont ou y ne pas jamais encore deja apres avant pendant depuis sans contre par parce voila voici comment pourquoi " +
+  "petit petite petits grand grande grands gros grosse beau belle joli jolie gentil gentille mechant content contente triste rouge bleu vert jaune noir blanc rose " +
+  "maison ecole parc jardin foret mer plage piscine route ville chantier ferme zoo lune soleil ciel nuit jour matin soir midi eau feu terre sable neige pluie vent " +
+  "camion tracteur voiture train bateau avion fusee velo moto bus pelleteuse grue tractopelle bulldozer " +
+  "chien chat lapin cheval vache cochon mouton poule canard lion tigre ours loup renard oiseau poisson souris elephant girafe singe dinosaure dragon licorne " +
+  "arrive arrivent part partent joue jouent mange mangent court courent saute sautent nage nagent dort dorment roule roulent vole volent tombe tombent " +
+  "aide aident cherche cherchent trouve trouvent regarde regardent ecoute chante chantent danse dansent rigole rigolent pleure pleurent creuse porte portent " +
+  "monte montent descend descendent pousse tire construit casse repare lave range ouvre ferme donne prend prennent rentre rentrent sort sortent " +
+  "avoir etre aller faire dire voir venir jouer manger dormir partir arriver aimer aime aiment adore veux voulait fin histoire aventure fois jour " +
+  "papa maman papy papi mamie tonton tata copain copine ami amie amis bebe frere soeur cousin cousine monsieur madame tout toujours vite doucement " +
+  "ca se si sa ni quel quelle quels quelles hop oh ah eh hourra bravo plouf splash boum vroum chut zut " +
+  "paris noel tracto").split(" "));
 function phonetique(texte) {
-  let s = sansAccent(texte).replace(/[^a-z]/g, "");
-  s = s.replace(/ph/g, "f").replace(/ch/g, "x").replace(/qu/g, "k").replace(/ck/g, "k").replace(/c(?=[eiy])/g, "s").replace(/c/g, "k")
-    .replace(/gu(?=[eiy])/g, "g").replace(/g(?=[eiy])/g, "j").replace(/h/g, "").replace(/y/g, "i").replace(/eau|au/g, "o").replace(/ai|ei/g, "e")
-    .replace(/[ae]n|[ae]m(?=[^aeiou]|$)/g, "an").replace(/om(?=[^aeiou]|$)/g, "on").replace(/z/g, "s").replace(/w/g, "v").replace(/(.)\1+/g, "$1");
-  return s.length > 3 ? s.replace(/[estdx]+$/, "") : s;
+  // le tréma sépare les voyelles (Aï-cha, Ma-ë-lys) : on le garde de côté le temps des règles « ai », « ei »…
+  let s = sansAccent(String(texte || "").replace(/ç/gi, "s").replace(/[ïÏ]/g, "1").replace(/[ëË]/g, "2")).replace(/[^a-z12]/g, "");
+  s = s.replace(/ph/g, "f").replace(/th/g, "t").replace(/sch/g, "x").replace(/ch/g, "x").replace(/qu/g, "k").replace(/ck/g, "k").replace(/sc(?=[eiy])/g, "s")
+    .replace(/c(?=[eiy])/g, "s").replace(/c/g, "k").replace(/q/g, "k").replace(/x(?=.)/g, "ks").replace(/dj/g, "j")
+    .replace(/gu(?=[eiy])/g, "g").replace(/g(?=[eiy])/g, "j").replace(/gn/g, "ni").replace(/h/g, "").replace(/ill/g, "i").replace(/y/g, "i")
+    .replace(/eau|au/g, "o").replace(/ai|ei|ay|ey/g, "e").replace(/oi/g, "wa").replace(/ou/g, "u").replace(/1/g, "i").replace(/2/g, "e")
+    .replace(/[ae]n(?![aeioun])|[ae]m(?=[^aeiou]|$)/g, "an").replace(/om(?=[^aeiou]|$)/g, "on").replace(/(?:in|ain|ein|un|im)(?=[^aeiou]|$)/g, "in")
+    .replace(/([aeiou])s(?=[aeiou])/g, "$1z").replace(/z/g, "s").replace(/w/g, "v").replace(/(.)\1+/g, "$1");
+  if (s.length > 3) s = s.replace(/(?:er|ez|et)$/, "e").replace(/[stdxp]+$/, "").replace(/([^aeiou])e$/, "$1"); // lettres muettes à la fin
+  return s;
 }
 function distanceMots(a, b) { // nombre de lettres à changer pour passer de a à b
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
@@ -294,30 +313,67 @@ function distanceMots(a, b) { // nombre de lettres à changer pour passer de a �
   for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[a.length][b.length];
 }
+// la même chose « à l'oreille » : une voyelle changée ou en trop coûte peu, deux consonnes voisines (p/b, t/d, m/n…) aussi
+const VOYELLES = "aeiou", PROCHES = ["pb", "td", "kg", "fv", "sj", "sx", "jx", "mn", "lr", "ei", "ea", "ou", "ie"];
+const coutLettre = (c) => (VOYELLES.includes(c) ? 0.5 : 1);
+const coutEchange = (x, y) => (x === y ? 0 : (VOYELLES.includes(x) && VOYELLES.includes(y)) || PROCHES.some((p) => p.includes(x) && p.includes(y)) ? 0.5 : 1);
+function distanceSons(a, b) {
+  const d = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 1; i <= a.length; i++) d[i][0] = d[i - 1][0] + coutLettre(a[i - 1]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = d[0][j - 1] + coutLettre(b[j - 1]);
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + coutLettre(a[i - 1]), d[i][j - 1] + coutLettre(b[j - 1]), d[i - 1][j - 1] + coutEchange(a[i - 1], b[j - 1]));
+  return d[a.length][b.length];
+}
+const INDICES_PRENOM = /(?:^|\s)(?:avec|et|chez|a|à|de|d'|pour|voit|retrouve|rencontre|appelle|copain|copine|ami|amie|cousin|cousine|frère|frere|soeur|sœur)\s*$/i;
 function nomsTrouves(texte) { // où sont cités le héros et les personnages : [{ id, debut, fin, nom, ecrit }]
-  const mots = [...String(texte || "").matchAll(/\p{L}[\p{L}'’]*/gu)], res = [];
+  const src = String(texte || ""), mots = [...src.matchAll(/\p{L}[\p{L}'’]*/gu)], cand = [];
+  const cibles = [];
   for (const [id, p] of Object.entries(PERSONNAGES)) {
     if (!p.nom) continue; // tous les personnages, y compris ceux de base renommés dans l'atelier (« Copain » devenu « Noham »…)
     // le prénom, et chaque façon dont la dictée l'a déjà écrit (appris dans l'atelier : « loane », « l'eau anne »…)
-    const cibles = [{ t: p.nom, appris: false }, ...(p.entendu || []).map((t) => ({ t, appris: true }))];
-    for (const { t, appris } of cibles) {
-      const k = t.split(/[\s-]+/).filter(Boolean).length, cible = phonetique(t);
-      if (!cible || (appris && MOTS_COURANTS.has(sansAccent(t)))) continue;
-      // la dictée coupe parfois un prénom en deux mots (« No am ») : on essaie aussi en collant le mot suivant
-      for (const n of cible.length >= 4 ? [k, k + 1] : [k]) for (let i = 0; i + n <= mots.length; i++) {
-        const fen = mots.slice(i, i + n), ecrit = fen.map((m) => m[0]).join(" ");
-        if (n === 1 && MOTS_COURANTS.has(sansAccent(ecrit))) continue;
-        if (n > k && fen.some((m) => MOTS_COURANTS.has(sansAccent(m[0])))) continue;
-        const ph = phonetique(ecrit), majuscule = /^\p{Lu}/u.test(ecrit);
-        const tolere = n === k && !appris && cible.length >= 4 && ph[0] === cible[0] && (majuscule || cible.length >= 5);
-        const proche = ph === cible || (tolere && distanceMots(ph, cible) <= (cible.length >= 7 ? 2 : 1));
-        if (proche) res.push({ id, debut: fen[0].index, fin: fen[n - 1].index + fen[n - 1][0].length, nom: p.nom, ecrit, exact: ph === cible });
-      }
+    for (const [t, appris] of [[p.nom, false], ...(p.entendu || []).map((x) => [x, true])]) {
+      const k = t.split(/[\s-]+/).filter(Boolean).length, ph = phonetique(t);
+      if (ph && !(appris && MOTS_COURANTS.has(sansAccent(t)))) cibles.push({ id, nom: p.nom, k, ph, appris });
     }
   }
-  // un prénom trouvé tel quel l'emporte sur un prénom seulement « proche » au même endroit (« Papa » n'est pas « Papy »)
-  const exacts = res.filter((r) => r.exact);
-  return res.filter((r) => r.exact || !exacts.some((e) => e.debut < r.fin && r.debut < e.fin)).sort((a, b) => a.debut - b.debut || b.fin - a.fin);
+  for (const c of cibles) {
+    // la dictée coupe parfois un prénom en deux mots (« No am ») : on essaie aussi en collant le mot suivant
+    for (const n of c.ph.length >= 4 ? [c.k, c.k + 1] : [c.k]) for (let i = 0; i + n <= mots.length; i++) {
+      const fen = mots.slice(i, i + n), ecrit = fen.map((m) => m[0]).join(" "), debut = fen[0].index, fin = fen[n - 1].index + fen[n - 1][0].length;
+      if (n === 1 && MOTS_COURANTS.has(sansAccent(ecrit)) && sansAccent(ecrit) !== sansAccent(c.nom)) continue;
+      if (n > 1 && fen.some((m) => MOTS_COURANTS.has(sansAccent(m[0])))) continue;
+      const ph = phonetique(ecrit);
+      if (!ph) continue;
+      // à quel point ce mot « a l'air » d'un prénom ?
+      const avant = src.slice(0, debut), majuscule = /^\p{Lu}/u.test(ecrit), debutPhrase = /(^|[.!?…:]\s*)$/.test(avant);
+      const indice = INDICES_PRENOM.test(avant), lettres = Math.max(ph.length, c.ph.length);
+      if (ph === c.ph) {
+        // un mot ordinaire qui sonne comme un prénom court (« caisse » / Kaïs) ne compte qu'après « avec », « et »…
+        if (majuscule || indice || c.appris || ph.length >= 4 || sansAccent(ecrit) === sansAccent(c.nom)) cand.push({ id: c.id, nom: c.nom, debut, fin, ecrit, d: 0, exact: true });
+        continue;
+      }
+      if (n !== c.k || c.appris || ph.length < 2) continue;
+      // prénom très court (Zoé, Kaïs) : à peu près pareil ne suffit pas, sauf s'il a vraiment l'air d'un prénom cité
+      if (Math.min(ph.length, c.ph.length) <= 3 && !((majuscule && !debutPhrase) || indice)) continue;
+      let tolerance = 0;
+      if (majuscule && !debutPhrase) tolerance = Math.max(1, 0.34 * lettres);       // « … avec Maélis » : très probablement un prénom
+      else if (majuscule || indice) tolerance = Math.max(1, 0.26 * lettres);         // début de phrase, ou juste après « avec », « et »…
+      else if (lettres >= 5 && ph[0] === c.ph[0]) tolerance = 0.15 * lettres;         // mot en minuscules : seulement s'il est très proche
+      if (!tolerance) continue;
+      const d = distanceSons(ph, c.ph) + (ph[0] === c.ph[0] ? 0 : 0.5); // le premier son compte double
+      if (d <= tolerance && (ph[0] === c.ph[0] || d <= 1)) cand.push({ id: c.id, nom: c.nom, debut, fin, ecrit, d, exact: false });
+    }
+  }
+  // pour chaque endroit, le personnage le plus proche ; s'il y a deux personnages aussi proches, on ne devine pas
+  const res = [];
+  cand.sort((a, b) => b.exact - a.exact || (b.fin - b.debut) - (a.fin - a.debut) || a.d - b.d);
+  for (const c of cand) {
+    if (res.some((r) => r.debut < c.fin && c.debut < r.fin)) continue;
+    if (!c.exact && cand.some((o) => o.id !== c.id && o.debut === c.debut && o.fin === c.fin && Math.abs(o.d - c.d) < 0.01)) continue;
+    res.push(c);
+  }
+  return res.sort((a, b) => a.debut - b.debut);
 }
 function meilleureVersion(versions) { // parmi les propositions de la dictée, celle où l'on reconnaît le plus de personnages
   let mieux = versions[0] || "", score = -1;

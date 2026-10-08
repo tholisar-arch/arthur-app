@@ -25,6 +25,13 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   (phonétique simple du français + petite tolérance pour un mot à majuscule) : « Noam » = Noham, « Selestin » = Célestin,
   « Jan Eudes » = Jean-Eudes ; les mots courants (ton, les, loup…) ne sont jamais pris pour des prénoms.
   `corrigeNoms()` remet la bonne orthographe dans le texte ; `amisCites()` s'en sert pour faire apparaître le personnage.
+  Marche pour n'importe quel prénom futur, sans réglage : `phonetique()` (ph, th, ch, ai/ay, tréma qui sépare les
+  voyelles, lettres muettes…) puis `distanceSons()` (voyelle changée = 0,5 ; consonnes voisines p/b, t/d, m/n = 0,5 ;
+  premier son différent = +0,5). Tolérance selon l'air « prénom » du mot : majuscule en milieu de phrase > début de
+  phrase ou après « avec / et / chez… » > minuscules (très proche seulement). Prénom court (Zoé, Kaïs) : il faut un
+  indice. Deux personnages aussi proches : on ne devine pas. `MOTS_COURANTS` protège les mots du quotidien.
+  Testé : 40 écritures de dictée pour 33 prénoms rares (Maélis→Maëlys, Ryan→Rayane, Djayden→Jayden, Aïsha→Aïcha…),
+  0 faux positif sur les 147 phrases des histoires.
   Tous les personnages sont concernés, y compris ceux de base renommés (« Copain » devenu « Noham »). Un prénom coupé
   en deux par la dictée (« No am ») est recollé ; un prénom trouvé tel quel l'emporte sur un « proche » (Papa ≠ Papy).
 - Apprentissage : atelier › onglet « Plus » › « 🎤 Dire « prénom » » écoute le prénom (`ecouteUnPrenom`, 8 propositions)
