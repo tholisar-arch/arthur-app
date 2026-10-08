@@ -509,11 +509,11 @@ class Ecriture {
     if (this.reco) { this.reco.stop(); return; }
     if (!SR) { d.querySelector("#libreErreur").textContent = tr("dicteeIndispo"); return zone.focus(); }
     const r = new SR();
-    r.lang = LANGUE === "en" ? "en-US" : "fr-FR"; r.continuous = true; r.interimResults = true;
+    r.lang = LANGUE === "en" ? "en-US" : "fr-FR"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 5;
     let base = zone.value.trim();
     r.onresult = (ev) => {
       let fini = "", encours = "";
-      for (let k = ev.resultIndex; k < ev.results.length; k++) (ev.results[k].isFinal ? (fini += ev.results[k][0].transcript) : (encours += ev.results[k][0].transcript));
+      for (let k = ev.resultIndex; k < ev.results.length; k++) (ev.results[k].isFinal ? (fini += meilleureVersion([...ev.results[k]].map((a) => a.transcript))) : (encours += ev.results[k][0].transcript));
       if (fini) { let propre = nettoieRecit(fini); if (propre && !/[.!?…]$/.test(propre)) propre += "."; base = (base + " " + propre).replace(/\s+/g, " ").trim(); }
       zone.value = (base + " " + encours).trim();
       zone.scrollTop = zone.scrollHeight;

@@ -294,19 +294,48 @@ function distanceMots(a, b) { // nombre de lettres à changer pour passer de a �
   for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[a.length][b.length];
 }
-function nomsTrouves(texte) { // où sont cités le héros et les personnages créés : [{ id, debut, fin, nom, ecrit }]
+function nomsTrouves(texte) { // où sont cités le héros et les personnages : [{ id, debut, fin, nom, ecrit }]
   const mots = [...String(texte || "").matchAll(/\p{L}[\p{L}'’]*/gu)], res = [];
   for (const [id, p] of Object.entries(PERSONNAGES)) {
     if (!p.nom) continue; // tous les personnages, y compris ceux de base renommés dans l'atelier (« Copain » devenu « Noham »…)
-    const parts = p.nom.split(/[\s-]+/).filter(Boolean), k = parts.length, cible = phonetique(p.nom);
-    if (!cible) continue;
-    for (let i = 0; i + k <= mots.length; i++) {
-      const fen = mots.slice(i, i + k), ecrit = fen.map((m) => m[0]).join(" ");
-      if (k === 1 && MOTS_COURANTS.has(sansAccent(ecrit))) continue;
-      const ph = phonetique(ecrit), majuscule = /^\p{Lu}/u.test(ecrit);
-      const proche = ph === cible || (majuscule && cible.length >= 4 && ph[0] === cible[0] && distanceMots(ph, cible) <= (cible.length >= 7 ? 2 : 1));
-      if (proche) res.push({ id, debut: fen[0].index, fin: fen[k - 1].index + fen[k - 1][0].length, nom: p.nom, ecrit });
+    // le prénom, et chaque façon dont la dictée l'a déjà écrit (appris dans l'atelier : « loane », « l'eau anne »…)
+    const cibles = [{ t: p.nom, appris: false }, ...(p.entendu || []).map((t) => ({ t, appris: true }))];
+    for (const { t, appris } of cibles) {
+      const k = t.split(/[\s-]+/).filter(Boolean).length, cible = phonetique(t);
+      if (!cible || (appris && MOTS_COURANTS.has(sansAccent(t)))) continue;
+      // la dictée coupe parfois un prénom en deux mots (« No am ») : on essaie aussi en collant le mot suivant
+      for (const n of cible.length >= 4 ? [k, k + 1] : [k]) for (let i = 0; i + n <= mots.length; i++) {
+        const fen = mots.slice(i, i + n), ecrit = fen.map((m) => m[0]).join(" ");
+        if (n === 1 && MOTS_COURANTS.has(sansAccent(ecrit))) continue;
+        if (n > k && fen.some((m) => MOTS_COURANTS.has(sansAccent(m[0])))) continue;
+        const ph = phonetique(ecrit), majuscule = /^\p{Lu}/u.test(ecrit);
+        const tolere = n === k && !appris && cible.length >= 4 && ph[0] === cible[0] && (majuscule || cible.length >= 5);
+        const proche = ph === cible || (tolere && distanceMots(ph, cible) <= (cible.length >= 7 ? 2 : 1));
+        if (proche) res.push({ id, debut: fen[0].index, fin: fen[n - 1].index + fen[n - 1][0].length, nom: p.nom, ecrit, exact: ph === cible });
+      }
     }
   }
-  return res;
+  // un prénom trouvé tel quel l'emporte sur un prénom seulement « proche » au même endroit (« Papa » n'est pas « Papy »)
+  const exacts = res.filter((r) => r.exact);
+  return res.filter((r) => r.exact || !exacts.some((e) => e.debut < r.fin && r.debut < e.fin)).sort((a, b) => a.debut - b.debut || b.fin - a.fin);
+}
+function meilleureVersion(versions) { // parmi les propositions de la dictée, celle où l'on reconnaît le plus de personnages
+  let mieux = versions[0] || "", score = -1;
+  versions.forEach((v, rang) => {
+    const n = nomsTrouves(v), exacts = n.filter((x) => x.ecrit === x.nom).length, s = new Set(n.map((x) => x.id)).size * 10 + exacts - rang * 0.1;
+    if (s > score) { score = s; mieux = v; }
+  });
+  return mieux;
+}
+// ce que la dictée écrit quand on dit un prénom : on l'écoute et on retient toutes ses propositions
+function ecouteUnPrenom(fini) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return fini(null);
+  const r = new SR(), vu = [];
+  r.lang = LANGUE === "en" ? "en-US" : "fr-FR"; r.continuous = false; r.interimResults = false; r.maxAlternatives = 8;
+  r.onresult = (ev) => { for (const res of ev.results) for (const alt of res) { const t = alt.transcript.trim().replace(/[.!?,]+$/, ""); if (t && !vu.includes(t)) vu.push(t); } };
+  r.onerror = () => {};
+  r.onend = () => fini(vu);
+  try { r.start(); } catch (e) { fini(null); }
+  return r;
 }

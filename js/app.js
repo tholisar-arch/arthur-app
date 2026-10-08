@@ -1039,7 +1039,7 @@ class App {
     if (this.appui && this.tenuVerrou() >= DUREE_VERROU) this.ouvreVerrou();
     if (this.astuceVerrou > 0) this.astuceVerrou -= dt;
     this.fondu = Math.max(0, this.fondu - dt); this.ouverture = Math.max(0, this.ouverture - dt);
-    this.atelier.messageT -= dt;
+    this.atelier.messageT -= dt; this.atelier.messageEcouteT = (this.atelier.messageEcouteT || 0) - dt;
     if (this.etat === "narrer") this.scene.maj(dt);
     if (this.etat === "histoire") {
       if (this.carte) { // page de titre du chapitre : on attend que la voix l'ait lue

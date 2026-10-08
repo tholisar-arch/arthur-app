@@ -25,6 +25,11 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   (phonétique simple du français + petite tolérance pour un mot à majuscule) : « Noam » = Noham, « Selestin » = Célestin,
   « Jan Eudes » = Jean-Eudes ; les mots courants (ton, les, loup…) ne sont jamais pris pour des prénoms.
   `corrigeNoms()` remet la bonne orthographe dans le texte ; `amisCites()` s'en sert pour faire apparaître le personnage.
+  Tous les personnages sont concernés, y compris ceux de base renommés (« Copain » devenu « Noham »). Un prénom coupé
+  en deux par la dictée (« No am ») est recollé ; un prénom trouvé tel quel l'emporte sur un « proche » (Papa ≠ Papy).
+- Apprentissage : atelier › onglet « Plus » › « 🎤 Dire « prénom » » écoute le prénom (`ecouteUnPrenom`, 8 propositions)
+  et range ce que la dictée écrit dans `p.entendu` (ou « ✎ Écrire » à la main) ; `nomsTrouves()` reconnaît ces écritures.
+- Dictée du récit : `maxAlternatives = 5`, `meilleureVersion()` garde la proposition où l'on reconnaît le plus de personnages.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 

@@ -72,6 +72,27 @@ class Atelier {
     if (isNaN(new Date(d)) || new Date(d) > new Date()) return;
     this.modifie({ naissance: d });
   }
+  apprendPrenom() { // on dit le prénom : l'appli retient comment la dictée l'écrit, pour le retrouver dans les histoires
+    if (this.ecoute) return;
+    const p = PERSONNAGES[this.sel], id = this.sel;
+    this.ecoute = ecouteUnPrenom((vu) => {
+      this.ecoute = null;
+      if (vu === null) { this.messageEcoute = tr("ecouteIndispo"); this.messageEcouteT = 4; return; }
+      const nouveaux = vu.filter((t) => sansAccent(t) !== sansAccent(p.nom) && !MOTS_COURANTS.has(sansAccent(t)) && t.split(/\s+/).length <= 3);
+      if (!vu.length) { this.messageEcoute = tr("ecouteRien"); this.messageEcouteT = 4; joue("clic"); return; }
+      const avant = PERSONNAGES[id].entendu || [], liste = [...avant, ...nouveaux.filter((t) => !avant.some((a) => sansAccent(a) === sansAccent(t)))].slice(-16);
+      const sel = this.sel; this.sel = id; this.modifie({ entendu: liste }); this.sel = sel;
+      this.messageEcoute = tr("ecouteOk", { n: vu.length }); this.messageEcouteT = 4;
+      if (this.app.etat === "perso") this.app.dessine();
+    });
+    if (this.ecoute) joue("pop");
+  }
+  ajouteEntendu() { // ou on l'écrit soi-même, comme la dictée l'a écrit dans l'histoire
+    const p = PERSONNAGES[this.sel], t = (window.prompt(tr("promptEntendu", { nom: p.nom }), "") || "").trim();
+    if (!t) return;
+    const ajout = t.split(/[,;]+/).map((x) => x.trim()).filter((x) => x && !MOTS_COURANTS.has(sansAccent(x)));
+    this.modifie({ entendu: [...(p.entendu || []), ...ajout].slice(-16) });
+  }
   renomme() {
     const nom = (window.prompt(tr("promptRenommer"), PERSONNAGES[this.sel].nom) || "").trim();
     if (nom) this.modifie({ nom });
@@ -236,6 +257,24 @@ class Atelier {
         ecrit(ctx, ok ? `${nais.toLocaleDateString(LANGUE === "en" ? "en-US" : "fr-FR")} · ${tr("ageAns", { n: age })}` : "✎ " + tr("naissanceVide"), 21, CONTOUR, [r[0] + r[2] / 2, r[1] + r[3] / 2]);
         z.push({ r, action: () => this.naissance() });
         ecrit(ctx, tr("naissanceAide"), 15, [150, 140, 130], [735, 432], null, true);
+      }
+      // la dictée : comment elle écrit ce prénom (pour retrouver le personnage quand on raconte)
+      titre(tr("entenduTitre"), 470);
+      const rEc = [735, 502, 260, 50], rAj = [1007, 502, 120, 50];
+      rrect(ctx, ...rEc, 12, this.ecoute ? [255, 120, 110] : [110, 140, 220], 3);
+      ecrit(ctx, this.ecoute ? tr("ecouteEnCours") : tr("ecouteBouton", { nom: p.nom }), 19, [255, 255, 255], [rEc[0] + rEc[2] / 2, rEc[1] + rEc[3] / 2]);
+      z.push({ r: rEc, action: () => this.apprendPrenom() });
+      rrect(ctx, ...rAj, 12, [255, 255, 255], 3, [110, 140, 220]);
+      ecrit(ctx, tr("entenduAjout"), 19, CONTOUR, [rAj[0] + rAj[2] / 2, rAj[1] + rAj[3] / 2]);
+      z.push({ r: rAj, action: () => this.ajouteEntendu() });
+      const appris = p.entendu || [];
+      if (this.messageEcouteT > 0) ecrit(ctx, this.messageEcoute, 16, [60, 150, 70], [735, 572], null, true);
+      else ecrit(ctx, appris.length ? "« " + appris.slice(-5).join(" », « ") + " »" : tr("entenduAide"), 16, [150, 140, 130], [735, 572], null, true);
+      if (appris.length) {
+        const rEf = [735, 592, 150, 38];
+        rrect(ctx, ...rEf, 10, [255, 255, 255], 2, [210, 80, 80]);
+        ecrit(ctx, tr("entenduEfface"), 16, [210, 80, 80], [rEf[0] + rEf[2] / 2, rEf[1] + rEf[3] / 2]);
+        z.push({ r: rEf, action: () => this.modifie({ entendu: [] }) });
       }
     }
     ecrit(ctx, this.messageT > 0 ? tr("enregistre") : tr("gardes"), 17,
