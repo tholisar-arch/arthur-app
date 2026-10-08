@@ -297,7 +297,7 @@ function distanceMots(a, b) { // nombre de lettres à changer pour passer de a �
 function nomsTrouves(texte) { // où sont cités le héros et les personnages créés : [{ id, debut, fin, nom, ecrit }]
   const mots = [...String(texte || "").matchAll(/\p{L}[\p{L}'’]*/gu)], res = [];
   for (const [id, p] of Object.entries(PERSONNAGES)) {
-    if (!p.nom || (PERSONNAGES_DEFAUT[id] && id !== "arthur")) continue; // papa, maman… sont trouvés par leurs mots
+    if (!p.nom) continue; // tous les personnages, y compris ceux de base renommés dans l'atelier (« Copain » devenu « Noham »…)
     const parts = p.nom.split(/[\s-]+/).filter(Boolean), k = parts.length, cible = phonetique(p.nom);
     if (!cible) continue;
     for (let i = 0; i + k <= mots.length; i++) {
