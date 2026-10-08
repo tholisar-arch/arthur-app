@@ -1056,8 +1056,8 @@ class App {
     else if (this.etat === "ecrire") this.ecriture.dessine(ctx, this.t);
     else if (this.etat === "narrer") this.dessineNarration(ctx);
     else if (this.etat === "miniature") this.miniEd.dessine(ctx, this.t);
-    if (this.etat === "menu" || this.etat === "config") this.dessineVerrou(ctx);
     else this.dessineHistoire(ctx);
+    if (this.etat === "menu" || this.etat === "config") this.dessineVerrou(ctx); // l'anneau du verrou parents, par-dessus
   }
   dessineMenu(ctx) {
     ecrit(ctx, tr("titreAccueil", { prenom: this.prenom }), 40, [255, 200, 40], [767, 46], [200, 80, 40]);
