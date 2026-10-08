@@ -46,11 +46,14 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - Vitres (`VITRE`) : deux reflets en biais (`refletVitre`) ; pneus : reflet ; bras/jambes : liseré clair.
 - Décor : ciel en dégradé, brume à l'horizon, herbe et cailloux au sol, ombres douces, halo du soleil, vrai croissant
   de lune, voile bleu la nuit, arbres en bouquet de feuillage, dessous gris des nuages.
-- Personnages (`personne()`, style « Peppa ») : formes lisses en courbes (`pen.forme`, `pen.courbe`), tête de trois
-  quarts tournée vers l'avant (petit nez qui dépasse du profil, oreille, yeux qui clignent, sourcils, joue rose),
-  cheveux d'une seule forme (frange balayée, carré, boucles en vagues, couettes, chignon…), corps en forme de vêtement
-  (tee-shirt aux épaules arrondies, robe en cloche), bras fins avec coude et petites mains, chaussures pointées vers
-  l'avant ; bras et jambe du fond plus sombres. Coordonnées de la tête en « rayons » via `tete()` / `pts()`.
+- Personnages (`personne()`, dessin animé presque réel) : proportions proches du vrai (cou, longues jambes, tête un
+  peu grosse), visage ovale de trois quarts (front, nez, lèvres, menton en profil), yeux en amande avec iris, pupille,
+  reflet et ligne des cils (clignent), sourcils doux, oreille, joues rosées fondues, ombre sous le menton ; cheveux
+  d'une pièce avec reflet et mèches (le carré est derrière le visage, la frange par-dessus) ; bras et jambes qui
+  s'affinent avec coude et genou, mains avec pouce et doigts, chaussures avec semelle (lacets chez les adultes) ;
+  vêtements avec encolure, plis, taille marquée pour les dames. Le côté du fond de chaque forme est dans l'ombre
+  (`pen.forme(c, cmds, contour, cote)`). Outils : `pen.forme`, `pen.chemin`, `pen.trace`, `pen.courbe`,
+  coordonnées de la tête en « rayons » via `tete()` / `pts()`.
 - `RELIEF.on = false` : retour au dessin tout plat. La boucle (app.js) le coupe toute seule si le dessin dépasse
   ~13 ms par image (vieille tablette). Dessiner de nouvelles choses avec les primitives : le volume vient tout seul.
 
