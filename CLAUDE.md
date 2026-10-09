@@ -80,6 +80,19 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   `accessoire` en main (livre, baguette, pain, louche, lettre, clé, épée en bois, stéthoscope), `ailes`,
   `nezRouge`, `tetine`, `bebe` (plus petit). Ils restent dans `STYLES` (`definitPersonnages` ne les efface pas),
   ne sont pas dans l'atelier, et restent sur place quand on change de lieu (comme les animaux).
+- **La vie de tous les jours, en images** (`ACTIVITES_VIE`) : chaque activité a son lieu et ses meubles, et on y voit
+  ce qui se passe : `tele` (tout le monde assis dans le canapé devant la télé du salon ; toucher = changer de dessin
+  animé), `dodo` (couché dans le lit de la chambre, la couette qu'on remonte, la lampe qu'on éteint -> nuit, zzz),
+  `repas` (tous assis autour de la table, les assiettes se vident), `film` (fauteuils du cinéma + pop-corn), `jongle`
+  (cirque), `manege` (à cheval sur le manège qui tourne), `pain` (boulangerie, le pain va dans le sac), `guimauves`
+  (feu de camp), `plonger` (on nage sous la mer, les poissons arrivent), `glisser` (banquise), `poissons` (aquarium).
+  `lieuFort` : l'activité emmène dans son lieu (texte raconté : sauf si la phrase dit où l'on est ; histoire guidée :
+  choisir l'activité choisit aussi le lieu). Aussi pour bain / dents (salle de bain) et cuisine.
+  `passagers` : l'activité dessine tout le monde (assis : `assis()`, les jambes cachées par le siège).
+  `ACTIVITE_EN_COURS` (posé par la scène pendant `dessineDecor`) : le décor ne dessine pas ses propres meubles
+  quand l'activité a les siens (pas deux télés, deux lits, deux manèges, deux feux de camp).
+  « à la maison », « chez Mamie » -> le salon. « le tractopelle dort » reste la nuit du chantier (`dormir`,
+  affiché « Le camion dort »). Humeur `dort` : les yeux fermés. Nouveau thème d'actions « 🎡 Sorties ».
 - Éditeur : les lieux et les personnages sont rangés en pages (▶ 1/3) ; les noms trop longs rapetissent.
 
 ## Le héros

@@ -974,7 +974,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     pen.courbe(cerne(peau), pts([[-0.58, 0.0], [-0.72, 0.1], [-0.6, 0.2]]), 1.4);
   }
   // --- le visage : deux yeux ronds côte à côte, une joue rose ronde, une bouche en trait
-  const ey = -0.12, er = 0.17 + (adulte ? 0 : 0.02), cligne = mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur;
+  const ey = -0.12, er = 0.17 + (adulte ? 0 : 0.02), cligne = humeur === "dort" || (mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur); // « dort » : les yeux fermés
   for (const u of [0.24, 0.62]) {
     if (cligne) { pen.courbe(CONTOUR, pts([[u - er, ey], [u, ey + er * 0.6], [u + er, ey]]), 2); continue; }
     { const p = pen.P(tx + u * R, ty + ey * R); ctx.beginPath(); ctx.arc(p[0], p[1], er * R * s, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke(); }

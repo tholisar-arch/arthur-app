@@ -157,7 +157,7 @@ function etapesDepuisTexte(lignes, prenom) {
     // « un dinosaure arrive à la piscine » : le dinosaure vient, on reste à la piscine
     let lieu = devineDecor(texte);
     const activite = ACTIVITES[devineAction(texte, i === 0, i === lignes.length - 1)];
-    if (!lieu && activite && activite.decor && (!decor || decor === "campagne" || INTERIEURS.has(decor) !== INTERIEURS.has(activite.decor))) lieu = activite.decor;
+    if (!lieu && activite && activite.decor && (activite.lieuFort || !decor || decor === "campagne" || decor === "maison" || INTERIEURS.has(decor) !== INTERIEURS.has(activite.decor))) lieu = activite.decor;
     if (lieu === "dinosaures" && decor && !/volcan|pays|ile|monde|terre|vallee|chez les dino/.test(sa)) lieu = null;
     const nouveauLieu = lieu || decor || "campagne";
     if (decor && nouveauLieu !== decor) { // on change d'endroit : les animaux du zoo, de la ferme… restent là-bas (sauf s'ils sont cités)
@@ -252,7 +252,8 @@ class Ecriture {
     this.sc = j; this.sauve(); joue("clic");
   }
   choisitAction(a) {
-    const et = this.etape(), champs = { action: a };
+    const et = this.etape(), champs = { action: a }, A = ACTIVITES[a];
+    if (A && A.decor && (A.lieuFort || et.decor === "campagne" || et.decor === "maison")) champs.decor = A.decor; // l'activité dans sa pièce
     if (a === "libre" && !(et.elements && et.elements.length)) { // on part de ce qu'il y avait : le véhicule et les personnages
       const pres = et.presents.filter(estAmi);
       champs.elements = [{ type: "heros", id: "", x: 330, y: G, s: 1, f: 1 }].concat(pres.map((id, k) => ({ type: "perso", id, x: 560 + k * 110, y: G, s: 1, f: -1 })));
@@ -712,7 +713,8 @@ class Ecriture {
         this.catEtape = this.sc + ":" + this.id;
         this.catAction = (CATEGORIES_ACTIONS.find(([, , l]) => l.includes(et.action)) || CATEGORIES_ACTIONS[0])[0];
       }
-      CATEGORIES_ACTIONS.forEach(([c, icone], k) => puce([265 + k * 166, Y + 134, 160, 36], icone + " " + NOMS_CATEGORIES[LANGUE][c], this.catAction === c, () => { this.catAction = c; joue("clic"); }, [255, 170, 90], 16));
+      const lc = Math.floor(996 / CATEGORIES_ACTIONS.length);
+      CATEGORIES_ACTIONS.forEach(([c, icone], k) => puce([265 + k * lc, Y + 134, lc - 6, 36], icone + " " + NOMS_CATEGORIES[LANGUE][c], this.catAction === c, () => { this.catAction = c; joue("clic"); }, [255, 170, 90], 16));
       CATEGORIES_ACTIONS.find(([c]) => c === this.catAction)[2].forEach((a, i) =>
         puce([265 + (i % 9) * 111, Y + 180 + Math.floor(i / 9) * 44, 104, 38], tr("actions")[a] || a, et.action === a, () => this.choisitAction(a), [255, 200, 60], 14));
     } else if (this.onglet === "qui") {

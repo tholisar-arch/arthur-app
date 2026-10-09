@@ -11,6 +11,8 @@ const pancarte = (ctx, x, y, texte, col, taille = 26) => {
   ecrireCentre(ctx, texte, x, y + 1, taille, [255, 255, 255]);
 };
 const fr_en = (fr, en) => (LANGUE === "en" ? en : fr);
+let ACTIVITE_EN_COURS = null; // l'activité de la scène qu'on dessine : son décor ne dessine pas deux fois les mêmes meubles
+const sansMeubles = (...acts) => acts.includes(ACTIVITE_EN_COURS);
 const carreaux = (ctx, W, y0, y1, col, pas = 40) => { // un mur carrelé
   rrect(ctx, 0, y0, W, y1 - y0, 0, col);
   for (let y = y0; y < y1; y += pas) trait(ctx, [0, y], [W, y], 1.5, fonce(col, 0.9));
@@ -42,12 +44,15 @@ const LIEUX_MONDE = {
       murInterieur(ctx, W, hz, [200, 225, 248], scroll);
       for (let k = 0; k < 16; k++) etoile(ctx, boucle(k * 70 + 20, scroll, 0.3, W, 60), 34 + (k % 2) * 16, 10, [[255, 210, 60], [255, 150, 190], [150, 210, 255]][k % 3]);
       fenetreMur(ctx, boucle(260, scroll, 0.3, W, 300), hz - 290, 150, 130, nuit, t);
-      const lx = boucle(640, scroll, 0.3, W, 300); // le lit
-      rrect(ctx, lx - 170, hz - 150, 26, 160, 10, [180, 120, 80], 3); rrect(ctx, lx + 150, hz - 95, 22, 105, 8, [180, 120, 80], 3);
-      rrect(ctx, lx - 150, hz - 72, 305, 38, 12, [255, 255, 255], 3);
-      ovale(ctx, lx - 146, hz - 98, 80, 34, [255, 255, 255], 3);
-      rrect(ctx, lx - 60, hz - 78, 215, 48, 14, [120, 170, 240], 3);
-      for (let k = 0; k < 6; k++) rond(ctx, lx - 40 + k * 34, hz - 54 + (k % 2) * 10, 5, [255, 230, 120]);
+      const lx = boucle(640, scroll, 0.3, W, 300); // le lit (l'activité « au lit » a le sien, devant)
+      if (!sansMeubles("dodo")) rrect(ctx, lx - 170, hz - 150, 26, 160, 10, [180, 120, 80], 3);
+      if (!sansMeubles("dodo")) {
+        rrect(ctx, lx + 150, hz - 95, 22, 105, 8, [180, 120, 80], 3);
+        rrect(ctx, lx - 150, hz - 72, 305, 38, 12, [255, 255, 255], 3);
+        ovale(ctx, lx - 146, hz - 98, 80, 34, [255, 255, 255], 3);
+        rrect(ctx, lx - 60, hz - 78, 215, 48, 14, [120, 170, 240], 3);
+        for (let k = 0; k < 6; k++) rond(ctx, lx - 40 + k * 34, hz - 54 + (k % 2) * 10, 5, [255, 230, 120]);
+      }
       const sx = boucle(1010, scroll, 0.3, W, 300); // l'étagère à jouets
       for (const y of [hz - 200, hz - 120]) rrect(ctx, sx - 90, y, 180, 10, 3, [180, 120, 80], 2);
       rond(ctx, sx - 60, hz - 214, 14, [240, 90, 90], 2); rrect(ctx, sx - 30, hz - 230, 28, 28, 4, [90, 160, 240], 2); rrect(ctx, sx + 2, hz - 222, 22, 22, 4, [250, 200, 60], 2);
@@ -62,16 +67,17 @@ const LIEUX_MONDE = {
     fond(ctx, W, H, hz, scroll, t, nuit) {
       murInterieur(ctx, W, hz, [250, 232, 205], scroll);
       fenetreMur(ctx, boucle(150, scroll, 0.3, W, 300), hz - 290, 140, 130, nuit, t);
-      const tx = boucle(430, scroll, 0.3, W, 300); // la télévision
-      rrect(ctx, tx - 120, hz - 70, 240, 76, 8, [170, 120, 85], 3); for (const d of [-60, 60]) rond(ctx, tx + d, hz - 32, 4, [230, 200, 140]);
-      rrect(ctx, tx - 110, hz - 220, 220, 140, 12, [45, 45, 55], 3); ecranAnime(ctx, tx - 98, hz - 208, 196, 116, t);
-      trait(ctx, [tx, hz - 80], [tx, hz - 70], 6, [45, 45, 55]);
-      const cx = boucle(800, scroll, 0.3, W, 300); // le canapé
-      rrect(ctx, cx - 170, hz - 150, 340, 80, 30, [230, 110, 90], 3);
-      rrect(ctx, cx - 180, hz - 80, 360, 60, 18, [230, 110, 90], 3);
-      for (const d of [-200, 160]) rrect(ctx, cx + d, hz - 110, 40, 92, 18, [215, 95, 80], 3);
-      rrect(ctx, cx - 120, hz - 130, 70, 52, 14, [250, 200, 80], 2); rrect(ctx, cx + 50, hz - 130, 70, 52, 14, [120, 180, 240], 2);
-      for (const d of [-150, 150]) trait(ctx, [cx + d, hz - 20], [cx + d, hz + 4], 6, [120, 80, 60]);
+      const tx = boucle(430, scroll, 0.3, W, 300), cx = boucle(800, scroll, 0.3, W, 300);
+      if (!sansMeubles("tele")) { // la télévision et le canapé (l'activité « regarder la télé » a les siens, devant)
+        rrect(ctx, tx - 120, hz - 70, 240, 76, 8, [170, 120, 85], 3); for (const d of [-60, 60]) rond(ctx, tx + d, hz - 32, 4, [230, 200, 140]);
+        rrect(ctx, tx - 110, hz - 220, 220, 140, 12, [45, 45, 55], 3); ecranAnime(ctx, tx - 98, hz - 208, 196, 116, t);
+        trait(ctx, [tx, hz - 80], [tx, hz - 70], 6, [45, 45, 55]);
+        rrect(ctx, cx - 170, hz - 150, 340, 80, 30, [230, 110, 90], 3);
+        rrect(ctx, cx - 180, hz - 80, 360, 60, 18, [230, 110, 90], 3);
+        for (const d of [-200, 160]) rrect(ctx, cx + d, hz - 110, 40, 92, 18, [215, 95, 80], 3);
+        rrect(ctx, cx - 120, hz - 130, 70, 52, 14, [250, 200, 80], 2); rrect(ctx, cx + 50, hz - 130, 70, 52, 14, [120, 180, 240], 2);
+        for (const d of [-150, 150]) trait(ctx, [cx + d, hz - 20], [cx + d, hz + 4], 6, [120, 80, 60]);
+      }
       const lx = boucle(1080, scroll, 0.3, W, 300); // la lampe et la plante
       trait(ctx, [lx, hz], [lx, hz - 190], 5, [120, 110, 100]); poly(ctx, [[lx - 42, hz - 190], [lx + 42, hz - 190], [lx + 26, hz - 240], [lx - 26, hz - 240]], [255, 220, 120], 3);
       if (nuit) { ctx.globalAlpha = 0.25; rond(ctx, lx, hz - 200, 100, [255, 230, 150]); ctx.globalAlpha = 1; }
@@ -172,9 +178,10 @@ const LIEUX_MONDE = {
       ctx.globalAlpha = 0.12; poly(ctx, [[x - 40, 0], [x + 40, 0], [x + 330, 320], [x - 330, 320]], [255, 255, 220]); ctx.globalAlpha = 1;
     },
     devant(ctx, W, H, hz, scroll, t, nuit, G) { for (let r = 0; r < 2; r++) for (let k = 0; k < 16; k++) { const x = mod(k * 80 + r * 40 - scroll, W + 80) - 40; rrect(ctx, x - 32, G + 40 + r * 50, 64, 46, 16, [200, 50, 60], 3); } } },
-  cirque: { fr: "Cirque", en: "Circus", interieur: true, ciel: [[250, 235, 220], [250, 235, 220]], sol: [[230, 200, 140], [215, 180, 120]],
+  cirque: { fr: "Cirque", en: "Circus", interieur: true, sansCiel: true, ciel: [[250, 235, 220], [250, 235, 220]], sol: [[230, 200, 140], [215, 180, 120]],
     fond(ctx, W, H, hz, scroll, t) {
       const cx = W / 2;
+      rrect(ctx, 0, 0, W, hz + 20, 0, [255, 250, 240]);
       for (let k = 0; k < 16; k++) { const x0 = (k / 16) * W * 1.6 - W * 0.3, x1 = ((k + 1) / 16) * W * 1.6 - W * 0.3; poly(ctx, [[cx, -60], [x0, hz + 20], [x1, hz + 20]], k % 2 ? [255, 250, 240] : [225, 60, 70]); }
       for (let k = 0; k < 18; k++) { const x = k * (W / 17); poly(ctx, [[x, 70 + Math.abs(x - cx) * 0.05], [x + 30, 70 + Math.abs(x - cx) * 0.05], [x + 15, 100 + Math.abs(x - cx) * 0.05]], [[255, 210, 60], [90, 170, 240], [110, 190, 110], [240, 120, 180]][k % 4]); }
       for (const d of [-1, 1]) { ctx.globalAlpha = 0.18; poly(ctx, [[cx + d * 380, -10], [cx + d * 330, -10], [cx + d * 40 + 40 * Math.sin(t), hz + 40], [cx + d * 200 + 40 * Math.sin(t), hz + 40]], [255, 255, 200]); ctx.globalAlpha = 1; }
@@ -189,13 +196,13 @@ const LIEUX_MONDE = {
       rond(ctx, rx, ry, rr, null, 6, [230, 80, 90]);
       for (let k = 0; k < 8; k++) { const a = t * 0.3 + (k / 8) * 2 * PI, px = rx + rr * Math.cos(a), py = ry + rr * Math.sin(a); trait(ctx, [rx, ry], [px, py], 3, [200, 200, 210]); rrect(ctx, px - 16, py, 32, 26, 8, [[255, 200, 60], [90, 170, 240], [110, 190, 110], [240, 120, 180]][k % 4], 2); }
       rond(ctx, rx, ry, 14, [255, 220, 90], 3);
-      const mx = boucle(760, scroll, 0.3, W, 300); // le manège
-      rrect(ctx, mx - 160, hz - 30, 320, 34, 10, [240, 200, 120], 3);
+      const mx = boucle(760, scroll, 0.3, W, 300); // le manège (l'activité « manège » a le sien, en grand)
+      if (!sansMeubles("manege")) { rrect(ctx, mx - 160, hz - 30, 320, 34, 10, [240, 200, 120], 3);
       for (let k = 0; k < 5; k++) { const x = mx - 120 + k * 60, y = hz - 90 + 10 * Math.sin(t * 3 + k * 1.3); trait(ctx, [x, hz - 170], [x, hz - 30], 3, [220, 190, 90]);
         ovale(ctx, x - 24, y - 6, 48, 26, [[255, 255, 255], [250, 180, 200], [180, 210, 250]][k % 3], 2); rond(ctx, x + 20, y - 12, 10, [[255, 255, 255], [250, 180, 200], [180, 210, 250]][k % 3], 2); }
       poly(ctx, [[mx - 180, hz - 170], [mx + 180, hz - 170], [mx, hz - 250]], [230, 70, 80], 3);
       for (let k = 0; k < 6; k++) poly(ctx, [[mx - 180 + k * 60, hz - 170], [mx - 150 + k * 60, hz - 170], [mx, hz - 250]], [255, 250, 240]);
-      rond(ctx, mx, hz - 254, 10, [255, 210, 60], 2);
+      rond(ctx, mx, hz - 254, 10, [255, 210, 60], 2); }
       const bx = boucle(1150, scroll, 0.3, W, 300); // le stand de barbe à papa
       rrect(ctx, bx - 70, hz - 100, 140, 100, 4, [255, 255, 255], 3); for (let k = 0; k < 5; k++) rrect(ctx, bx - 80 + k * 32, hz - 130, 32, 30, 4, k % 2 ? [255, 255, 255] : [240, 120, 180], 2);
       rond(ctx, bx, hz - 70, 22, [255, 190, 220], 2); trait(ctx, [bx, hz - 48], [bx, hz - 20], 3, [240, 230, 210]);
@@ -258,8 +265,8 @@ const LIEUX_MONDE = {
       for (const [b, c] of [[420, [240, 120, 70]], [860, [90, 160, 230]]]) { const x = boucle(b, scroll, 0.4, W, 300); // les tentes
         poly(ctx, [[x - 110, hz + 6], [x, hz - 130], [x + 110, hz + 6]], c, 3); poly(ctx, [[x - 30, hz + 6], [x, hz - 80], [x + 30, hz + 6]], fonce(c, 0.6)); trait(ctx, [x, hz - 130], [x, hz - 150], 3, CONTOUR); }
       const fx = boucle(640, scroll, 0.4, W, 300); // le feu de camp
-      for (const a of [-0.4, 0.4]) { ctx.save(); ctx.translate(fx, hz - 6); ctx.rotate(a); rrect(ctx, -40, -6, 80, 12, 6, [140, 90, 60], 2); ctx.restore(); }
-      for (const [c, h, d] of [[[240, 90, 40], 60, 0], [[255, 170, 50], 44, 0.5], [[255, 230, 120], 26, 1]]) poly(ctx, [[fx - h * 0.4, hz - 8], [fx + 6 * Math.sin(t * 9 + d), hz - 8 - h - 6 * Math.sin(t * 7 + d)], [fx + h * 0.4, hz - 8]], c);
+      if (!sansMeubles("guimauves")) for (const a of [-0.4, 0.4]) { ctx.save(); ctx.translate(fx, hz - 6); ctx.rotate(a); rrect(ctx, -40, -6, 80, 12, 6, [140, 90, 60], 2); ctx.restore(); }
+      if (!sansMeubles("guimauves")) for (const [c, h, d] of [[[240, 90, 40], 60, 0], [[255, 170, 50], 44, 0.5], [[255, 230, 120], 26, 1]]) poly(ctx, [[fx - h * 0.4, hz - 8], [fx + 6 * Math.sin(t * 9 + d), hz - 8 - h - 6 * Math.sin(t * 7 + d)], [fx + h * 0.4, hz - 8]], c);
       if (nuit) { ctx.globalAlpha = 0.25; rond(ctx, fx, hz - 30, 110, [255, 180, 80]); ctx.globalAlpha = 1; }
     } },
   caserne: { fr: "Caserne de pompiers", en: "Fire station", ciel: [[110, 180, 245], [220, 240, 255]], sol: [[150, 200, 110], [180, 180, 190]],
@@ -453,8 +460,10 @@ function chosesCitees(texte, decor) { // les objets dont parle une phrase (4 au 
 }
 // dans la scène : posés au fond, de part et d'autre, derrière les personnages
 const PLACES_CHOSES = [120, 860, 270, 700, 520];
-function elementsDesChoses(choses) {
-  return (choses || []).filter((id) => CHOSES[id]).slice(0, 5).map((id, k) => ({ type: "objet", id, x: PLACES_CHOSES[k], y: G - 30, s: CHOSES[id][3] || 0.85, f: k % 2 ? -1 : 1, chose: true }));
+const CHOSES_DE_L_ACTIVITE = { tele: ["tele", "canape"], dodo: ["lit"], repas: ["table", "chaise"], guimauves: ["feuDeCamp"], plonger: ["bouee"], bain: ["bouee"], pain: ["table"] };
+function elementsDesChoses(choses, action) { // (sauf ceux que l'activité dessine déjà : la table du repas, le lit…)
+  const deja = CHOSES_DE_L_ACTIVITE[action] || [];
+  return (choses || []).filter((id) => CHOSES[id] && !deja.includes(id)).slice(0, 5).map((id, k) => ({ type: "objet", id, x: PLACES_CHOSES[k], y: G - 30, s: CHOSES[id][3] || 0.85, f: k % 2 ? -1 : 1, chose: true }));
 }
 
 // ================================================================= 3. encore plus d'animaux
@@ -797,3 +806,233 @@ for (const [id, G_] of Object.entries(GENS)) { MOTS_PERSOS.push([id, G_.mots]); 
 
 // dedans (chambre, classe, cinéma, sous la mer…), le camion ne vient que pour de vrais travaux, pas pour jouer ou rouler
 for (const a of ["rouler", "copains", "spectacle", "voler"]) AVEC_ENGIN.delete(a);
+
+// ================================================================= 5. la vie de tous les jours, en images
+// « On regarde la télé » : tout le monde dans le canapé devant la télé du salon. « On va au lit » : couché dans le lit
+// de la chambre. « À table ! » : tous autour de la table… Chaque activité a son lieu (lieuFort : on y va
+// automatiquement, dans l'histoire racontée comme dans l'histoire guidée) et se dessine avec les bons meubles.
+const kindsDe = (e) => (e.sc && e.sc.m ? e.sc.m.amis.map((a) => a.kind) : [e.acteur || "arthur"]);
+const personnes = (kinds) => kinds.filter((k) => STYLES[k]), betes = (kinds) => kinds.filter((k) => !STYLES[k]);
+const humeurDe = (e, k, defaut = null) => { const a = e.sc && e.sc.m ? e.sc.m.amis.find((b) => b.kind === k) : null; return (a && a.humeur && a.humeur !== "joie" ? a.humeur : defaut); };
+const assis = (ctx, k, x, siege, e, s, humeur, mange = 0) => { // les hanches au niveau du siège : les jambes sont cachées devant
+  const st = STYLES[k], kb = GENS[k] && GENS[k].m.bebe ? 0.62 : 1;
+  (AMIS_DESSIN[k] || chat)(ctx, x, siege + (st ? st.L * s * kb : 0) - 2, s, e.t, 1, 0, mange, humeur); // sans ombre par terre : on est assis
+};
+const rangee = (n, x0, x1) => Array.from({ length: n }, (_, i) => (n === 1 ? (x0 + x1) / 2 : x0 + ((x1 - x0) * i) / (n - 1)));
+const betesDevant = (ctx, e, kinds, x0, x1, G) => { const b = betes(kinds); rangee(b.length, x0, x1).forEach((bx, i) => dessineAmi(ctx, b[i], bx, G + 26, e.t, 1, 0, 0, 0.65, "joie")); };
+const programmes = [ // ce qui passe à la télé (on change de dessin animé en la touchant)
+  (ctx, x, y, w, h, t) => ecranAnime(ctx, x, y, w, h, t),
+  (ctx, x, y, w, h, t) => { rrect(ctx, x, y, w, h, 0, [60, 140, 210]); for (let k = 0; k < 4; k++) petitPoisson(ctx, x + mod(k * 60 + t * 30, w + 40) - 20, y + 20 + k * (h - 30) / 4, [[255, 170, 60], [250, 220, 70], [240, 120, 170], [255, 255, 255]][k], 1, 0.7); },
+  (ctx, x, y, w, h, t) => { rrect(ctx, x, y, w, h, 0, [30, 30, 80]); for (let k = 0; k < 8; k++) etoile(ctx, x + ((k * 37) % w), y + ((k * 23) % h), 5 + 2 * Math.sin(t * 3 + k), [255, 230, 120]); rond(ctx, x + w * 0.75, y + h * 0.35, h * 0.18, [250, 245, 200]); },
+  (ctx, x, y, w, h, t) => { rrect(ctx, x, y, w, h, 0, [170, 220, 255]); arcEnCiel(ctx, x + w / 2, y + h + 10, h * 0.8); dinoLongCou(ctx, x + w * 0.3 + 10 * Math.sin(t), y + h - 4, 0.14, undefined, t); },
+];
+const ACTIVITES_VIE = {
+  tele: { fr: "Regarder la télé", en: "Watch TV", decor: "salon", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "pop", cx: 560,
+    mots: "regard(e|ent|er)? (la |un |des )?(tele|television|dessins? animes?)|devant la tele|allume(nt|r)? la tele|watch(es|ing)? (tv|television|cartoons?)",
+    modele: ["On s'installe dans le canapé et on regarde un dessin animé à la télé !", "We snuggle up on the sofa and watch a cartoon on TV!"],
+    consigne: ["Touche la télé pour changer de dessin animé !", "Tap the TV to change the cartoon!"],
+    cible: (sc) => [sc.cx + 300, G - 190],
+    dessin(ctx, x, G, e) {
+      const tx = x + 300; // la télé, sur son meuble
+      rrect(ctx, tx - 95, G - 70, 190, 70, 8, [170, 120, 85], 3);
+      rrect(ctx, tx - 90, G - 240, 180, 150, 12, [45, 45, 55], 3); trait(ctx, [tx, G - 90], [tx, G - 70], 8, [45, 45, 55]);
+      programmes[(e.k + (e.p !== null && e.p !== undefined && e.p > 0.5 ? 1 : 0)) % programmes.length](ctx, tx - 80, G - 230, 160, 120, e.t);
+      const kinds = kindsDe(e), gens = personnes(kinds).slice(0, 4), cx = x - 120; // le canapé, et tout le monde dedans
+      rrect(ctx, cx - 210, G - 160, 420, 110, 34, [230, 110, 90], 3);
+      rangee(gens.length, cx - 140, cx + 140).forEach((px, i) => assis(ctx, gens[i], px, G - 70, e, 0.92, humeurDe(e, gens[i])));
+      rrect(ctx, cx - 220, G - 66, 440, 60, 18, [230, 110, 90], 3);
+      for (const d of [-250, 210]) rrect(ctx, cx + d, G - 110, 40, 104, 18, [215, 95, 80], 3);
+      betesDevant(ctx, e, kinds, cx - 120, cx + 120, G);
+    } },
+  dodo: { fr: "Aller au lit", en: "Bedtime", decor: "chambre", lieuFort: true, prendActeur: true, sansEngin: true, clics: 2, son: "magie", cx: 520,
+    mots: "\\b(va|vont|aller|part|partent|file|filent) (au lit|se coucher|dormir|faire (la )?(sieste|dodo))|\\bau lit\\b|\\bse couche|\\bcouche(r)? le bebe|fai(t|re|sons) dodo|\\bdodo\\b|\\bsieste|bonne nuit|s'endor|pyjama|go(es)? to bed|bedtime|\\bnap\\b|good night",
+    modele: ["C'est l'heure d'aller au lit. Pyjama, doudou… et on se glisse sous la couette !", "Time for bed. Pyjamas, cuddly toy… and snuggle under the duvet!"],
+    consigne: ["Touche le lit pour remonter la couette, puis la lampe pour l'éteindre !", "Tap the bed to pull up the duvet, then the lamp to switch it off!"],
+    cible(sc) { return sc.fait === 0 ? [sc.cx - 20, G - 110] : [sc.cx + 250, G - 170]; },
+    dessin(ctx, x, G, e) {
+      const couette = Math.min(1, e.k + (e.k === 0 ? elan(e) : 1)), eteint = e.k >= 2 || (e.k === 1 && e.p > 0.5);
+      if (eteint && e.sc && e.sc.m) e.sc.m.nuit = true;
+      const lx = x + 250; // la table de nuit et la lampe
+      rrect(ctx, lx - 40, G - 90, 80, 90, 8, [190, 140, 95], 3);
+      trait(ctx, [lx, G - 90], [lx, G - 150], 4, [120, 110, 100]); poly(ctx, [[lx - 30, G - 150], [lx + 30, G - 150], [lx + 20, G - 190], [lx - 20, G - 190]], eteint ? [200, 190, 160] : [255, 220, 120], 3);
+      if (!eteint) { ctx.globalAlpha = 0.25; rond(ctx, lx, G - 165, 70, [255, 230, 150]); ctx.globalAlpha = 1; }
+      rrect(ctx, x - 230, G - 180, 30, 180, 10, [180, 120, 80], 3); rrect(ctx, x + 170, G - 110, 26, 110, 8, [180, 120, 80], 3); // le lit
+      rrect(ctx, x - 205, G - 76, 380, 40, 12, [255, 255, 255], 3);
+      ovale(ctx, x - 205, G - 110, 90, 40, [255, 255, 255], 3);
+      const st = STYLES[e.acteur || "arthur"], haut = st ? (st.L + st.T + st.R * 2) : 130, ech = Math.min(1, 150 / haut);
+      ctx.save(); ctx.translate(x - 165 + haut * ech, G - 96); ctx.rotate(-PI / 2); // l'enfant couché, la tête sur l'oreiller
+      (AMIS_DESSIN[e.acteur || "arthur"] || chat)(ctx, 0, 0, ech, e.t, 1, 0, 0, eteint ? "dort" : null); ctx.restore();
+      const cw = 150 + 130 * couette; // la couette qu'on remonte jusqu'au menton
+      rrect(ctx, x + 175 - cw, G - 100, cw, 64, 18, [120, 170, 240], 3);
+      for (let k = 0; k < 6; k++) { const px = x + 160 - k * 34; if (px > x + 175 - cw + 10) rond(ctx, px, G - 70 + (k % 2) * 12, 5, [255, 230, 120]); }
+      rrect(ctx, x + 175 - cw - 6, G - 104, 26, 72, 12, [150, 195, 250], 3);
+      if (eteint) for (let k = 0; k < 3; k++) { const u = mod(e.t * 0.5 + k / 3, 1); ctx.globalAlpha = 1 - u; ecrireCentre(ctx, "z", x - 150 + 40 * u, G - 160 - 80 * u - k * 4, 20 + k * 6, [255, 255, 255]); ctx.globalAlpha = 1; }
+    } },
+  repas: { fr: "Manger à table", en: "Mealtime", decor: "cuisine", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "croque", cx: 500,
+    mots: "\\ba table\\b|(le |au |du |son )?(petit[- ]dejeuner|dejeuner|diner|gouter|repas)\\b|mange(nt|r)? (sa |la |une |des |du |les )?(soupe|puree|pates|pizza|tartines?|cereales|crepes|frites|legumes)|breakfast|\\blunch\\b|\\bdinner\\b|supper|snack time",
+    modele: ["À table ! Tout le monde s'assoit et on mange. Miam !", "Dinner time! Everyone sits down to eat. Yum!"],
+    consigne: ["Touche les assiettes pour manger !", "Tap the plates to eat!"],
+    cible: (sc) => [sc.cx, G - 110],
+    dessin(ctx, x, G, e) {
+      const kinds = kindsDe(e), gens = personnes(kinds).slice(0, 5), xs = rangee(gens.length, x - 200, x + 200);
+      for (const px of xs) { rrect(ctx, px - 30, G - 190, 14, 190, 5, [170, 120, 80], 2); } // les dossiers des chaises
+      xs.forEach((px, i) => assis(ctx, gens[i], px, G - 112, e, 0.92, humeurDe(e, gens[i]), Math.max(0, Math.sin((e.p || 0) * PI))));
+      rrect(ctx, x - 260, G - 104, 520, 18, 6, [190, 140, 95], 3); // la table et sa nappe
+      rrect(ctx, x - 255, G - 88, 510, 34, 4, [255, 255, 255], 2); for (let k = 0; k < 17; k++) if (k % 2 === 0) rrect(ctx, x - 255 + k * 30, G - 88, 30, 34, 0, [230, 90, 90]);
+      for (const d of [-235, 225]) rrect(ctx, x + d, G - 54, 12, 54, 3, [170, 120, 80], 2);
+      const reste = 1 - Math.min(1, (e.k + elan(e) * 0.5) / Math.max(1, e.n));
+      xs.forEach((px, i) => { ovale(ctx, px - 30, G - 116, 60, 16, [255, 255, 255], 2);
+        if (reste > 0.02) ovale(ctx, px - 22 * reste, G - 120 - 6 * reste, 44 * reste, 14 * reste, [[240, 170, 60], [230, 80, 60], [120, 190, 90], [250, 220, 120], [200, 120, 70]][i % 5], 1.5);
+        rrect(ctx, px + 30, G - 136, 14, 26, 4, [200, 230, 250], 2); });
+      if (e.k >= e.n) for (let k = 0; k < 3; k++) coeur(ctx, x - 60 + k * 60, G - 300 - 10 * Math.sin(e.t * 3 + k), 12, [240, 90, 110]);
+      betesDevant(ctx, e, kinds, x - 300, x - 200, G);
+    } },
+  film: { fr: "Aller au cinéma", en: "Go to the movies", decor: "cinema", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "croque", cx: 490,
+    mots: "regard(e|ent|er)? un film|\\bau cinema\\b|\\bcine\\b|pop-?corn|watch(es|ing)? a (film|movie)|popcorn",
+    modele: ["Au cinéma, on s'assoit dans les fauteuils rouges. Chut, le film commence !", "At the movies, we sit in the red seats. Shh, the film is starting!"],
+    consigne: ["Touche le pop-corn pour en manger !", "Tap the popcorn to eat some!"],
+    cible: (sc) => [sc.cx + 330, G - 110],
+    dessin(ctx, x, G, e) {
+      const kinds = kindsDe(e), gens = personnes(kinds).slice(0, 5), xs = rangee(gens.length, x - 240, x + 200);
+      for (let k = 0; k < 7; k++) rrect(ctx, x - 300 + k * 90, G - 130, 76, 90, 20, [200, 50, 60], 3); // les dossiers
+      xs.forEach((px, i) => assis(ctx, gens[i], px, G - 74, e, 0.92, humeurDe(e, gens[i]), Math.max(0, Math.sin((e.p || 0) * PI))));
+      for (let k = 0; k < 7; k++) rrect(ctx, x - 304 + k * 90, G - 70, 84, 64, 14, [215, 60, 70], 3); // les sièges
+      const bx = x + 330, reste = 1 - Math.min(1, (e.k + elan(e) * 0.5) / Math.max(1, e.n)); // le pot de pop-corn
+      for (let k = 0; k < Math.round(14 * reste); k++) rond(ctx, bx - 28 + (k % 5) * 14, G - 150 - Math.floor(k / 5) * 12 - (k % 2) * 4, 10, [255, 248, 220], 2);
+      poly(ctx, [[bx - 40, G - 150], [bx + 40, G - 150], [bx + 28, G - 60], [bx - 28, G - 60]], [255, 255, 255], 3);
+      for (const d of [-24, 0, 24]) poly(ctx, [[bx + d - 6, G - 150], [bx + d + 6, G - 150], [bx + d * 0.7 + 4, G - 60], [bx + d * 0.7 - 4, G - 60]], [230, 60, 70]);
+      betesDevant(ctx, e, kinds, x - 340, x - 260, G);
+    } },
+  jongle: { fr: "Spectacle de cirque", en: "Circus show", decor: "cirque", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "magie", cx: 480,
+    mots: "jongl|acrobat|spectacle de cirque|au cirque|juggl|circus show",
+    modele: ["Mesdames et messieurs, voici le grand spectacle ! Une balle, deux balles, trois balles…", "Ladies and gentlemen, here's the big show! One ball, two balls, three balls…"],
+    consigne: ["Touche les balles pour en lancer une de plus !", "Tap the balls to throw one more!"],
+    cible: (sc) => [sc.cx, G - 300],
+    dessin(ctx, x, G, e) {
+      rrect(ctx, x - 70, G - 60, 140, 60, 10, [230, 70, 80], 3); ovale(ctx, x - 70, G - 72, 140, 24, [255, 220, 90], 3); // le tabouret
+      for (let k = 0; k < 6; k++) etoile(ctx, x - 60 + k * 24, G - 30, 6, [255, 230, 120]);
+      dessineAmi(ctx, e.acteur || "arthur", x, G - 66, e.t, 1, 0, 0, 0.9, "joie");
+      const nb = Math.min(5, 1 + e.k + (e.p !== null && e.p !== undefined && e.p > 0.3 ? 1 : 0));
+      for (let i = 0; i < nb; i++) { const a = e.t * 3.2 + (i * 2 * PI) / nb; rond(ctx, x + 70 * Math.cos(a), G - 300 - 60 * Math.abs(Math.sin(a)), 14, [[240, 80, 90], [90, 160, 240], [250, 200, 60], [110, 190, 110], [200, 120, 230]][i], 3); }
+    } },
+  manege: { fr: "Faire du manège", en: "Merry-go-round", decor: "fetforaine", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "magie", cx: 500,
+    mots: "manege|carrousel|chevaux de bois|carousel|merry-go-round",
+    modele: ["Tout le monde monte sur le manège ! Les chevaux de bois tournent, tournent…", "Everyone hops on the merry-go-round! The wooden horses go round and round…"],
+    consigne: ["Touche le manège pour le faire tourner plus vite !", "Tap the merry-go-round to make it spin faster!"],
+    cible: (sc) => [sc.cx, G - 120],
+    dessin(ctx, x, G, e) {
+      const vit = 0.6 + 0.5 * (e.k + elan(e)), a0 = e.t * vit, kinds = kindsDe(e), cavaliers = kinds.slice(0, 6), n = Math.max(4, cavaliers.length);
+      poly(ctx, [[x - 300, G - 300], [x + 300, G - 300], [x, G - 400]], [230, 70, 80], 3);
+      for (let k = 0; k < 8; k++) poly(ctx, [[x - 300 + k * 75, G - 300], [x - 262 + k * 75, G - 300], [x, G - 400]], [255, 250, 240]);
+      rond(ctx, x, G - 404, 12, [255, 210, 60], 3); rrect(ctx, x - 310, G - 306, 620, 22, 8, [255, 210, 90], 3);
+      rrect(ctx, x - 14, G - 290, 28, 260, 6, [240, 200, 120], 3);
+      const places = Array.from({ length: n }, (_, i) => { const a = a0 + (i * 2 * PI) / n; return { i, a, px: x + 250 * Math.sin(a), z: Math.cos(a) }; }).sort((p, q) => p.z - q.z);
+      for (const pl of places) { // derrière d'abord, devant ensuite
+        const s = 0.75 + 0.15 * pl.z, hy = G - 70 - 14 * Math.sin(e.t * 3 + pl.i) - 20 * (1 - pl.z) * 0.3, col = [[255, 255, 255], [250, 180, 200], [180, 210, 250], [255, 230, 150]][pl.i % 4];
+        trait(ctx, [pl.px, G - 290], [pl.px, hy], 4, [220, 190, 90]);
+        const k = cavaliers[pl.i], sc = 0.62 * s, sens = Math.cos(pl.a) >= 0 ? 1 : -1; // à cheval : les jambes cachées par le cheval
+        if (k) (AMIS_DESSIN[k] || chat)(ctx, pl.px, hy - 10 * s + (STYLES[k] ? STYLES[k].L * sc : 0), sc, e.t, sens, 0, 0, "joie");
+        ovale(ctx, pl.px - 40 * s, hy - 14 * s, 80 * s, 36 * s, col, 2); rond(ctx, pl.px + 36 * s * sens, hy - 24 * s, 16 * s, col, 2);
+        for (const d of [-24, 24]) trait(ctx, [pl.px + d * s, hy + 16 * s], [pl.px + d * s + 6 * sens * s, hy + 36 * s], 5 * s, col, "round");
+      }
+      rrect(ctx, x - 320, G - 30, 640, 34, 12, [240, 200, 120], 3);
+    } },
+  pain: { fr: "Acheter du pain", en: "Buy bread", decor: "boulangerie", lieuFort: true, sansEngin: true, clics: 3, son: "pop", cx: 600, poste: 200,
+    mots: "achet(e|ent|er) (du |une |des |le |la |les )?(pain|baguettes?|croissants?|pains? au chocolat|brioches?)|buy(s|ing)? (bread|a baguette|croissants?)",
+    modele: ["À la boulangerie, ça sent bon le pain chaud ! Une baguette et des croissants, s'il vous plaît.", "The bakery smells of warm bread! A baguette and some croissants, please."],
+    consigne: ["Touche le pain pour le mettre dans le sac !", "Tap the bread to put it in the bag!"],
+    depart: (x, i) => [x + 120 + i * 60, G - 110],
+    cible(sc) { return this.depart(sc.cx, Math.min(sc.fait, sc.n - 1)); },
+    dessin(ctx, x, G, e) {
+      rrect(ctx, x + 60, G - 100, 260, 100, 6, [190, 140, 100], 3); rrect(ctx, x + 60, G - 104, 260, 10, 3, [240, 230, 215], 2); // le comptoir
+      collecte(ctx, x, G, e, [PRODUITS[1], (c, px, py) => poly(c, [[px - 22, py], [px - 6, py - 20], [px + 8, py - 20], [px + 24, py]], [235, 175, 85], 2)], (i) => this.depart(x, i), () => [x - 160, G - 60], () => {
+        poly(ctx, [[x - 200, G], [x - 120, G], [x - 126, G - 90], [x - 194, G - 90]], [230, 200, 150], 3); // le sac en papier
+        for (let k = 0; k < Math.min(e.k, 3); k++) { ctx.save(); ctx.translate(x - 176 + k * 14, G - 96); ctx.rotate(-0.3 + k * 0.2); rrect(ctx, -6, -40, 12, 60, 6, [225, 170, 90], 2); ctx.restore(); }
+      });
+    } },
+  guimauves: { fr: "Feu de camp", en: "Campfire", decor: "camping", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "croque", cx: 520,
+    mots: "guimauves?|chamallows?|marshmallows?|feu de camp|campfire",
+    modele: ["Autour du feu de camp, on fait griller des guimauves. Attention, c'est chaud !", "Around the campfire, we toast marshmallows. Careful, it's hot!"],
+    consigne: ["Touche la guimauve pour la faire griller !", "Tap the marshmallow to toast it!"],
+    cible: (sc) => [sc.cx + 70, G - 120],
+    dessin(ctx, x, G, e) {
+      dessineAmi(ctx, e.acteur || "arthur", x - 90, G, e.t, 1, 0, Math.max(0, Math.sin((e.p || 0) * PI)), 0.95, "joie");
+      const fx = x + 90; OBJETS_DECOR.feuDeCamp[2]((ctx.save(), ctx.translate(fx, G), ctx), e.t); ctx.restore();
+      trait(ctx, [x - 60, G - 70], [x + 80, G - 128], 3, [140, 95, 60], "round");
+      const cuit = Math.min(1, (e.k + elan(e)) / Math.max(1, e.n)), col = [Math.round(lerp(255, 200, cuit)), Math.round(lerp(250, 140, cuit)), Math.round(lerp(245, 70, cuit))];
+      rrect(ctx, x + 68, G - 140, 26, 22, 8, col, 2);
+      for (let k = 0; k < 3; k++) { const u = mod(e.t * 0.6 + k / 3, 1); ctx.globalAlpha = 0.5 * (1 - u); rond(ctx, fx + 10 * Math.sin(e.t + k), G - 100 - 120 * u, 10 + 10 * u, [210, 210, 215]); ctx.globalAlpha = 1; }
+    } },
+  plonger: { fr: "Plonger sous la mer", en: "Diving", decor: "sousmarin", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "splash", cx: 480,
+    mots: "plong(e|ent|er|ee)|nag(e|ent|er) sous l'eau|\\btuba\\b|masque de plongee|snorkel|\\bdiv(e|es|ing)\\b|swim underwater",
+    modele: ["Avec un masque et un tuba, on plonge sous la mer ! Les poissons viennent dire bonjour.", "With a mask and a snorkel, we dive under the sea! The fish come to say hello."],
+    consigne: ["Touche les bulles pour appeler les poissons !", "Tap the bubbles to call the fish!"],
+    cible: (sc) => [sc.cx + 120, G - 260],
+    dessin(ctx, x, G, e) {
+      const y = G - 200 + 14 * Math.sin(e.t * 1.6), px = x - 40 + 20 * Math.sin(e.t * 0.7);
+      ctx.save(); ctx.translate(px - 90, y); ctx.rotate(PI / 2 - 0.15); // l'enfant qui nage
+      dessineAmi(ctx, e.acteur || "arthur", 0, 0, e.t, 1, Math.sin(e.t * 6) * 0.6, 0, 0.82, "joie"); ctx.restore();
+      for (let k = 0; k < 5; k++) { const u = mod(e.t * 0.7 + k / 5, 1); ctx.globalAlpha = 0.7 * (1 - u); rond(ctx, px + 70 + 10 * Math.sin(e.t * 3 + k), y - 40 - 160 * u, 5 + k % 3 * 2, [220, 240, 255], 1.5); ctx.globalAlpha = 1; }
+      const nb = Math.min(e.n, e.k + (e.p !== null && e.p !== undefined && e.p > 0.5 ? 1 : 0));
+      for (let i = 0; i < nb; i++) petitPoisson(ctx, px + 140 + i * 50 + 6 * Math.sin(e.t * 3 + i), y - 60 + i * 34 + 8 * Math.sin(e.t * 2 + i), [[255, 170, 60], [240, 120, 170], [250, 220, 70]][i % 3], -1, 1.2);
+    } },
+  glisser: { fr: "Glisser sur la glace", en: "Ice sliding", decor: "banquise", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "pop", cx: 500,
+    mots: "glisse(nt|r)? sur (la )?glace|\\bpatin(e|ent|er|s|age|oire)?\\b|\\bskat(e|es|ing)\\b|slide on the ice",
+    modele: ["Sur la glace, ça glisse ! Wiiiii !", "On the ice, it's slippery! Wheee!"],
+    consigne: ["Touche l'enfant pour le faire glisser !", "Tap to slide!"],
+    cible(sc) { return [sc.cx - 250 + 160 * Math.min(sc.fait, sc.n), G - 80]; },
+    dessin(ctx, x, G, e) {
+      ovale(ctx, x - 340, G - 30, 680, 70, [200, 230, 250], 3);
+      const pos = x - 250 + 160 * Math.min(e.n, e.k + (e.p !== null && e.p !== undefined ? Math.sin(e.p * PI / 2) : 0));
+      for (let k = 0; k < 4; k++) trait(ctx, [pos - 60 - k * 18, G - 40 - k * 20], [pos - 30 - k * 18, G - 40 - k * 20], 3, [255, 255, 255], "round");
+      ctx.save(); ctx.translate(pos, G - 4); ctx.rotate(0.12); dessineAmi(ctx, e.acteur || "arthur", 0, 0, e.t, 1, 0, 0, 0.9, "joie"); ctx.restore();
+    } },
+  poissons: { fr: "Regarder les poissons", en: "Watch the fish", decor: "aquarium", lieuFort: true, sansEngin: true, clics: 3, son: "splash", cx: 520, poste: 200,
+    mots: "regard(e|ent|er)? les poissons|nourri(r|t|ssent) les poissons|look(s|ing)? at the fish|feed(s)? the fish",
+    modele: ["Devant le grand aquarium, les poissons nagent tout près de la vitre.", "In front of the big aquarium, the fish swim right up to the glass."],
+    consigne: ["Touche la vitre pour faire venir les poissons !", "Tap the glass to bring the fish over!"],
+    cible: (sc) => [sc.cx, G - 180],
+    dessin(ctx, x, G, e) {
+      rrect(ctx, x - 230, G - 300, 460, 290, 16, [70, 160, 225], 6, [60, 60, 75]);
+      ctx.save(); ctx.beginPath(); ctx.rect(x - 226, G - 296, 452, 282); ctx.clip();
+      const nb = 2 + e.k + (e.p !== null && e.p !== undefined && e.p > 0.5 ? 1 : 0);
+      for (let i = 0; i < nb; i++) petitPoisson(ctx, x - 200 + mod(i * 97 + e.t * (30 + i * 9) * (i % 2 ? 1 : -1), 400), G - 250 + (i * 47) % 200, [[255, 170, 60], [250, 220, 70], [240, 120, 170], [255, 255, 255], [120, 200, 250]][i % 5], i % 2 ? 1 : -1, 1.5);
+      for (let j = 0; j < 4; j++) { ctx.beginPath(); ctx.moveTo(x - 160 + j * 100, G - 14); for (let yy = 0; yy < 120; yy += 20) ctx.lineTo(x - 160 + j * 100 + 8 * Math.sin(e.t * 2 + yy * 0.05 + j), G - 14 - yy); ctx.lineWidth = 7; ctx.strokeStyle = css([60, 160, 90]); ctx.stroke(); }
+      ctx.restore();
+    } },
+};
+for (const [id, A] of Object.entries(ACTIVITES_VIE)) {
+  ACTIVITES[id] = A;
+  CLICS_DEFAUT[id] = A.clics; CONSIGNES[id] = A.consigne[0]; CONSIGNES_EN[id] = A.consigne[1];
+  TEXTES.fr.actions[id] = A.fr; TEXTES.en.actions[id] = A.en; MODELES[id] = A.modele;
+  ALIAS_ACTION[id] = id; ALIAS_ACTION[sansAccent(A.fr)] = id; ACTIONS.push(id);
+  MOTS_ACTIVITES.unshift([new RegExp(A.mots), id]); // avant les activités plus générales (« dormir », « manger »…)
+}
+Object.assign(ZONES_ACTIVITES, { dodo: [-240, 300], jongle: [-90, 90], pain: [-210, 330], guimauves: [-150, 140], plonger: [-200, 240], glisser: [-330, 330], poissons: [-240, 240] });
+for (const id of ["bain", "dents", "cuisine"]) if (ACTIVITES[id]) ACTIVITES[id].lieuFort = true; // le bain dans la salle de bain, la cuisine dans la cuisine
+// dans l'éditeur : la vie de la maison, et un nouveau thème « Sorties »
+CATEGORIES_ACTIONS.find(([c]) => c === "maison")[2].unshift("tele", "dodo", "repas");
+CATEGORIES_ACTIONS.push(["sorties", "🎡", ["film", "jongle", "manege", "pain", "guimauves", "plonger", "glisser", "poissons"]]);
+NOMS_CATEGORIES.fr.sorties = "Sorties"; NOMS_CATEGORIES.en.sorties = "Outings";
+for (const id of Object.keys(ACTIVITES_VIE)) if (!ACTIONS_ECRITURE.includes(id)) ACTIONS_ECRITURE.push(id);
+// « le tractopelle dort » reste la nuit du chantier : le lit, c'est pour les enfants et les grands
+{ const avant = devineAction;
+  devineAction = function (texte, premiere, derniere) {
+    const a = avant(texte, premiere, derniere);
+    if (a === "dodo" && vehiculesCites(texte).length && !amisCites(texte).some((id) => STYLES[id])) return "dormir";
+    return a;
+  }; }
+// « on fait / ils font / faire un gâteau » : c'est la cuisine
+{ const A = ACTIVITES.cuisine; A.mots = "f(ai[ts]?|ont|aire|aisons) (un |des |une )?(gateaux?|crepes|cookies|tarte)|prepare(nt|r)? (un |le )?gateau|cuisin|patiss|recette|bake|baking|\\bcook";
+  const i = MOTS_ACTIVITES.findIndex(([, id]) => id === "cuisine"); if (i >= 0) MOTS_ACTIVITES[i] = [new RegExp(A.mots), "cuisine"]; }
+// « on est à la maison », « chez Mamie » : le salon (la pièce de la maison par défaut)
+MOTS_DECORS_EXTRA.push(["\\b(est|sont|suis|reste|restent|on est|joue|jouent) (a la maison|chez (lui|elle|nous|moi|eux))|\\bchez (papy|papi|mamie|tonton|tata|nounou)|\\bat home\\b", "salon"]);
+
+// à l'aquarium, les poissons sont dans les bassins (pas posés par terre)
+{ const avant = etapesDepuisTexte;
+  etapesDepuisTexte = function (lignes, prenom) {
+    const etapes = avant(lignes, prenom);
+    for (const et of etapes) if (et.decor === "aquarium" || et.action === "poissons") et.presents = et.presents.filter((id) => id !== "poisson");
+    return etapes;
+  }; }
+TEXTES.fr.actions.dormir = "Le camion dort"; TEXTES.en.actions.dormir = "Truck naps"; // à ne pas confondre avec « Aller au lit »

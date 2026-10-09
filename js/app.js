@@ -147,7 +147,7 @@ class Scene {
     const poste = { rouler: 330, parler: 430, trou: 540, feu: 440, deblayer: 470, construire: hero.kind === "grue" ? 592 : 520, copains: 470, fete: 470, dormir: 470, manger: 470, spectacle: 480, bulles: 480, calin: 480, piscine: 200, cueillir: 430, chateau: 470, route: 380, voler: 420, fenetres: 470, cadeau: 430, velo: 420, pont: 300, arbre: 420, panne: 380, chercher: 130, chiffres: 200, lettres: 200 }[this.act] ?? (A ? A.poste ?? 200 : 430);
     this.altitude = 0; this.ouvert = 0; this.veloX = 440; this.pedale = 0;
     this.cacheHeros = !!d.cache_heros || this.act === "libre" || !!(A && A.sansEngin) || (INTERIEURS.has(d.decor) && !AVEC_ENGIN.has(this.act));
-    this.elements = (d.elements || []).concat(typeof elementsDesChoses === "function" ? elementsDesChoses(d.choses) : []).map((e) => ({ ...e, saut: 0 }));
+    this.elements = (d.elements || []).concat(typeof elementsDesChoses === "function" ? elementsDesChoses(d.choses, d.action) : []).map((e) => ({ ...e, saut: 0 }));
     this.aToucher = this.elements.filter((e) => e.toucher);
     if (this.act === "libre") { hero.x = -400; if (this.inter && this.aToucher.length) this.n = this.aToucher.length; }
     let kindActeur = this.act === "panne" ? null : d.vehicule;
@@ -595,7 +595,9 @@ class Scene {
   attendClic() { return this.inter && this.fait < this.n && this.p === null && this.pret(); }
   dessine(ctx) {
     const m = this.m, fete = this.act === "fete";
+    ACTIVITE_EN_COURS = this.act; // le décor laisse la place aux meubles de l'activité (le canapé de la télé, le lit…)
     dessineDecor(ctx, VW, VH, m.decor, m.scroll, m.t, m.nuit, G);
+    ACTIVITE_EN_COURS = null;
     for (const [x, y] of this.etoiles) etoile(ctx, x, y, 16 + 3 * Math.sin(m.t * 4 + x), [255, 240, 150], m.t * 0.5);
     if (this.d.meteo === "pluie") { ctx.fillStyle = "rgba(70,85,110,0.18)"; ctx.fillRect(0, 0, VW, VH); }
     if (this.d.meteo === "orage") {
