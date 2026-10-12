@@ -68,16 +68,16 @@ class Voix {
     const cle = this.conteur(langue).v + "|" + langue + "|" + texte;
     if (!this.cache.has(cle)) {
       const p = fetch(this.url(texte, langue))
-        .then((r) => { if (!r.ok) throw new Error("voix " + r.status); return r.arrayBuffer(); })
-        .then((b) => new Promise((ok, ko) => Audio_.ctx.decodeAudioData(b, ok, ko)))
+        .then((r) => { if (!r.ok) throw new Error("voix " + r.status); const src = r.headers.get("X-Voix") || "edge"; return r.arrayBuffer().then((b) => [b, src]); })
+        .then(([b, src]) => new Promise((ok, ko) => Audio_.ctx.decodeAudioData(b, (buf) => { buf.origine = src; ok(buf); }, ko)))
         .then((buf) => { this.echecs = 0; return buf; })
-        .catch(() => { this.cache.delete(cle); this.echecs = (this.echecs || 0) + 1; if (this.echecs >= 2) this.enPanneJusqua = Date.now() + 10 * 60 * 1000; return null; });
+        .catch(() => { this.cache.delete(cle); return null; }); // on réessaiera la prochaine fois (jamais de voix robotique)
       this.cache.set(cle, p);
     }
     return this.cache.get(cle);
   }
   precharge(textes, langue = LANGUE) { // prépare les phrases à l'avance, 2 à la fois
-    if (!this.actif || !Audio_.ctx || (this.enPanneJusqua && Date.now() < this.enPanneJusqua)) return;
+    if (!this.actif || !Audio_.ctx) return;
     for (const t of textes) if (t && t.trim()) this.file.push([t.trim(), langue]);
     const suivant = () => {
       while (this.enCours < 2 && this.file.length) {
@@ -93,10 +93,10 @@ class Voix {
     texte = (texte || "").trim();
     if (!texte || !this.actif) return;
     this.stop();
-    if (!Audio_.ctx || (this.enPanneJusqua && Date.now() < this.enPanneJusqua)) return this.secours(texte, langue); // service en panne : la voix de l'appareil, tout de suite
+    if (!Audio_.ctx) return this.secours(texte, langue);
     const jeton = ++this.jeton;
     this.attente = texte;
-    const minuteur = setTimeout(() => { if (this.jeton === jeton && this.attente) { this.attente = null; this.secours(texte, langue); } }, 8000);
+    const minuteur = setTimeout(() => { if (this.jeton === jeton && this.attente) { this.attente = null; this.secours(texte, langue); } }, 12000);
     this.charge(texte, langue).then((buf) => {
       if (this.jeton !== jeton) return;
       clearTimeout(minuteur);
@@ -105,6 +105,7 @@ class Voix {
       if (!buf) return this.secours(texte, langue);
       const s = Audio_.ctx.createBufferSource();
       s.buffer = buf;
+      if (buf.origine === "google") s.playbackRate.value = 0.94; // la voix de Google, un peu plus posée et plus douce
       s.connect(this.sortie());
       s.onended = () => { if (this.source === s) this.source = null; };
       this.source = s;
@@ -134,6 +135,7 @@ class Voix {
     if (!("speechSynthesis" in window)) return;
     const u = new SpeechSynthesisUtterance(texte);
     u.voice = this.voixAppareil(langue);
+    if (!u.voice || !/natural|online|premium|enhanced|amélior|neural/i.test(u.voice.name)) return; // pas de voix robotique : on se tait
     u.lang = (u.voice && u.voice.lang) || (langue === "en" ? "en-US" : "fr-FR");
     const naturelle = u.voice && /natural|online|premium|enhanced|amélior|neural/i.test(u.voice.name);
     u.rate = naturelle ? 0.92 : 0.86; u.pitch = naturelle ? 1 : 0.95; // posé et doux (les voix « naturelles » le sont déjà)
