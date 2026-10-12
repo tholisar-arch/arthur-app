@@ -37,7 +37,7 @@ const TRAIT = 0.62;
 const STYLE_DESSIN = { plat: true, bluey: true, decorReel: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
-  if (!RELIEF.on || w < 7 || h < 7 || w * h > 600000 || !ctx.createLinearGradient) return css(fill);
+  if (!RELIEF.on || w < 7 || h < 7 || w * h < 1000 || w * h > 600000 || !ctx.createLinearGradient) return css(fill); // les toutes petites formes : couleur unie (invisible à cette taille, et bien plus rapide)
   const lum = (fill[0] * 0.3 + fill[1] * 0.59 + fill[2] * 0.11) / 255, k = RELIEF.fort;
   const haut = clair(fill, 0.24 * k), bas = fonce(fill, 1 - (lum > 0.9 ? 0.06 : 0.15) * k);
   const g = arrondi ? ctx.createRadialGradient(x + w * 0.36, y + h * 0.3, Math.min(w, h) * 0.04, x + w * 0.46, y + h * 0.46, Math.max(w, h) * 0.62)
@@ -426,16 +426,20 @@ function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [12
     ctx.beginPath(); ctx.moveTo(-10, horizon - 60);
     for (let k = 0; k <= 12; k++) { const x = f - 400 + k * 160; ctx.lineTo(x, horizon - 150 - 70 * Math.abs(Math.sin(k * 1.7)) - 30 * (k % 2)); }
     ctx.lineTo(W + 10, horizon - 60); ctx.closePath(); ctx.fillStyle = css(loin, 0.75); ctx.fill();
-    for (let k = 0; k < 18; k++) { const x = boucle(k * 97, scroll, 0.09, W, 100); rond(ctx, x, horizon - 132 + (k % 3) * 6, 14 + (k % 4) * 3, mele2(foncee, loin, 0.55)); } // des bois au loin
   }
   ovale(ctx, x1 - 450, horizon - 150, 900, 340, foncee, 4);
   if (RELIEF.on) for (let k = 0; k < 7; k++) rond(ctx, x1 - 300 + k * 90, horizon - 118 + Math.abs(k - 3) * 9, 13 + (k % 3) * 4, fonce(foncee, 0.85)); // des bosquets sur la colline
   if (maison) { // la petite maison jaune sur la colline du fond
     const hx = x1 + 60, hy = horizon - 150 + 6;
-    rrect(ctx, hx - 22, hy - 30, 44, 30, 0, [250, 220, 120], 3);
-    poly(ctx, [[hx - 28, hy - 30], [hx + 28, hy - 30], [hx, hy - 52]], [215, 85, 70], 3);
-    rrect(ctx, hx - 6, hy - 16, 12, 16, 2, [150, 100, 60]);
-    rrect(ctx, hx + 9, hy - 25, 9, 9, 1, VITRE);
+    if (RELIEF.on) {
+      facade3D(ctx, hx - 22, hy, 44, 30, 22, [250, 220, 120]); pignon3D(ctx, hx - 22, hy - 30, 44, 20, 22, [250, 220, 120], [215, 85, 70], 6);
+      rrect(ctx, hx - 6, hy - 16, 12, 16, 2, [150, 100, 60]); rrect(ctx, hx + 8, hy - 25, 9, 9, 1, VITRE);
+    } else {
+      rrect(ctx, hx - 22, hy - 30, 44, 30, 0, [250, 220, 120], 3);
+      poly(ctx, [[hx - 28, hy - 30], [hx + 28, hy - 30], [hx, hy - 52]], [215, 85, 70], 3);
+      rrect(ctx, hx - 6, hy - 16, 12, 16, 2, [150, 100, 60]);
+      rrect(ctx, hx + 9, hy - 25, 9, 9, 1, VITRE);
+    }
   }
   ovale(ctx, x2 - 500, horizon - 120, 1000, 300, claire, 4);
   for (const dx of [-150, 170]) arbre(ctx, x2 + dx, horizon - 112 + Math.abs(dx) * 0.06, 0.38);
@@ -459,6 +463,73 @@ function ecrireCentre(ctx, txt, x, y, taille, col) {
   ctx.font = `700 ${taille}px Fredoka, "Comic Sans MS", sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = css(col); ctx.fillText(txt, x, y);
 }
+
+// ------------------------------------------------------------ architecture « 3D façon dessin »
+// Une façade face à nous, son côté qui part en profondeur (vers la droite et le haut, dans l'ombre), des toits à deux
+// pentes avec leur débord, des fenêtres en creux (cadre, appui, volets), des portes avec leur marche, des briques…
+// La lumière vient d'en haut à droite : l'ombre portée du bâtiment s'étale au sol vers la gauche.
+const PROF = { dx: 0.42, dy: -0.26 };
+// Un bâtiment ne change pas d'une image à l'autre : on le dessine une fois dans une petite image, puis on la recolle
+// (même rendu, bien plus rapide). (ax, ay) = son point d'ancrage ; ox, oy, w, h = la boîte autour de ce point.
+const CACHE_DESSINS = new Map();
+function enCache(ctx, cle, ax, ay, ox, oy, w, h, dessin) {
+  let c = CACHE_DESSINS.get(cle);
+  if (!c && typeof document !== "undefined") {
+    c = document.createElement("canvas"); const k = 2; c.width = Math.ceil(w * k); c.height = Math.ceil(h * k);
+    const g = c.getContext("2d"); g.scale(k, k); g.translate(ox - ax, oy - ay); dessin(g);
+    CACHE_DESSINS.set(cle, c);
+  }
+  if (c) ctx.drawImage(c, ax - ox, ay - oy, w, h); else dessin(ctx);
+}
+function ombrePortee(ctx, x, y, w, h) {
+  ctx.beginPath(); ctx.moveTo(x + w * 0.1, y); ctx.lineTo(x - h * 0.28, y + 16); ctx.lineTo(x + w * 0.75 - h * 0.28, y + 16); ctx.lineTo(x + w, y); ctx.closePath();
+  ctx.fillStyle = "rgba(40,50,30,0.16)"; ctx.fill();
+}
+function facade3D(ctx, x, y, w, h, d, col, toitPlat = false) { // (x, y) = coin bas-gauche de la façade
+  const dx = d * PROF.dx, dy = d * PROF.dy;
+  ombrePortee(ctx, x, y, w, h);
+  poly(ctx, [[x + w, y], [x + w + dx, y + dy], [x + w + dx, y - h + dy], [x + w, y - h]], fonce(col, 0.76), 2); // le côté, dans l'ombre
+  if (toitPlat) {
+    poly(ctx, [[x - 3, y - h], [x + w, y - h], [x + w + dx, y - h + dy], [x + dx - 3, y - h + dy]], fonce(col, 0.9), 2); // le dessus
+    rrect(ctx, x - 4, y - h - 8, w + 8, 10, 2, clair(col, 0.25), 2); // l'acrotère
+  }
+  rrect(ctx, x, y - h, w, h, 0, col, 2);
+  rrect(ctx, x, y - 10, w, 10, 0, fonce(col, 0.85)); // le soubassement
+  return { dx, dy };
+}
+function pignon3D(ctx, x, y, w, rh, d, mur, tuiles, debord = 14) { // y = haut des murs ; pignon face à nous, toit vers le fond
+  const dx = d * PROF.dx, dy = d * PROF.dy, cx = x + w / 2;
+  poly(ctx, [[x, y + 1], [x + w, y + 1], [cx, y - rh]], mur, 2); // le triangle du pignon
+  poly(ctx, [[cx, y - rh], [cx + dx, y - rh + dy], [x + w + debord + dx, y + 8 + dy], [x + w + debord, y + 8]], tuiles, 2); // le pan du toit
+  for (let k = 1; k < 5; k++) { const u = k / 5; trait(ctx, [cx + (x + w + debord - cx) * u, y - rh + (rh + 8) * u], [cx + dx + (x + w + debord - cx) * u, y - rh + dy + (rh + 8) * u], 1.5, fonce(tuiles, 0.85)); } // les rangées de tuiles
+  poly(ctx, [[x - debord, y + 8], [cx, y - rh - 6], [x + w + debord, y + 8], [x + w + debord - 12, y + 8], [cx, y - rh + 10], [x - debord + 12, y + 8]], fonce(tuiles, 0.8), 2); // la rive
+}
+function fenetre3D(ctx, x, y, w, h, opt = {}) { // (x, y) = coin haut-gauche du carreau
+  if (opt.volets) for (const vx of [x - w * 0.45 - 6, x + w + 6]) { rrect(ctx, vx, y - 2, w * 0.45, h + 4, 3, opt.volets, 2); for (let k = 1; k < 5; k++) trait(ctx, [vx + 3, y + k * h / 5], [vx + w * 0.45 - 3, y + k * h / 5], 1.5, fonce(opt.volets, 0.8)); }
+  rrect(ctx, x - 5, y - 5, w + 10, h + 10, 3, opt.cadre || [250, 250, 246], 2);
+  rrect(ctx, x, y, w, h, 2, opt.nuit ? [255, 225, 130] : VITRE);
+  ctx.fillStyle = "rgba(20,30,50,0.22)"; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - 6, y + 6); ctx.lineTo(x + 6, y + 6); ctx.lineTo(x + 6, y + h); ctx.lineTo(x, y + h); ctx.closePath(); ctx.fill(); // l'ombre du creux
+  if (!opt.simple) { trait(ctx, [x + w / 2, y], [x + w / 2, y + h], 3, opt.cadre || [250, 250, 246]); trait(ctx, [x, y + h / 2], [x + w, y + h / 2], 3, opt.cadre || [250, 250, 246]); }
+  rrect(ctx, x - 9, y + h + 4, w + 18, 7, 2, clair(opt.cadre || [235, 230, 222], 0.2), 2); // l'appui
+  ctx.fillStyle = "rgba(40,40,40,0.15)"; ctx.fillRect(x - 7, y + h + 11, w + 14, 4);
+}
+function porte3D(ctx, x, y, w, h, col, opt = {}) { // (x, y) = bas-gauche de la porte
+  rrect(ctx, x - 8, y + 2, w + 16, 8, 2, [200, 195, 190], 2); // la marche
+  rrect(ctx, x - 6, y - h - 6, w + 12, h + 6, opt.rond ? w / 2 + 6 : 4, clair(col, 0.55), 2); // l'encadrement
+  rrect(ctx, x, y - h, w, h, opt.rond ? w / 2 : 3, col, 2);
+  ctx.fillStyle = "rgba(20,20,30,0.2)"; ctx.fillRect(x, y - h + (opt.rond ? w / 2 : 0), 5, h - (opt.rond ? w / 2 : 0));
+  for (const [py, ph] of [[0.18, 0.3], [0.56, 0.3]]) rrect(ctx, x + w * 0.2, y - h + h * py, w * 0.6, h * ph, 3, fonce(col, 0.9), 1.5); // les panneaux
+  rond(ctx, x + w * 0.8, y - h * 0.48, Math.max(2, w * 0.06), [250, 210, 80]);
+}
+function briques(ctx, x, y, w, h, col, pas = 14) { // de petites briques dessinées sur un mur
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.strokeStyle = css(fonce(col, 0.86)); ctx.lineWidth = 1.2;
+  for (let r = 0, yy = y; yy < y + h; r++, yy += pas) { ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); for (let xx = x + (r % 2) * pas; xx < x + w; xx += pas * 2) { ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + pas); ctx.stroke(); } }
+  ctx.restore();
+}
+function bardage(ctx, x, y, w, h, col, pas = 16) { // des planches verticales (grange)
+  for (let xx = x + pas; xx < x + w; xx += pas) trait(ctx, [xx, y], [xx, y + h], 1.5, fonce(col, 0.85));
+}
+function cheminee3D(ctx, x, y, col) { facade3D(ctx, x, y, 26, 44, 16, col, true); for (let k = 0; k < 3; k++) { ctx.globalAlpha = 0.3; rond(ctx, x + 18 + k * 6, y - 64 - k * 16, 8 + k * 3, [240, 240, 240]); ctx.globalAlpha = 1; } }
 
 function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   const avant = RELIEF.on;
@@ -509,10 +580,19 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   } else if (nom === "ville") {
     const cols = [[250, 170, 160], [170, 210, 250], [250, 220, 140], [180, 230, 180], [220, 180, 240]];
     for (let k = 0; k < 9; k++) {
-      const x = boucle(k * 150, scroll, 0.35, W), h = 110 + ((k * 53) % 120);
-      rrect(ctx, x, horizon - h, 120, h, 0, cols[k % 5]);
-      for (let yy = horizon - h + 15; yy < horizon - 25; yy += 32)
-        for (const xx of [x + 15, x + 50, x + 85]) rrect(ctx, xx, yy, 20, 18, 0, nuit ? [255, 230, 120] : [255, 250, 210]);
+      const x = boucle(k * 150, scroll, 0.35, W), h = 110 + ((k * 53) % 120), c = cols[k % 5];
+      if (RELIEF.on) enCache(ctx, `ville${k}${nuit ? "n" : ""}`, x, horizon, 10 + h * 0.3, h + 34, 150 + h * 0.3, h + 60, (ctx) => {
+        facade3D(ctx, x, horizon, 112, h, 40, c, true);
+        if (k % 2) briques(ctx, x, horizon - h, 112, h - 10, c, 12);
+        for (let yy = horizon - h + 18; yy < horizon - 50; yy += 34) for (const xx of [x + 14, x + 46, x + 78]) fenetre3D(ctx, xx, yy, 20, 18, { nuit: nuit && (xx - x + yy + k) % 3 !== 0, simple: true, cadre: clair(c, 0.6) });
+        porte3D(ctx, x + 40, horizon - 2, 30, 40, fonce(c, 0.7));
+        rrect(ctx, x + 30, horizon - 54, 50, 8, 2, fonce(c, 0.6), 2); // l'auvent au-dessus de la porte
+      });
+      else {
+        rrect(ctx, x, horizon - h, 120, h, 0, c);
+        for (let yy = horizon - h + 15; yy < horizon - 25; yy += 32)
+          for (const xx of [x + 15, x + 50, x + 85]) rrect(ctx, xx, yy, 20, 18, 0, nuit ? [255, 230, 120] : [255, 250, 210]);
+      }
     }
   } else if (nom === "campagne") {
     collines(ctx, W, horizon, scroll);
@@ -545,16 +625,16 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   } else if (nom === "ecole") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300);
-    rrect(ctx, x - 230, horizon - 200, 460, 200, 0, [250, 232, 195], 3);
-    poly(ctx, [[x - 255, horizon - 200], [x + 255, horizon - 200], [x, horizon - 290]], [210, 85, 70], 3);
+    if (RELIEF.on) enCache(ctx, "ecole", x, horizon, 320, 330, 640, 350, (ctx) => { facade3D(ctx, x - 230, horizon, 460, 200, 110, [250, 232, 195]); briques(ctx, x - 230, horizon - 60, 460, 50, [250, 232, 195], 12); pignon3D(ctx, x - 230, horizon - 200, 460, 90, 110, [250, 232, 195], [210, 85, 70], 22); });
+    else { rrect(ctx, x - 230, horizon - 200, 460, 200, 0, [250, 232, 195], 3); poly(ctx, [[x - 255, horizon - 200], [x + 255, horizon - 200], [x, horizon - 290]], [210, 85, 70], 3); }
     rrect(ctx, x - 85, horizon - 192, 170, 40, 10, [90, 150, 230]);
     ecrireCentre(ctx, tr("ecole"), x, horizon - 171, 30, [255, 255, 255]);
     const vitres = [[255, 210, 60], [255, 120, 150], [120, 200, 120], [160, 120, 230]];
     [-190, -120, 70, 140].forEach((wx, k) => {
-      rrect(ctx, x + wx, horizon - 135, 50, 50, 4, VITRE, 3);
+      if (RELIEF.on) fenetre3D(ctx, x + wx, horizon - 135, 50, 50, { simple: true }); else rrect(ctx, x + wx, horizon - 135, 50, 50, 4, VITRE, 3);
       rond(ctx, x + wx + 25, horizon - 110, 11, vitres[k]);
     });
-    rrect(ctx, x - 35, horizon - 80, 70, 80, 8, [150, 95, 60], 3);
+    if (RELIEF.on) porte3D(ctx, x - 35, horizon, 70, 80, [150, 95, 60], { rond: true }); else rrect(ctx, x - 35, horizon - 80, 70, 80, 8, [150, 95, 60], 3);
     for (let k = 0; k < 3; k++) arbre(ctx, boucle(k * 520 + 60, scroll, 0.4, W), horizon + 5, 0.9);
     const tx = boucle(940, scroll, 0.35, W, 300);
     trait(ctx, [tx, horizon], [tx, horizon - 110], 6, [230, 80, 80]);
@@ -565,14 +645,25 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "vacances") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300); // la maison de vacances (x = 260 au début)
-    rrect(ctx, x - 170, horizon - 170, 340, 170, 0, [252, 248, 235], 3);
-    poly(ctx, [[x - 195, horizon - 170], [x + 195, horizon - 170], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 3);
-    for (const wx of [-125, 65]) {
-      rrect(ctx, x + wx, horizon - 140, 60, 55, 4, VITRE, 3);
-      rrect(ctx, x + wx - 22, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
-      rrect(ctx, x + wx + 62, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
+    if (RELIEF.on) enCache(ctx, "vacances", x, horizon, 250, 270, 520, 290, (ctx) => {
+      facade3D(ctx, x - 170, horizon, 340, 170, 120, [252, 248, 235]);
+      const dx = 120 * PROF.dx, dy = 120 * PROF.dy; // un toit à quatre pans, vu un peu de côté
+      poly(ctx, [[x - 195, horizon - 166], [x + 195, horizon - 166], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 2);
+      poly(ctx, [[x + 195, horizon - 166], [x + 195 + dx, horizon - 166 + dy], [x + 150 + dx * 0.6, horizon - 235 + dy * 0.6], [x + 150, horizon - 235]], fonce([215, 110, 70], 0.8), 2);
+      for (let k = 1; k < 4; k++) trait(ctx, [x - 195 + k * 11, horizon - 166 - k * 17], [x + 195 - k * 11, horizon - 166 - k * 17], 1.5, fonce([215, 110, 70], 0.85));
+      for (const wx of [-125, 65]) fenetre3D(ctx, x + wx, horizon - 140, 60, 55, { volets: [70, 140, 220] });
+      porte3D(ctx, x - 30, horizon, 60, 85, [70, 140, 220]);
+    });
+    else {
+      rrect(ctx, x - 170, horizon - 170, 340, 170, 0, [252, 248, 235], 3);
+      poly(ctx, [[x - 195, horizon - 170], [x + 195, horizon - 170], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 3);
+      for (const wx of [-125, 65]) {
+        rrect(ctx, x + wx, horizon - 140, 60, 55, 4, VITRE, 3);
+        rrect(ctx, x + wx - 22, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
+        rrect(ctx, x + wx + 62, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
+      }
+      rrect(ctx, x - 30, horizon - 85, 60, 85, 8, [70, 140, 220], 3);
     }
-    rrect(ctx, x - 30, horizon - 85, 60, 85, 8, [70, 140, 220], 3);
     for (let k = 0; k < 4; k++) palmier(ctx, boucle(k * 320 + 520, scroll, 0.4, W), horizon + 5, 0.85);
     rrect(ctx, x - 200, horizon - 12, 400, 12, 0, [200, 120, 90]); // bacs de fleurs
     for (let k = 0; k < 9; k++) rond(ctx, x - 185 + k * 46, horizon - 14, 8, [[255, 90, 140], [255, 210, 60], [190, 120, 240]][k % 3]);
@@ -580,11 +671,20 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "jardin") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(470, scroll, 0.3, W, 300); // la maison de la famille
-    rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [250, 225, 190], 3);
-    poly(ctx, [[x - 175, horizon - 190], [x + 175, horizon - 190], [x, horizon - 280]], [180, 80, 70], 3);
-    for (const wx of [-110, 55]) rrect(ctx, x + wx, horizon - 160, 55, 50, 4, VITRE, 3);
-    rrect(ctx, x - 30, horizon - 90, 60, 90, 8, [130, 80, 55], 3);
-    rond(ctx, x + 18, horizon - 45, 4, [250, 210, 80]);
+    if (RELIEF.on) enCache(ctx, "maisonJardin", x, horizon, 240, 330, 480, 350, (ctx) => {
+      facade3D(ctx, x - 150, horizon, 300, 190, 130, [250, 225, 190]); pignon3D(ctx, x - 150, horizon - 190, 300, 90, 130, [250, 225, 190], [180, 80, 70]);
+      cheminee3D(ctx, x + 84, horizon - 222, [190, 110, 90]); // posée sur le pan du toit
+      fenetre3D(ctx, x - 22, horizon - 260, 44, 36, { simple: true }); // la petite fenêtre du grenier
+      for (const wx of [-110, 55]) fenetre3D(ctx, x + wx, horizon - 160, 55, 50, { volets: [110, 160, 120] });
+      porte3D(ctx, x - 30, horizon, 60, 90, [130, 80, 55]);
+    });
+    else {
+      rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [250, 225, 190], 3);
+      poly(ctx, [[x - 175, horizon - 190], [x + 175, horizon - 190], [x, horizon - 280]], [180, 80, 70], 3);
+      for (const wx of [-110, 55]) rrect(ctx, x + wx, horizon - 160, 55, 50, 4, VITRE, 3);
+      rrect(ctx, x - 30, horizon - 90, 60, 90, 8, [130, 80, 55], 3);
+      rond(ctx, x + 18, horizon - 45, 4, [250, 210, 80]);
+    }
     for (let k = 0; k < 3; k++) arbre(ctx, boucle(k * 420 + 120, scroll, 0.4, W), horizon + 5, 1, [80, 170, 80]);
     for (let k = 0; k < 40; k++) { // la palissade du jardin
       const px = boucle(k * 26, scroll, 0.5, W, 30);
@@ -594,12 +694,20 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   }
   else if (nom === "pms") { // la société PMS
     const x = boucle(600, scroll, 0.3, W, 300);
-    rrect(ctx, x - 260, horizon - 200, 330, 200, 0, [225, 230, 240], 3); // bureaux
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) rrect(ctx, x - 240 + c * 78, horizon - 185 + r * 55, 58, 38, 3, VITRE, 2);
-    rrect(ctx, x + 70, horizon - 150, 230, 150, 0, [200, 205, 215], 3); // atelier
-    poly(ctx, [[x + 60, horizon - 150], [x + 310, horizon - 150], [x + 185, horizon - 200]], [150, 160, 180], 3);
-    rrect(ctx, x + 120, horizon - 105, 130, 105, 4, [170, 175, 185], 3);
-    for (let k = 1; k < 5; k++) trait(ctx, [x + 120, horizon - 105 + k * 21], [x + 250, horizon - 105 + k * 21], 2, [140, 145, 155]);
+    if (RELIEF.on) enCache(ctx, "pms" + (nuit ? "n" : ""), x, horizon, 330, 240, 700, 260, (ctx) => {
+      facade3D(ctx, x + 70, horizon, 230, 150, 90, [200, 205, 215]); pignon3D(ctx, x + 70, horizon - 150, 230, 50, 90, [200, 205, 215], [150, 160, 180], 10); // l'atelier
+      rrect(ctx, x + 120, horizon - 105, 130, 105, 4, [170, 175, 185], 2); for (let k = 1; k < 5; k++) trait(ctx, [x + 120, horizon - 105 + k * 21], [x + 250, horizon - 105 + k * 21], 2, [140, 145, 155]);
+      facade3D(ctx, x - 260, horizon, 330, 200, 70, [225, 230, 240], true); // les bureaux
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) fenetre3D(ctx, x - 240 + c * 78, horizon - 185 + r * 55, 58, 36, { simple: true, nuit });
+    });
+    else {
+      rrect(ctx, x - 260, horizon - 200, 330, 200, 0, [225, 230, 240], 3); // bureaux
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) rrect(ctx, x - 240 + c * 78, horizon - 185 + r * 55, 58, 38, 3, VITRE, 2);
+      rrect(ctx, x + 70, horizon - 150, 230, 150, 0, [200, 205, 215], 3); // atelier
+      poly(ctx, [[x + 60, horizon - 150], [x + 310, horizon - 150], [x + 185, horizon - 200]], [150, 160, 180], 3);
+      rrect(ctx, x + 120, horizon - 105, 130, 105, 4, [170, 175, 185], 3);
+      for (let k = 1; k < 5; k++) trait(ctx, [x + 120, horizon - 105 + k * 21], [x + 250, horizon - 105 + k * 21], 2, [140, 145, 155]);
+    }
     rrect(ctx, x - 200, horizon - 262, 210, 58, 12, [255, 255, 255], 4, [60, 90, 170]); // l'enseigne
     [["P", [230, 70, 70]], ["M", [60, 130, 230]], ["S", [60, 170, 90]]].forEach(([l, c], k) => ecrireCentre(ctx, l, x - 155 + k * 62, horizon - 232, 46, c));
     for (let k = 0; k < 4; k++) { // des fenêtres et des portes rangées contre le mur
@@ -629,13 +737,24 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "ferme") {
     collines(ctx, W, horizon, scroll, [170, 215, 100], [145, 200, 85], false);
     const x = boucle(560, scroll, 0.3, W, 300); // la grange rouge et le silo
-    rrect(ctx, x - 140, horizon - 170, 280, 170, 0, [210, 70, 60], 3);
-    poly(ctx, [[x - 160, horizon - 170], [x + 160, horizon - 170], [x + 110, horizon - 235], [x - 110, horizon - 235]], [150, 60, 55], 3);
-    rrect(ctx, x - 50, horizon - 110, 100, 110, 4, [245, 235, 220], 3);
-    trait(ctx, [x - 46, horizon - 106], [x + 46, horizon - 4], 6, [210, 70, 60]); trait(ctx, [x + 46, horizon - 106], [x - 46, horizon - 4], 6, [210, 70, 60]);
-    rrect(ctx, x - 25, horizon - 160, 50, 34, 4, [245, 235, 220], 3);
-    rrect(ctx, x + 160, horizon - 230, 70, 230, 0, [200, 205, 215], 3);
-    ovale(ctx, x + 160, horizon - 262, 70, 64, [170, 175, 190], 3);
+    if (RELIEF.on) enCache(ctx, "ferme", x, horizon, 220, 310, 500, 330, (ctx) => {
+      facade3D(ctx, x + 160, horizon, 70, 230, 40, [200, 205, 215]); ovale(ctx, x + 160, horizon - 262, 70 + 40 * PROF.dx, 64, [170, 175, 190], 2); // le silo
+      for (let k = 1; k < 7; k++) trait(ctx, [x + 160, horizon - k * 32], [x + 230, horizon - k * 32], 1.5, [175, 180, 192]);
+      facade3D(ctx, x - 140, horizon, 280, 170, 150, [210, 70, 60]); bardage(ctx, x - 140, horizon - 170, 280, 160, [210, 70, 60]);
+      pignon3D(ctx, x - 140, horizon - 170, 280, 80, 150, [205, 68, 58], [120, 60, 55]);
+      rrect(ctx, x - 54, horizon - 114, 108, 114, 4, [245, 235, 220], 2); rrect(ctx, x - 50, horizon - 110, 100, 110, 3, [190, 60, 52], 2);
+      trait(ctx, [x - 46, horizon - 106], [x + 46, horizon - 4], 6, [245, 235, 220]); trait(ctx, [x + 46, horizon - 106], [x - 46, horizon - 4], 6, [245, 235, 220]);
+      fenetre3D(ctx, x - 22, horizon - 196, 44, 30, { simple: true, cadre: [245, 235, 220] });
+    });
+    else {
+      rrect(ctx, x - 140, horizon - 170, 280, 170, 0, [210, 70, 60], 3);
+      poly(ctx, [[x - 160, horizon - 170], [x + 160, horizon - 170], [x + 110, horizon - 235], [x - 110, horizon - 235]], [150, 60, 55], 3);
+      rrect(ctx, x - 50, horizon - 110, 100, 110, 4, [245, 235, 220], 3);
+      trait(ctx, [x - 46, horizon - 106], [x + 46, horizon - 4], 6, [210, 70, 60]); trait(ctx, [x + 46, horizon - 106], [x - 46, horizon - 4], 6, [210, 70, 60]);
+      rrect(ctx, x - 25, horizon - 160, 50, 34, 4, [245, 235, 220], 3);
+      rrect(ctx, x + 160, horizon - 230, 70, 230, 0, [200, 205, 215], 3);
+      ovale(ctx, x + 160, horizon - 262, 70, 64, [170, 175, 190], 3);
+    }
     for (const bx of [x - 260, x - 200, x + 290]) { rond(ctx, bx, horizon - 26, 28, [240, 205, 90], 3); rond(ctx, bx, horizon - 26, 14, null, 2, [210, 170, 70]); }
     for (let k = 0; k < 30; k++) { // la barrière en bois
       const px = boucle(k * 44, scroll, 0.5, W, 50);
@@ -668,7 +787,17 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   }
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);
   rrect(ctx, 0, horizon + 18, W, G - horizon + 40, 0, route);
-  if (RELIEF.on) { // brins d'herbe au bord, petits cailloux sur le chemin, ombre douce au bord de la route
+  const dedans = typeof INTERIEURS !== "undefined" && INTERIEURS.has(nom) && !(DECORS_EXTRA[nom] && DECORS_EXTRA[nom].sansCiel);
+  if (RELIEF.on && dedans) { // à l'intérieur : un vrai sol en perspective (lames qui filent vers le fond)
+    const fx = W / 2, fy = horizon - 300, y0 = horizon + 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, H - y0); ctx.clip();
+    ctx.strokeStyle = css(fonce(herbe, 0.86)); ctx.lineWidth = 1.5;
+    for (let k = -14; k <= 14; k++) { const xb = fx + k * 110, u = (y0 - fy) / (H + 60 - fy); ctx.beginPath(); ctx.moveTo(fx + (xb - fx) * u, y0); ctx.lineTo(xb, H + 60); ctx.stroke(); }
+    for (let k = 1; k < 9; k++) { const y = y0 + Math.pow(k / 8, 1.7) * (H - y0); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    const ombreMur = ctx.createLinearGradient(0, y0, 0, y0 + 40); ombreMur.addColorStop(0, "rgba(60,40,30,0.18)"); ombreMur.addColorStop(1, "rgba(60,40,30,0)"); ctx.fillStyle = ombreMur; ctx.fillRect(0, y0, W, 40);
+    ctx.restore();
+  }
+  if (RELIEF.on && !dedans) { // brins d'herbe au bord, petits cailloux sur le chemin, ombre douce au bord de la route
     const r3 = hasard(11), vert = herbe[1] > herbe[0] + 25 && herbe[1] > herbe[2] + 25;
     ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.fillRect(0, horizon + 18, W, 5);
     for (let k = 0; k < 70; k++) {

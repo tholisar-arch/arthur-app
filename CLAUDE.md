@@ -52,6 +52,15 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   légère, volume des collines et des arbres, herbe et cailloux, montagnes bleutées au loin et bosquets (`collines`),
   ombre des arbres au sol, lumière chaude du soleil et bas d'image un peu plus sombre ; ombres douces sous les
   personnages et les engins. La boucle coupe `decorReel` si l'appareil est trop lent.
+- Architecture « 3D façon dessin » (dessins.js) : `facade3D` (façade + côté en perspective dans l'ombre, toit plat,
+  soubassement, ombre portée vers la gauche), `pignon3D` (pignon + pan de toit à tuiles, rive), `fenetre3D` (en creux,
+  cadre, croisillons, appui, volets, allumée la nuit), `porte3D` (encadrement, panneaux, marche), `briques`, `bardage`,
+  `cheminee3D`. Utilisés pour la ville, la maison du jardin, les vacances, l'école, PMS, la ferme, la gare, la caserne,
+  le garage, la maisonnette des collines. Les pièces (`murInterieur`) ont un plafond et des murs de côté en
+  perspective, et le sol des intérieurs a des lames qui filent vers le fond.
+- `enCache(ctx, cle, ax, ay, ox, oy, w, h, dessin)` : un dessin qui ne change pas (bâtiment, arbre) est fait une fois
+  dans une petite image puis recollé — même rendu, beaucoup plus rapide. Les petites formes (< 1000 px²) restent en
+  couleur unie (pas de dégradé).
 
 ## Style des dessins : « entre Peppa Pig et Trotro »
 - `STYLE_DESSIN.plat = true` (dessins.js) : couleurs plates (pas de dégradés, reflets, brume ni herbe), contours

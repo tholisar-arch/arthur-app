@@ -9,6 +9,12 @@ const AVEC_ENGIN = new Set(["rouler", "trou", "deblayer", "construire", "route",
 const murInterieur = (ctx, W, horizon, col, scroll) => {
   rrect(ctx, 0, 0, W, horizon + 20, 0, col);
   for (let x = mod(-scroll * 0.3, 60) - 60; x < W; x += 60) rrect(ctx, x, 0, 22, horizon, 0, clair(col, 0.25));
+  if (RELIEF.on) { // la pièce en volume : le plafond, et les deux murs de côté qui viennent vers nous
+    poly(ctx, [[0, 0], [W, 0], [W - 70, 26], [70, 26]], fonce(col, 0.93));
+    poly(ctx, [[0, 0], [70, 26], [70, horizon + 4], [0, horizon + 40]], fonce(col, 0.86));
+    poly(ctx, [[W, 0], [W - 70, 26], [W - 70, horizon + 4], [W, horizon + 40]], fonce(col, 0.8));
+    trait(ctx, [70, 26], [W - 70, 26], 2, fonce(col, 0.82)); trait(ctx, [70, 26], [70, horizon + 4], 2, fonce(col, 0.8)); trait(ctx, [W - 70, 26], [W - 70, horizon + 4], 2, fonce(col, 0.76));
+  }
 };
 const fenetreMur = (ctx, x, y, w, h, nuit, t) => {
   rrect(ctx, x - 8, y - 8, w + 16, h + 16, 8, [255, 255, 255], 3);
@@ -82,8 +88,8 @@ const DECORS_EXTRA = {
     fond(ctx, W, H, hz, scroll, t) {
       collines(ctx, W, hz, scroll);
       const x = boucle(860, scroll, 0.3, W, 300);
-      rrect(ctx, x - 200, hz - 150, 400, 150, 0, [235, 215, 180], 3);
-      poly(ctx, [[x - 230, hz - 150], [x + 230, hz - 150], [x + 190, hz - 200], [x - 190, hz - 200]], [180, 80, 70], 3);
+      if (RELIEF.on) enCache(ctx, "gare", x, hz, 270, 240, 540, 260, (ctx) => { facade3D(ctx, x - 200, hz, 400, 150, 90, [235, 215, 180]); briques(ctx, x - 200, hz - 150, 400, 140, [235, 215, 180], 13); pignon3D(ctx, x - 200, hz - 150, 400, 50, 90, [235, 215, 180], [180, 80, 70], 18); });
+      else { rrect(ctx, x - 200, hz - 150, 400, 150, 0, [235, 215, 180], 3); poly(ctx, [[x - 230, hz - 150], [x + 230, hz - 150], [x + 190, hz - 200], [x - 190, hz - 200]], [180, 80, 70], 3); }
       rond(ctx, x, hz - 175, 20, [255, 255, 255], 3); trait(ctx, [x, hz - 175], [x, hz - 188], 3, CONTOUR); trait(ctx, [x, hz - 175], [x + 9, hz - 175], 3, CONTOUR);
       for (const dx of [-150, -60, 60, 150]) rrect(ctx, x + dx - 26, hz - 120, 52, 70, 6, VITRE, 3);
       rrect(ctx, x - 70, hz - 140, 140, 22, 6, [60, 110, 190]);

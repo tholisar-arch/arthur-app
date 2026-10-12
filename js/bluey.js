@@ -18,7 +18,11 @@ if (STYLE_DESSIN.bluey) {
   }
   // les arbres : un tronc doux et un feuillage en grosses touffes, clair en haut, plus sombre en bas
   const arbreAvant = arbre;
-  arbre = function (ctx, x, g, s = 1, col = [95, 175, 70]) {
+  arbre = function (ctx, x, g, s = 1, col = [95, 175, 70]) { // dessiné une fois, puis recollé (bien plus rapide)
+    if (typeof enCache === "function") return enCache(ctx, `arbre${s.toFixed(3)}|${col}|${RELIEF.on ? 1 : 0}`, x, g, 90 * s + 10, 165 * s + 10, 180 * s + 20, 190 * s + 20, (c) => arbreDessin(c, x, g, s, col));
+    arbreDessin(ctx, x, g, s, col);
+  };
+  const arbreDessin = function (ctx, x, g, s, col) {
     const base = mele(col, [116, 172, 84], 0.5), clairT = mele(base, [190, 220, 120], 0.35), sombre = mele(base, [60, 110, 70], 0.3), tronc = [160, 128, 100];
     if (RELIEF.on) { ctx.beginPath(); ctx.ellipse(x + 14 * s, g + 2, 62 * s, 11 * s, 0, 0, 2 * PI); ctx.fillStyle = "rgba(40,70,30,0.2)"; ctx.fill(); } // son ombre par terre
     poly(ctx, [[x - 8 * s, g], [x + 8 * s, g], [x + 4 * s, g - 78 * s], [x - 4 * s, g - 78 * s]], tronc, 2);

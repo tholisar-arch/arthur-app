@@ -273,7 +273,7 @@ const LIEUX_MONDE = {
     fond(ctx, W, H, hz, scroll, t) {
       collines(ctx, W, hz, scroll, undefined, undefined, false);
       const x = boucle(600, scroll, 0.3, W, 400);
-      rrect(ctx, x - 260, hz - 230, 520, 230, 0, [200, 70, 60], 3);
+      if (RELIEF.on) enCache(ctx, "caserne", x, hz, 340, 270, 660, 290, (ctx) => { facade3D(ctx, x - 260, hz, 520, 230, 90, [200, 70, 60], true); briques(ctx, x - 260, hz - 230, 520, 220, [200, 70, 60], 13); }); else rrect(ctx, x - 260, hz - 230, 520, 230, 0, [200, 70, 60], 3);
       for (let r = 0; r < 9; r++) trait(ctx, [x - 260, hz - 230 + r * 26], [x + 260, hz - 230 + r * 26], 1.5, [170, 55, 50]);
       pancarte(ctx, x, hz - 200, fr_en("POMPIERS", "FIRE STATION"), [150, 40, 40], 26);
       for (const d of [-200, 20]) { rrect(ctx, x + d, hz - 160, 180, 160, 10, d < 0 ? [60, 60, 70] : [235, 235, 240], 3); if (d > 0) for (let k = 1; k < 5; k++) trait(ctx, [x + d, hz - 160 + k * 32], [x + d + 180, hz - 160 + k * 32], 2, [190, 190, 200]); }
@@ -285,7 +285,8 @@ const LIEUX_MONDE = {
     fond(ctx, W, H, hz, scroll, t) {
       collines(ctx, W, hz, scroll, undefined, undefined, false);
       const x = boucle(560, scroll, 0.3, W, 400);
-      rrect(ctx, x - 240, hz - 200, 480, 200, 0, [235, 235, 225], 3); pancarte(ctx, x, hz - 230, fr_en("GARAGE", "GARAGE"), [60, 120, 200], 28);
+      if (RELIEF.on) enCache(ctx, "garage", x, hz, 310, 240, 610, 260, (ctx) => facade3D(ctx, x - 240, hz, 480, 200, 80, [235, 235, 225], true)); else rrect(ctx, x - 240, hz - 200, 480, 200, 0, [235, 235, 225], 3);
+      pancarte(ctx, x, hz - 230, fr_en("GARAGE", "GARAGE"), [60, 120, 200], 28);
       rrect(ctx, x - 200, hz - 150, 220, 150, 6, [70, 70, 80], 3); dessineVehicule(ctx, "benne", COULEURS.orange, x - 90, hz - 2, t, 0, 0, 0.45);
       for (let k = 0; k < 4; k++) { rond(ctx, x + 70, hz - 18 - k * 34, 20, [50, 50, 58], 3); rond(ctx, x + 70, hz - 18 - k * 34, 9, [170, 170, 180]); }
       rrect(ctx, x + 110, hz - 140, 110, 70, 6, [255, 255, 255], 3); for (let k = 0; k < 4; k++) trait(ctx, [x + 124 + k * 26, hz - 130], [x + 124 + k * 26, hz - 84], 4, [[230, 80, 80], [90, 90, 100], [250, 200, 60], [90, 150, 230]][k]);
