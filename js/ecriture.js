@@ -610,7 +610,7 @@ class Ecriture {
       ecrit(ctx, coupe(ctx, h.titre, 18, 210)[0] || "", 18, CONTOUR, [r[0] + 12, r[1] + 14], null, true);
       z.push({ r, action: () => { this.id = h.id; this.sc = 0; joue("clic"); } });
     });
-    bouton([14, 584, 236, 52], tr("guidee"), [70, 185, 90], () => this.nouvelle(), 20);
+    bouton([14, 584, 236, 52], tr("guidee"), [70, 185, 90], () => this.app.guide.ouvre("ecrire"), 20); // la création guidée en pyramide
     bouton([14, 646, 236, 52], tr("texteLibreBouton"), [235, 130, 70], () => this.ouvreLibre(), 20);
     if (!e) {
       ecrit(ctx, tr("aucuneMienne"), 26, [150, 140, 130], [765, 360]);

@@ -721,6 +721,7 @@ class App {
     this.bMini = new Bouton([24, 586, 300, 54], () => tr("miniBouton"), [235, 150, 60], 20);
     this.miniEd = new EditeurMiniature(this);
     this.ecriture = new Ecriture(this);
+    this.guide = new Guide(this); // la création guidée en pyramide
     this.modeSuppr = false; // mode « supprimer des histoires » de l'accueil
     this.bSuppr = new Bouton([W - 350, 626, 210, 48], () => (this.modeSuppr ? tr("termine") : tr("supprimerBouton")), [200, 90, 80], 20);
     this.bRemettre = new Bouton([130, 626, 330, 48], () => tr("remettre", { n: histoiresCachees().length }), [110, 140, 220], 17);
@@ -944,6 +945,7 @@ class App {
       return;
     }
     if (this.etat === "ecrire") return this.ecriture.touche(p);
+    if (this.etat === "guide") return this.guide.touche(p);
     if (this.etat === "menu") {
       if (this.bPerso.touche(p)) return this.verrouParent(this.bPerso, () => this.atelier.ouvre());
       if (this.bEcrire.touche(p)) return this.verrouParent(this.bEcrire, () => this.ecriture.ouvre());
@@ -997,7 +999,7 @@ class App {
     if (this.etat === "histoire") {
       if (e.key === "Escape") this.menu();
       else if (e.key === "ArrowRight" && !this.fin && !this.carte) this.sceneSuivante();
-    } else if (["config", "perso", "ecrire", "miniature"].includes(this.etat) && e.key === "Escape") this.menu();
+    } else if (["config", "perso", "ecrire", "miniature", "guide"].includes(this.etat) && e.key === "Escape") this.menu();
   }
 
   // ------------------------------------------------ boucle
@@ -1064,6 +1066,7 @@ class App {
     else if (this.etat === "config") this.dessineConfig(ctx);
     else if (this.etat === "perso") this.atelier.dessine(ctx, this.t);
     else if (this.etat === "ecrire") this.ecriture.dessine(ctx, this.t);
+    else if (this.etat === "guide") this.guide.dessine(ctx, this.t);
     else if (this.etat === "narrer") this.dessineNarration(ctx);
     else if (this.etat === "miniature") this.miniEd.dessine(ctx, this.t);
     else this.dessineHistoire(ctx);
