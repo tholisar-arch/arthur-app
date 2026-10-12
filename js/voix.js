@@ -70,13 +70,14 @@ class Voix {
       const p = fetch(this.url(texte, langue))
         .then((r) => { if (!r.ok) throw new Error("voix " + r.status); return r.arrayBuffer(); })
         .then((b) => new Promise((ok, ko) => Audio_.ctx.decodeAudioData(b, ok, ko)))
-        .catch(() => { this.cache.delete(cle); return null; });
+        .then((buf) => { this.echecs = 0; return buf; })
+        .catch(() => { this.cache.delete(cle); this.echecs = (this.echecs || 0) + 1; if (this.echecs >= 2) this.enPanneJusqua = Date.now() + 10 * 60 * 1000; return null; });
       this.cache.set(cle, p);
     }
     return this.cache.get(cle);
   }
   precharge(textes, langue = LANGUE) { // prépare les phrases à l'avance, 2 à la fois
-    if (!this.actif || !Audio_.ctx) return;
+    if (!this.actif || !Audio_.ctx || (this.enPanneJusqua && Date.now() < this.enPanneJusqua)) return;
     for (const t of textes) if (t && t.trim()) this.file.push([t.trim(), langue]);
     const suivant = () => {
       while (this.enCours < 2 && this.file.length) {
@@ -92,7 +93,7 @@ class Voix {
     texte = (texte || "").trim();
     if (!texte || !this.actif) return;
     this.stop();
-    if (!Audio_.ctx) return this.secours(texte, langue);
+    if (!Audio_.ctx || (this.enPanneJusqua && Date.now() < this.enPanneJusqua)) return this.secours(texte, langue); // service en panne : la voix de l'appareil, tout de suite
     const jeton = ++this.jeton;
     this.attente = texte;
     const minuteur = setTimeout(() => { if (this.jeton === jeton && this.attente) { this.attente = null; this.secours(texte, langue); } }, 8000);
@@ -110,14 +111,32 @@ class Voix {
       s.start();
     });
   }
+  voixAppareil(langue = LANGUE) { // la plus chaleureuse des voix installées sur l'appareil
+    const voix = speechSynthesis.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith(langue));
+    if (!voix.length) return null;
+    const homme = /papi|henri|andrew/.test(this.conteur(langue).id);
+    const femmes = langue === "en" ? ["Ava", "Emma", "Jenny", "Aria", "Samantha", "Libby", "Sonia", "Karen", "Serena"] : ["Denise", "Vivienne", "Eloise", "Audrey", "Amélie", "Amelie", "Marie", "Aurélie", "Julie", "Hortense"];
+    const hommes = langue === "en" ? ["Andrew", "Guy", "Brian", "Ryan", "Daniel", "Tom"] : ["Remy", "Henri", "Thomas", "Paul", "Nicolas", "Daniel"];
+    const score = (v) => {
+      let s = 0;
+      if (/natural|online|neural/i.test(v.name)) s += 100; // voix neuronales de Microsoft Edge
+      if (/premium/i.test(v.name)) s += 80;
+      if (/enhanced|amélior/i.test(v.name)) s += 60;
+      const nom = (homme ? hommes : femmes).findIndex((p) => v.name.includes(p)), autre = (homme ? femmes : hommes).findIndex((p) => v.name.includes(p));
+      if (nom >= 0) s += 40 - nom; else if (autre >= 0) s += 10;
+      if (/fr-fr|en-us/i.test(v.lang)) s += 5;
+      if (/google/i.test(v.name)) s -= 5;
+      return s;
+    };
+    return voix.slice().sort((a, b) => score(b) - score(a))[0];
+  }
   secours(texte, langue = LANGUE) { // voix de l'appareil, dans la bonne langue
     if (!("speechSynthesis" in window)) return;
     const u = new SpeechSynthesisUtterance(texte);
-    const voix = speechSynthesis.getVoices().filter((v) => v.lang && v.lang.startsWith(langue));
-    const pref = langue === "en" ? ["Samantha", "Ava", "Karen", "Daniel", "Serena"] : ["Audrey", "Amélie", "Marie", "Aurélie", "Thomas"];
-    u.voice = voix.find((v) => /premium|enhanced|amélior/i.test(v.name)) || pref.map((p) => voix.find((v) => v.name.includes(p))).find(Boolean) || voix[0] || null;
-    u.lang = langue === "en" ? "en-US" : "fr-FR";
-    u.rate = 0.86; u.pitch = 0.95; // plus posé, plus doux
+    u.voice = this.voixAppareil(langue);
+    u.lang = (u.voice && u.voice.lang) || (langue === "en" ? "en-US" : "fr-FR");
+    const naturelle = u.voice && /natural|online|premium|enhanced|amélior|neural/i.test(u.voice.name);
+    u.rate = naturelle ? 0.92 : 0.86; u.pitch = naturelle ? 1 : 0.95; // posé et doux (les voix « naturelles » le sont déjà)
     const jeton = this.jeton;
     u.onend = () => { this.secoursParle = false; };
     this.secoursParle = true;
