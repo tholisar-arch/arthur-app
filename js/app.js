@@ -719,6 +719,7 @@ class App {
     this.bRaconter = new Bouton([324, 16, 170, 54], () => tr("raconter"), [220, 90, 120], 22);
     this.bNarrer = new Bouton([24, 652, 300, 54], () => tr("narrBouton") + (this.nbVoix ? ` (${this.nbVoix})` : ""), [220, 90, 120], 20);
     this.bMini = new Bouton([24, 586, 300, 54], () => tr("miniBouton"), [235, 150, 60], 20);
+    this.bConteur = new Bouton([24, 520, 300, 54], () => "🔊 " + (LANGUE === "en" ? this.voix.conteur().en : this.voix.conteur().fr), [90, 150, 210], 20);
     this.miniEd = new EditeurMiniature(this);
     this.ecriture = new Ecriture(this);
     this.guide = new Guide(this); // la création guidée en pyramide
@@ -972,6 +973,7 @@ class App {
       if (this.bRetour.touche(p)) return this.menu();
       if (this.bNarrer.touche(p)) return this.verrouParent(this.bNarrer, () => this.ouvreNarration());
       if (this.bMini.touche(p)) return this.verrouParent(this.bMini, () => this.miniEd.ouvre(this.histoire, "config"));
+      if (this.bConteur.touche(p)) { this.voix.conteurSuivant(); this.voix.dire(LANGUE === "en" ? `Hello ${this.prenom}! Snuggle up, I'm going to tell you a story.` : `Bonjour ${this.prenom} ! Installe-toi bien, je vais te raconter une histoire.`); return; }
       if (this.bGo.touche(p)) {
         joue("klaxon");
         const depart = this.departScene != null ? this.departScene : this.chapDepart ? this.histoire.chapitres[this.chapDepart].debut : 0;
@@ -1139,6 +1141,7 @@ class App {
     this.nbVoix = this.histoire.scenes.filter((d) => this.voixPerso.has(d.voixPerso || d.cleVoix)).length;
     this.bNarrer.dessine(ctx);
     this.bMini.dessine(ctx);
+    this.bConteur.dessine(ctx);
     dessineVehicule(ctx, this.choixVeh, col, 470, 645 + Math.sin(this.t * 12) * 1.5, this.t, 0, this.t * 4, 0.8);
     const v = textes(this.choixVeh, this.choixCol, this.prenom);
     ecrit(ctx, `${v.nom}, ${v.heros}`, 28, CONTOUR, [1075, 535]);
