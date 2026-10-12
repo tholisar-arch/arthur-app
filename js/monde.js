@@ -850,7 +850,7 @@ const ACTIVITES_VIE = {
     consigne: ["Touche le lit pour remonter la couette, puis la lampe pour l'éteindre !", "Tap the bed to pull up the duvet, then the lamp to switch it off!"],
     cible(sc) { return sc.fait === 0 ? [sc.cx - 20, G - 110] : [sc.cx + 250, G - 170]; },
     dessin(ctx, x, G, e) {
-      const couette = Math.min(1, e.k + (e.k === 0 ? elan(e) : 1)), eteint = e.k >= 2 || (e.k === 1 && e.p > 0.5);
+      const couette = Math.min(1, e.k + (e.k === 0 ? avanceEtape(e) : 1)), eteint = e.k >= 2 || (e.k === 1 && e.p > 0.5);
       if (eteint && e.sc && e.sc.m) e.sc.m.nuit = true;
       const lx = x + 250; // la table de nuit et la lampe
       rrect(ctx, lx - 40, G - 90, 80, 90, 8, [190, 140, 95], 3);
@@ -880,7 +880,7 @@ const ACTIVITES_VIE = {
       rrect(ctx, x - 260, G - 104, 520, 18, 6, [190, 140, 95], 3); // la table et sa nappe
       rrect(ctx, x - 255, G - 88, 510, 34, 4, [255, 255, 255], 2); for (let k = 0; k < 17; k++) if (k % 2 === 0) rrect(ctx, x - 255 + k * 30, G - 88, 30, 34, 0, [230, 90, 90]);
       for (const d of [-235, 225]) rrect(ctx, x + d, G - 54, 12, 54, 3, [170, 120, 80], 2);
-      const reste = 1 - Math.min(1, (e.k + elan(e) * 0.5) / Math.max(1, e.n));
+      const reste = 1 - Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n));
       xs.forEach((px, i) => { ovale(ctx, px - 30, G - 116, 60, 16, [255, 255, 255], 2);
         if (reste > 0.02) ovale(ctx, px - 22 * reste, G - 120 - 6 * reste, 44 * reste, 14 * reste, [[240, 170, 60], [230, 80, 60], [120, 190, 90], [250, 220, 120], [200, 120, 70]][i % 5], 1.5);
         rrect(ctx, px + 30, G - 136, 14, 26, 4, [200, 230, 250], 2); });
@@ -897,7 +897,7 @@ const ACTIVITES_VIE = {
       for (let k = 0; k < 7; k++) rrect(ctx, x - 300 + k * 90, G - 130, 76, 90, 20, [200, 50, 60], 3); // les dossiers
       xs.forEach((px, i) => assis(ctx, gens[i], px, G - 74, e, 0.92, humeurDe(e, gens[i]), Math.max(0, Math.sin((e.p || 0) * PI))));
       for (let k = 0; k < 7; k++) rrect(ctx, x - 304 + k * 90, G - 70, 84, 64, 14, [215, 60, 70], 3); // les sièges
-      const bx = x + 330, reste = 1 - Math.min(1, (e.k + elan(e) * 0.5) / Math.max(1, e.n)); // le pot de pop-corn
+      const bx = x + 330, reste = 1 - Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n)); // le pot de pop-corn
       for (let k = 0; k < Math.round(14 * reste); k++) rond(ctx, bx - 28 + (k % 5) * 14, G - 150 - Math.floor(k / 5) * 12 - (k % 2) * 4, 10, [255, 248, 220], 2);
       poly(ctx, [[bx - 40, G - 150], [bx + 40, G - 150], [bx + 28, G - 60], [bx - 28, G - 60]], [255, 255, 255], 3);
       for (const d of [-24, 0, 24]) poly(ctx, [[bx + d - 6, G - 150], [bx + d + 6, G - 150], [bx + d * 0.7 + 4, G - 60], [bx + d * 0.7 - 4, G - 60]], [230, 60, 70]);
@@ -921,7 +921,7 @@ const ACTIVITES_VIE = {
     consigne: ["Touche le manège pour le faire tourner plus vite !", "Tap the merry-go-round to make it spin faster!"],
     cible: (sc) => [sc.cx, G - 120],
     dessin(ctx, x, G, e) {
-      const vit = 0.6 + 0.5 * (e.k + elan(e)), a0 = e.t * vit, kinds = kindsDe(e), cavaliers = kinds.slice(0, 6), n = Math.max(4, cavaliers.length);
+      const vit = 0.6 + 0.5 * (e.k + avanceEtape(e)), a0 = e.t * vit, kinds = kindsDe(e), cavaliers = kinds.slice(0, 6), n = Math.max(4, cavaliers.length);
       poly(ctx, [[x - 300, G - 300], [x + 300, G - 300], [x, G - 400]], [230, 70, 80], 3);
       for (let k = 0; k < 8; k++) poly(ctx, [[x - 300 + k * 75, G - 300], [x - 262 + k * 75, G - 300], [x, G - 400]], [255, 250, 240]);
       rond(ctx, x, G - 404, 12, [255, 210, 60], 3); rrect(ctx, x - 310, G - 306, 620, 22, 8, [255, 210, 90], 3);
@@ -959,7 +959,7 @@ const ACTIVITES_VIE = {
       dessineAmi(ctx, e.acteur || "arthur", x - 90, G, e.t, 1, 0, Math.max(0, Math.sin((e.p || 0) * PI)), 0.95, "joie");
       const fx = x + 90; OBJETS_DECOR.feuDeCamp[2]((ctx.save(), ctx.translate(fx, G), ctx), e.t); ctx.restore();
       trait(ctx, [x - 60, G - 70], [x + 80, G - 128], 3, [140, 95, 60], "round");
-      const cuit = Math.min(1, (e.k + elan(e)) / Math.max(1, e.n)), col = [Math.round(lerp(255, 200, cuit)), Math.round(lerp(250, 140, cuit)), Math.round(lerp(245, 70, cuit))];
+      const cuit = Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n)), col = [Math.round(lerp(255, 200, cuit)), Math.round(lerp(250, 140, cuit)), Math.round(lerp(245, 70, cuit))];
       rrect(ctx, x + 68, G - 140, 26, 22, 8, col, 2);
       for (let k = 0; k < 3; k++) { const u = mod(e.t * 0.6 + k / 3, 1); ctx.globalAlpha = 0.5 * (1 - u); rond(ctx, fx + 10 * Math.sin(e.t + k), G - 100 - 120 * u, 10 + 10 * u, [210, 210, 215]); ctx.globalAlpha = 1; }
     } },

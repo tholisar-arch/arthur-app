@@ -121,7 +121,9 @@ for (const [nom, d] of Object.entries(DECORS_EXTRA)) { CIELS[nom] = d.ciel; SOLS
 
 // ================================================================= les activités
 // dessin(ctx, x, sol, e) avec e = { k: étapes faites, n: total, p: étape en cours (0→1) ou null, t, acteur, sc (la scène), fini (s) }
-const elan = (e) => (e.p === null || e.p === undefined ? 0 : Math.sin(PI * e.p));
+const elan = (e) => (e.p === null || e.p === undefined ? 0 : Math.sin(PI * e.p)); // un petit « boum » (monte puis redescend)
+// la progression de l'étape en cours : avance de 0 à 1 sans jamais reculer (e.k compte les étapes finies) — pas de saut entre deux touchers
+const avanceEtape = (e) => { const p = e.p === null || e.p === undefined ? 0 : Math.max(0, Math.min(1, e.p)); return p * p * (3 - 2 * p); };
 const acteurDe = (e) => e.acteur || "arthur";
 const PRODUITS = [ // de petites choses à ramasser, ranger, acheter…
   (ctx, x, y) => { rond(ctx, x, y - 14, 15, [230, 60, 60], 3); trait(ctx, [x, y - 28], [x + 3, y - 36], 3, [120, 80, 40]); ovale(ctx, x + 2, y - 38, 12, 7, [90, 170, 70]); }, // pomme
@@ -172,7 +174,7 @@ const ACTIVITES = {
   balancoire: { fr: "Balançoire", en: "Swing", decor: "parc", clics: 3, prendActeur: true, son: "pop", poste: 140, cx: 620, largeur: 260,
     mots: "balancoires?|se balance|swings?", modele: ["{prenom} monte sur la balançoire. Plus haut, plus haut !", "{prenom} gets on the swing. Higher, higher!"],
     consigne: ["Touche la balançoire pour la pousser !", "Tap the swing to push it!"],
-    angle: (e) => (0.12 + 0.4 * Math.min(1, (e.k + elan(e)) / Math.max(1, e.n))) * Math.sin(e.t * 2.6),
+    angle: (e) => (0.12 + 0.4 * Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n))) * Math.sin(e.t * 2.6),
     cible(sc) { const a = this.angle(sc.etatAct()); return [sc.cx + 150 * Math.sin(a), G - 230 + 150 * Math.cos(a)]; },
     dessin(ctx, x, G, e) {
       for (const k of [-1, 1]) { trait(ctx, [x + k * 110, G], [x + k * 80, G - 240], 8, [230, 90, 80]); trait(ctx, [x + k * 150, G], [x + k * 90, G - 240], 8, [230, 90, 80]); }
@@ -199,7 +201,7 @@ const ACTIVITES = {
   cerfvolant: { fr: "Cerf-volant", en: "Kite", decor: "parc", clics: 3, prendActeur: true, son: "magie", poste: 140, cx: 560,
     mots: "cerfs?[- ]volants?|kites?", modele: ["Le vent souffle ! {prenom} fait voler son cerf-volant.", "The wind is blowing! {prenom} flies his kite."],
     consigne: ["Touche le cerf-volant pour le faire monter !", "Tap the kite to make it fly higher!"],
-    pos: (x, G, e) => [x + 160 + 30 * Math.sin(e.t * 1.3), G - 170 - 210 * Math.min(1, (e.k + elan(e)) / Math.max(1, e.n)) + 10 * Math.sin(e.t * 2)],
+    pos: (x, G, e) => [x + 160 + 30 * Math.sin(e.t * 1.3), G - 170 - 210 * Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n)) + 10 * Math.sin(e.t * 2)],
     cible(sc) { return this.pos(sc.cx, G, sc.etatAct()); },
     dessin(ctx, x, G, e) {
       const [kx, ky] = e.objet ? [x, G - 60] : this.pos(x, G, e), hx = x - 120, hy = G - 80;
@@ -301,7 +303,7 @@ const ACTIVITES = {
     cible: (sc) => [sc.cx, G - 120],
     dessin(ctx, x, G, e) {
       if (!e.objet) personnage(ctx, e, x, G - 40, 0.8);
-      const mousse = e.objet ? 3 : e.k + elan(e);
+      const mousse = e.objet ? 3 : e.k + avanceEtape(e);
       for (let k = 0; k < 5 + 4 * mousse; k++) rond(ctx, x - 130 + ((k * 53) % 260), G - 95 - ((k * 29) % 30), 16 + (k % 3) * 5, [255, 255, 255], 2, [200, 220, 240]);
       rrect(ctx, x - 160, G - 100, 320, 92, 30, [255, 255, 255], 4, [170, 190, 210]);
       for (const dx of [-130, 130]) rond(ctx, x + dx, G - 4, 10, [200, 170, 90], 2);
@@ -340,7 +342,7 @@ const ACTIVITES = {
     cible: (sc) => [sc.cx, G - 170],
     dessin(ctx, x, G, e) {
       rrect(ctx, x - 200, G - 70, 400, 20, 6, [190, 140, 90], 3); for (const dx of [-180, 180]) trait(ctx, [x + dx, G - 50], [x + dx, G], 8, [160, 110, 70]);
-      const niveau = e.objet ? 1 : Math.min(1, (e.k + elan(e) * 0.5) / Math.max(1, e.n));
+      const niveau = e.objet ? 1 : Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n));
       ctx.save(); ctx.beginPath(); ctx.ellipse(x, G - 110, 90, 50, 0, 0, PI); ctx.clip();
       rrect(ctx, x - 90, G - 110 + 40 * (1 - niveau), 180, 60, 0, [200, 150, 100]); ctx.restore();
       ctx.beginPath(); ctx.ellipse(x, G - 110, 90, 50, 0, 0, PI); bordure(ctx, null, 4, [120, 160, 200]);
@@ -548,7 +550,7 @@ const ACTIVITES = {
   avion: { fr: "Avion", en: "Plane", decor: "aeroport", clics: 3, sansEngin: true, son: "fusee", cx: 520,
     mots: "\\bavions?\\b|aeroports?|decolle|airplanes?|\\bplanes?\\b|airport|take ?off", modele: ["L'avion roule sur la piste… et décolle vers le ciel !", "The plane rolls down the runway… and takes off into the sky!"],
     consigne: ["Touche l'avion pour le faire décoller !", "Tap the plane to make it take off!"],
-    pos(x, G, e) { const q = Math.min(1, (e.k + elan(e)) / Math.max(1, e.n)), part = e.fini !== null && e.fini !== undefined ? e.fini : 0; return [x - 200 + 400 * q + 300 * part, G - 40 - 260 * q * q - 160 * part]; },
+    pos(x, G, e) { const q = Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n)), part = e.fini !== null && e.fini !== undefined ? e.fini : 0; return [x - 200 + 400 * q + 300 * part, G - 40 - 260 * q * q - 160 * part]; },
     cible(sc) { return this.pos(sc.cx, G, sc.etatAct()); },
     dessin(ctx, x, G, e) {
       const [px, py] = e.objet ? [x, G - 60] : this.pos(x, G, e), a = e.objet ? 0 : -0.25 * Math.min(1, e.k / Math.max(1, e.n));
@@ -570,7 +572,7 @@ const ACTIVITES = {
       if (!e.objet && e.sc) e.sc.m.amis.filter((a) => !a.part).slice(0, 3).forEach((a, i) => dessineAmi(ctx, a.kind, bx - 70 + i * 60, by - 20, e.t, 1, 0, 0, 0.55, "joie"));
       poly(ctx, [[bx - 140, by - 30], [bx + 140, by - 30], [bx + 110, by + 20], [bx - 110, by + 20]], [230, 80, 70], 3);
       trait(ctx, [bx - 10, by - 30], [bx - 10, by - 250], 6, [140, 100, 60]);
-      const v = e.objet ? 1 : Math.min(1, (e.k + elan(e)) / Math.max(1, e.n)), h = 200 * v;
+      const v = e.objet ? 1 : Math.min(1, (e.k + avanceEtape(e)) / Math.max(1, e.n)), h = 200 * v;
       if (v > 0) poly(ctx, [[bx - 4, by - 40], [bx - 4, by - 40 - h], [bx + 100 * v + 10, by - 40]], [255, 255, 255], 3);
     } },
   fusee: { fr: "Fusée", en: "Rocket", decor: "campagne", clics: 3, sansEngin: true, son: "boum", cx: 600,

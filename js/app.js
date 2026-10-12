@@ -227,7 +227,8 @@ class Scene {
     else app.voix.dire((parole + " " + this.consigne).trim(), this.langue);
   }
   faiseur() { return this.acteur || this.m.hero; }
-  etatAct() { return { k: this.etages, n: this.n, p: this.p, t: this.m.t, acteur: this.acteurAct, sc: this, fini: this.fini_t !== null ? this.t - this.fini_t : null }; }
+  etatAct() { return { k: this.A ? this.fait : this.etages, // une activité : k = étapes terminées (l'objet en vol reste dessiné jusqu'au bout)
+    n: this.n, p: this.p, t: this.m.t, acteur: this.acteurAct, sc: this, fini: this.fini_t !== null ? this.t - this.fini_t : null }; }
   pret() { if (this.cacheHeros && !this.acteur) return true; const f = this.faiseur(); return Math.abs(f.x - f.cible) < 6; }
   posRepas(i) {
     const v = this.mangeurs[i];

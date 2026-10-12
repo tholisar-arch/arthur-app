@@ -184,7 +184,7 @@ const ACTIVITES_SPORT = {
     consigne: ["Touche l'eau pour nager plus loin !", "Tap the water to swim further!"],
     cible(sc) { return [sc.cx - 200 + 150 * Math.min(sc.fait + 1, sc.n), G - 40]; },
     dessin(ctx, x, G, e) {
-      const px = x - 260 + 150 * (e.k + elan(e)), y = G - 40;
+      const px = x - 260 + 150 * (e.k + avanceEtape(e)), y = G - 40;
       ctx.save(); ctx.translate(px, y); ctx.rotate(PI / 2); (AMIS_DESSIN[e.acteur || "arthur"] || chat)(ctx, 0, 0, 0.8, e.t, 1, e.t * 6, 0, "joie"); ctx.restore();
       ctx.save(); ctx.globalAlpha = 0.7; rrect(ctx, x - 360, y - 6, 720, 60, 0, [90, 175, 230]); ctx.restore();
       for (let k = 0; k < 4; k++) rond(ctx, px - 30 - k * 16, y - 10 + 6 * Math.sin(e.t * 8 + k), 6 - k, [255, 255, 255]);
@@ -220,7 +220,7 @@ const ACTIVITES_SPORT = {
     cible(sc) { const u = Math.min(sc.fait, sc.n); return [sc.cx - 240 + 160 * u, G - 140 + 40 * u]; },
     dessin(ctx, x, G, e) {
       for (let k = 0; k < 4; k++) { const fx = x - 170 + k * 160, fy = G - 110 + k * 40; trait(ctx, [fx, fy], [fx, fy - 50], 3, CONTOUR); poly(ctx, [[fx, fy - 50], [fx + 26, fy - 42], [fx, fy - 34]], k % 2 ? [230, 70, 80] : [90, 140, 240], 2); }
-      const u = e.k + elan(e), px = x - 240 + 160 * u, py = G - 120 + 40 * u;
+      const u = e.k + avanceEtape(e), px = x - 240 + 160 * u, py = G - 120 + 40 * u;
       ctx.save(); ctx.translate(px, py); ctx.rotate(0.24); dessineAmi(ctx, e.acteur || "arthur", 0, 0, e.t, 1, 0, 0, 0.85, "joie");
       for (const d of [-10, 10]) rrect(ctx, -50 + d, -4 + d * 0.3, 100, 7, 3, [230, 80, 60], 2); ctx.restore();
       for (let k = 0; k < 4; k++) rond(ctx, px - 50 - k * 22, py - 6 - k * 9, 6 - k, [255, 255, 255], 1);
@@ -246,7 +246,7 @@ const ACTIVITES_SPORT = {
     dessin(ctx, x, G, e) {
       const ax = x + 260; for (let i = 0; i < 8; i++) for (let j = 0; j < 2; j++) rrect(ctx, ax - 8 + j * 8, G - 2 + i * 8 - 60, 8, 8, 0, (i + j) % 2 ? [40, 40, 50] : [255, 255, 255]); // la ligne d'arrivée
       for (const d of [-60, 60]) trait(ctx, [ax + d, G], [ax + d, G - 220], 5, [200, 200, 210]); rrect(ctx, ax - 70, G - 240, 140, 34, 6, [230, 70, 80], 3); ecrireCentre(ctx, fr_en("ARRIVÉE", "FINISH"), ax, G - 223, 20, [255, 255, 255]);
-      const u = e.k + elan(e), px = x - 240 + 160 * u, fini = e.k >= e.n;
+      const u = e.k + avanceEtape(e), px = x - 240 + 160 * u, fini = e.k >= e.n;
       dessineAmi(ctx, e.acteur || "arthur", px, G, e.t, 1, fini ? 0 : e.t * 12, 0, 0.92, "joie");
       if (fini) { trait(ctx, [px - 10, G - 140], [px, G - 110], 3, [90, 140, 240]); trait(ctx, [px + 10, G - 140], [px, G - 110], 3, [230, 70, 80]); rond(ctx, px, G - 104, 10, [255, 210, 60], 2); }
       for (let k = 0; k < 3; k++) trait(ctx, [px - 50 - k * 16, G - 60 + k * 14], [px - 30 - k * 16, G - 60 + k * 14], 2, [255, 255, 255], "round");
