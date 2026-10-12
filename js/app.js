@@ -2,7 +2,7 @@
 "use strict";
 
 const W = 1280, H_ = 720, VX = 150, VY = 72, VW = 980, VH = 510, G = 450;
-const FOND = [246, 239, 224];
+const FOND = [250, 240, 222]; // crème chaud, comme une page de Bluey
 const SLOTS_COPAINS = [140, 840, 290, 690, 520];
 const rnd = (a, b) => a + Math.random() * (b - a);
 const choix = (l) => l[Math.floor(Math.random() * l.length)];
@@ -36,8 +36,8 @@ class Bouton {
   dessine(ctx, t = 0, pulse = false) {
     let [x, y, w, h] = this.r;
     if (pulse) { const k = 0.04 * Math.sin(t * 5); x -= (w * k) / 2; y -= (h * k) / 2; w *= 1 + k; h *= 1 + k; }
-    rrect(ctx, x, y + 6, w, h, 22, fonce(this.col, 0.6));
-    rrect(ctx, x, y, w, h, 22, this.col, 4);
+    rrect(ctx, x, y + 5, w, h, 24, fonce(this.col, 0.78)); // une ombre douce, pas de trait noir
+    rrect(ctx, x, y, w, h, 24, this.col, 4);
     ecrit(ctx, typeof this.texte === "function" ? this.texte() : this.texte, this.taille, [255, 255, 255], [x + w / 2, y + h / 2], fonce(this.col, 0.5));
   }
   touche(p) { return dans(this.r, p); }

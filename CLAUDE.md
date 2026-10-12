@@ -40,6 +40,14 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
+## Style « Bluey » (par-dessus le style plat)
+- `STYLE_DESSIN.bluey = true` (dessins.js) : plus de contour sombre (`bordure` : liseré fin à peine plus foncé que
+  la forme), ombre plate et douce du côté du dos sur chaque `pen.forme` (personnages, habits, cheveux), yeux pleins
+  foncés avec un petit reflet (personnages et `oeilA` des animaux), joues discrètes, boutons à ombre douce,
+  fond crème chaud. `js/bluey.js` (chargé en dernier avant app.js) : ciels bleus clairs et chauds, herbe vert-jaune,
+  terre sable pour tous les décors ; arbres en grosses touffes à deux tons (`arbre` remplacé, l'ancien dans `arbre.avant`).
+  `STYLE_DESSIN.bluey = false` : retour au style Peppa / Trotro.
+
 ## Style des dessins : « entre Peppa Pig et Trotro »
 - `STYLE_DESSIN.plat = true` (dessins.js) : couleurs plates (pas de dégradés, reflets, brume ni herbe), contours
   sombres bien marqués (`bordure` : teinte très foncée de la couleur, mêlée de `CONTOUR`, trait 1,3 fois plus

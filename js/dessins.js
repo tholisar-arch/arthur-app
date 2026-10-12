@@ -31,7 +31,9 @@ function hasard(graine) { // générateur pseudo-aléatoire reproductible
 const TRAIT = 0.62;
 // Style choisi : « entre Peppa Pig et Trotro » = couleurs plates (pas de dégradés ni de reflets) et contours sombres
 // bien marqués. RELIEF.on = true redonne la version avec volume et lumière.
-const STYLE_DESSIN = { plat: true };
+// bluey : façon « Bluey » — pas de contour sombre (juste un liseré à peine plus foncé), une ombre plate sur le côté des
+// formes, des yeux pleins avec un petit reflet, une palette chaude et douce (voir js/bluey.js).
+const STYLE_DESSIN = { plat: true, bluey: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (!RELIEF.on || w < 7 || h < 7 || w * h > 600000 || !ctx.createLinearGradient) return css(fill);
@@ -44,6 +46,9 @@ function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : co
   return g;
 }
 function bordure(ctx, fill, bord, colBord) {
+  if (STYLE_DESSIN.bluey && colBord === CONTOUR && fill) { // façon Bluey : un liseré fin, à peine plus foncé que la forme
+    ctx.lineWidth = Math.max(1, bord * TRAIT * 0.55); ctx.strokeStyle = css(fonce(fill, 0.84)); ctx.lineJoin = "round"; ctx.stroke(); return;
+  }
   ctx.lineWidth = Math.max(1, bord * TRAIT * (STYLE_DESSIN.plat ? 1.3 : 1));
   ctx.strokeStyle = css(colBord === CONTOUR && fill ? (STYLE_DESSIN.plat ? fonce(fill, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45))) : fonce(fill, 0.7)) : colBord);
   ctx.lineJoin = "round";
@@ -126,6 +131,12 @@ class Pen {
       else if (op === "Z") ctx.closePath();
     }
     if (c) { ctx.fillStyle = teinte(ctx, c, x0, y0, x1 - x0, y1 - y0); ctx.fill(); }
+    if (c && STYLE_DESSIN.bluey && x1 - x0 > 10 && y1 - y0 > 10) { // façon Bluey : une ombre plate et douce du côté du dos
+      const wv = x1 - x0, hv = y1 - y0, xd = this.f > 0 ? x0 : x1;
+      ctx.save(); ctx.clip(); ctx.beginPath(); ctx.ellipse(xd - this.f * wv * 0.1, y0 + hv * 0.6, wv * 0.25, hv * 0.8, 0, 0, 2 * PI);
+      ctx.fillStyle = css(fonce(c, 0.93)); ctx.fill(); ctx.restore();
+      this.chemin(cmds); // on remet le chemin pour le liseré
+    }
     if (c && cote && RELIEF.on && x1 - x0 > 6) {
       const xa = this.f > 0 ? x0 : x1, gr = ctx.createLinearGradient(xa, 0, xa + (x1 - x0) * 0.55 * this.f, 0);
       if (gr && gr.addColorStop) {
@@ -848,7 +859,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const joie = humeur === "joie", peur = humeur === "peur", peau = st.peau, cheveux = st.cheveux, co = st.coiffure;
   const pts = (l) => l.map(([u, v]) => [tx + u * R, ty + v * R]);
   const tete = (cmds) => cmds.map(([op, ...a]) => [op, ...a.map((n, i) => (i % 2 ? ty + n * R : tx + n * R))]);
-  const cerne = (c) => fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45))); // la couleur des contours
+  const cerne = (c) => (STYLE_DESSIN.bluey ? fonce(c, 0.82) : fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45)))); // la couleur des contours
   const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
   const manche = { teeshirt: 0.45, pull: 1, chemise: 1, debardeur: 0, salopette: 0.45, robe: 0.3 }[st.typeHaut];
   const vers = (a, b, q) => [a[0] + (b[0] - a[0]) * q, a[1] + (b[1] - a[1]) * q];
@@ -977,8 +988,14 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const ey = -0.12, er = 0.17 + (adulte ? 0 : 0.02), cligne = humeur === "dort" || (mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur); // « dort » : les yeux fermés
   for (const u of [0.24, 0.62]) {
     if (cligne) { pen.courbe(CONTOUR, pts([[u - er, ey], [u, ey + er * 0.6], [u + er, ey]]), 2); continue; }
-    { const p = pen.P(tx + u * R, ty + ey * R); ctx.beginPath(); ctx.arc(p[0], p[1], er * R * s, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke(); }
-    pen.circle([30, 25, 35], tx + (u + 0.05) * R, ty + (ey + 0.02) * R, er * R * (peur ? 0.36 : 0.48));
+    if (STYLE_DESSIN.bluey) { // des yeux pleins, foncés, avec un petit reflet (façon Bluey)
+      const p = pen.P(tx + (u + 0.03) * R, ty + (ey + 0.02) * R), k = peur ? 0.8 : 1;
+      ctx.beginPath(); ctx.ellipse(p[0], p[1], er * 0.6 * k * R * s, er * 0.8 * k * R * s, 0, 0, 2 * PI); ctx.fillStyle = css([45, 32, 30]); ctx.fill();
+      const q = pen.P(tx + (u + 0.07) * R, ty + (ey - 0.05) * R); ctx.beginPath(); ctx.arc(q[0], q[1], er * 0.2 * R * s, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill();
+    } else {
+      { const p = pen.P(tx + u * R, ty + ey * R); ctx.beginPath(); ctx.arc(p[0], p[1], er * R * s, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke(); }
+      pen.circle([30, 25, 35], tx + (u + 0.05) * R, ty + (ey + 0.02) * R, er * R * (peur ? 0.36 : 0.48));
+    }
     if (st.cils) for (const d of [-0.5, 0, 0.5]) { const a = -PI / 2 + d * 0.9; pen.line(CONTOUR, [tx + (u + Math.cos(a) * er) * R, ty + (ey + Math.sin(a) * er) * R], [tx + (u + Math.cos(a) * er * 1.5) * R, ty + (ey + Math.sin(a) * er * 1.5) * R], 1.6); }
   }
   if (st.lunettes) {
@@ -987,7 +1004,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   }
   // les sourcils : petits traits courbes (ils bougent avec l'humeur)
   for (const u of [0.24, 0.62]) { const lev = peur ? 0.08 : joie ? 0.05 : 0; pen.courbe(cerne(cheveux), pts([[u - 0.13, ey - er - 0.1 - lev], [u, ey - er - 0.17 - lev], [u + 0.13, ey - er - 0.1 - lev + (peur ? (u > 0.5 ? -0.05 : 0.05) : 0)]]), adulte ? 2.2 : 1.8); }
-  pen.circle([248, 150, 165], tx + 0.36 * R, ty + 0.3 * R, 0.16 * R); // la joue rose
+  pen.circle(STYLE_DESSIN.bluey ? peau.map((v, i) => Math.round(lerp(v, [245, 140, 150][i], 0.35))) : [248, 150, 165], tx + 0.36 * R, ty + 0.3 * R, 0.16 * R); // la joue rose
   if (st.barbe) pen.forme(cheveux, tete([["M", -0.6, 0.1], ["C", -0.55, 0.8, -0.1, 1.08, 0.3, 1.05], ["C", 0.8, 1.0, 1.0, 0.6, 0.98, 0.3], ["Q", 0.7, 0.62, 0.36, 0.6], ["Q", -0.1, 0.55, -0.6, 0.1], ["Z"]]));
   if (st.petiteBarbe) { // barbe légère : une ombre de poils sur la mâchoire et autour de la bouche, sans contour
     ctx.save(); pen.chemin(tete(visage)); ctx.clip();

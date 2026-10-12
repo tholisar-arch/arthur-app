@@ -2,7 +2,10 @@
 // Chaque animal : (ctx, x, sol, taille, temps, sens, marche, mange). Ils s'ajoutent aux personnages des histoires.
 "use strict";
 
-const oeilA = (pen, x, y, r = 5) => { pen.circle([255, 255, 255], x, y, r + 2, true); pen.circle(CONTOUR, x + 1, y, r * 0.6); pen.circle([255, 255, 255], x + 2, y - 1.5, 1.4); };
+const oeilA = (pen, x, y, r = 5) => {
+  if (STYLE_DESSIN.bluey) { pen.ellipse([45, 32, 30], x - r * 0.75, y - r, x + r * 0.75, y + r, false); pen.circle([255, 255, 255], x + r * 0.3, y - r * 0.4, Math.max(1, r * 0.3)); return; } // œil plein et brillant (façon Bluey)
+  pen.circle([255, 255, 255], x, y, r + 2, true); pen.circle(CONTOUR, x + 1, y, r * 0.6); pen.circle([255, 255, 255], x + 2, y - 1.5, 1.4);
+};
 const joueA = (pen, x, y, r = 6) => pen.circle([255, 150, 165], x, y, r);
 const sourireA = (pen, x, y, w = 14) => pen.arc(CONTOUR, x - w / 2, y - w / 2, x + w / 2, y + w / 4, 1.15 * PI, 1.85 * PI, 2.5); // un sourire (la moitié basse de l'ovale)
 function pattes4(pen, col, xs, haut, bas, ep, marche) { // quatre pattes qui marchent
