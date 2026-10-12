@@ -178,16 +178,22 @@ const ACTIVITES_SPORT = {
       if (p !== null || e.k < e.n) { rond(ctx, bx, by, 18, [240, 130, 50], 3); trait(ctx, [bx - 18, by], [bx + 18, by], 2, [120, 60, 30]); trait(ctx, [bx, by - 18], [bx, by + 18], 2, [120, 60, 30]); }
       bravo(ctx, e, hx - 10, G - 400, fr_en("PANIER !", "SWISH!")); etoilesGagnees(ctx, e, x - 60, G - 330);
     } },
-  nager: { fr: "Nager", en: "Swim", decor: "natation", clics: 3, prendActeur: true, son: "splash",
+  nager: { fr: "Nager", en: "Swim", decor: "natation", clics: 3, prendActeur: true, passagers: true, son: "splash",
     mots: "\\bnag(e|ent|er|eons|eait)\\b(?! sous)|natation|\\bbrasse\\b|\\bcrawl\\b|longueurs|\\bswim(s|ming)?\\b(?! underwater)",
     modele: ["Dans la piscine, {prenom} nage, nage… jusqu'au bout du bassin !", "In the pool, {prenom} swims and swims… all the way to the end!"],
     consigne: ["Touche l'eau pour nager plus loin !", "Tap the water to swim further!"],
     cible(sc) { return [sc.cx - 200 + 150 * Math.min(sc.fait + 1, sc.n), G - 40]; },
     dessin(ctx, x, G, e) {
+      // tout le monde nage, chacun dans sa ligne d'eau (personne ne reste debout dans la piscine)
+      const kinds = kindsDe(e), moi = e.acteur || "arthur", autres = personnes(kinds).filter((k) => k !== moi).slice(0, 3);
+      const nage = (k, nx, ny, s, ph) => {
+        ctx.save(); ctx.translate(nx, ny); ctx.rotate(PI / 2); (AMIS_DESSIN[k] || chat)(ctx, 0, 0, s, e.t, 1, e.t * 6 + ph, 0, "joie"); ctx.restore();
+        ctx.save(); ctx.globalAlpha = 0.72; rrect(ctx, nx - 40, ny - 6, (STYLES[k] ? (STYLES[k].L + STYLES[k].T + STYLES[k].R) * s : 100) + 80, 44, 14, [90, 175, 230]); ctx.restore(); // l'eau par-dessus le corps
+        for (let j = 0; j < 4; j++) rond(ctx, nx - 20 - j * 14, ny - 8 + 5 * Math.sin(e.t * 8 + j + ph), 6 - j, [255, 255, 255]);
+      };
+      autres.forEach((k, i) => nage(k, x - 300 + 70 * Math.sin(e.t * 0.6 + i) + i * 40, G - 110 + i * 34, 0.62, i + 1)); // au fond, dans les autres lignes
       const px = x - 260 + 150 * (e.k + avanceEtape(e)), y = G - 40;
-      ctx.save(); ctx.translate(px, y); ctx.rotate(PI / 2); (AMIS_DESSIN[e.acteur || "arthur"] || chat)(ctx, 0, 0, 0.8, e.t, 1, e.t * 6, 0, "joie"); ctx.restore();
-      ctx.save(); ctx.globalAlpha = 0.7; rrect(ctx, x - 360, y - 6, 720, 60, 0, [90, 175, 230]); ctx.restore();
-      for (let k = 0; k < 4; k++) rond(ctx, px - 30 - k * 16, y - 10 + 6 * Math.sin(e.t * 8 + k), 6 - k, [255, 255, 255]);
+      nage(moi, px, y, 0.8, 0);
       etoilesGagnees(ctx, e, x, G - 300);
     } },
   roulade: { fr: "Faire des roulades", en: "Roly-polies", decor: "gymnase", clics: 3, prendActeur: true, son: "magie",
@@ -253,11 +259,11 @@ const ACTIVITES_SPORT = {
     } },
 };
 for (const [id, A] of Object.entries(ACTIVITES_SPORT)) {
-  A.lieuFort = true; A.sansEngin = true; A.cx = A.cx || 480;
+  A.lieuFort = true; A.sansEngin = true; A.cx = A.cx || 480; A.prendActeur = true; // l'enfant est dessiné dans l'action (pas une 2e fois dans le groupe)
   ACTIVITES[id] = A;
   CLICS_DEFAUT[id] = A.clics; CONSIGNES[id] = A.consigne[0]; CONSIGNES_EN[id] = A.consigne[1];
   TEXTES.fr.actions[id] = A.fr; TEXTES.en.actions[id] = A.en; MODELES[id] = A.modele;
-  ALIAS_ACTION[id] = id; ALIAS_ACTION[sansAccent(A.fr)] = id; ACTIONS.push(id);
+  ALIAS_ACTION[id] = id; ALIAS_ACTION[id.toLowerCase()] = id; ALIAS_ACTION[sansAccent(A.fr)] = id; ACTIONS.push(id); // « tirerBut » est aussi retrouvé écrit « tirerbut »
   MOTS_ACTIVITES.unshift([new RegExp(A.mots), id]);
   if (!ACTIONS_ECRITURE.includes(id)) ACTIONS_ECRITURE.push(id);
 }
@@ -271,3 +277,7 @@ NOMS_CATEGORIES.fr.sport = "Sport"; NOMS_CATEGORIES.en.sport = "Sport";
     for (const et of etapes) if (et.action === "monterPoney") et.presents = et.presents.filter((id) => id !== "cheval");
     return etapes;
   }; }
+
+// le camion n'est pas au toboggan ni au cinéma : pour les activités de tous les jours, il reste hors de la scène
+// (sinon les personnages, faute de place, se retrouvaient sur lui) — sauf quand il a un vrai rôle (« laver le camion »)
+for (const [id, A] of Object.entries(ACTIVITES)) if (!["laver"].includes(id)) A.sansEngin = true;

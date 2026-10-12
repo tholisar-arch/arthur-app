@@ -108,16 +108,20 @@ const LIEUX_MONDE = {
       murInterieur(ctx, W, hz, [235, 248, 255], scroll);
       carreaux(ctx, W, hz - 170, hz + 6, [190, 225, 245], 36);
       const bx = boucle(380, scroll, 0.3, W, 300); // la baignoire pleine de mousse
+      if (!sansMeubles("bain")) { // (l'activité « bain » a sa propre baignoire, devant)
       for (let k = 0; k < 9; k++) rond(ctx, bx - 140 + k * 36, hz - 118 + (k % 2) * 6, 22, [255, 255, 255], 2);
       rrect(ctx, bx - 180, hz - 120, 360, 110, 46, [255, 255, 255], 3);
       for (const d of [-150, 140]) rrect(ctx, bx + d, hz - 14, 14, 20, 4, [210, 180, 90], 2);
       trait(ctx, [bx + 150, hz - 180], [bx + 150, hz - 120], 6, [180, 185, 195]); trait(ctx, [bx + 150, hz - 180], [bx + 120, hz - 180], 6, [180, 185, 195]);
       ovale(ctx, bx - 110, hz - 140, 30, 22, [255, 220, 60], 2); poly(ctx, [[bx - 82, hz - 132], [bx - 70, hz - 128], [bx - 82, hz - 124]], [250, 140, 40]); // le canard
+      }
       for (let k = 0; k < 4; k++) { const y = hz - 150 - mod(t * 25 + k * 30, 120); ctx.globalAlpha = 0.6; rond(ctx, bx - 60 + k * 40, y, 6 + (k % 2) * 3, [200, 230, 255], 1.5); ctx.globalAlpha = 1; }
+      if (!sansMeubles("dents")) { // (l'activité « dents » a son lavabo et son miroir)
       const lx = boucle(900, scroll, 0.3, W, 300); // le lavabo et le miroir
       ovale(ctx, lx - 60, hz - 290, 120, 140, [210, 235, 250], 5, [200, 170, 120]);
       rrect(ctx, lx - 80, hz - 120, 160, 30, 12, [255, 255, 255], 3); rrect(ctx, lx - 20, hz - 90, 40, 96, 6, [255, 255, 255], 3);
       rrect(ctx, lx + 40, hz - 160, 22, 40, 4, [120, 200, 230], 2); trait(ctx, [lx + 46, hz - 160], [lx + 42, hz - 196], 3, [240, 90, 90]); trait(ctx, [lx + 56, hz - 160], [lx + 60, hz - 194], 3, [90, 170, 240]);
+      }
       const sx = boucle(1180, scroll, 0.3, W, 300); rrect(ctx, sx - 30, hz - 240, 60, 120, 10, [250, 170, 190], 3); trait(ctx, [sx - 20, hz - 250], [sx + 20, hz - 250], 5, [180, 185, 195]); // la serviette
     } },
   classe: { fr: "Classe", en: "Classroom", interieur: true, ciel: [[252, 240, 205], [252, 240, 205]], sol: [[200, 170, 130], [222, 195, 155]],
@@ -863,10 +867,15 @@ const ACTIVITES_VIE = {
       const st = STYLES[e.acteur || "arthur"], haut = st ? (st.L + st.T + st.R * 2) : 130, ech = Math.min(1, 150 / haut);
       ctx.save(); ctx.translate(x - 165 + haut * ech, G - 96); ctx.rotate(-PI / 2); // l'enfant couché, la tête sur l'oreiller
       (AMIS_DESSIN[e.acteur || "arthur"] || chat)(ctx, 0, 0, ech, e.t, 1, 0, 0, eteint ? "dort" : null); ctx.restore();
-      const cw = 150 + 130 * couette; // la couette qu'on remonte jusqu'au menton
-      rrect(ctx, x + 175 - cw, G - 100, cw, 64, 18, [120, 170, 240], 3);
-      for (let k = 0; k < 6; k++) { const px = x + 160 - k * 34; if (px > x + 175 - cw + 10) rond(ctx, px, G - 70 + (k % 2) * 12, 5, [255, 230, 120]); }
-      rrect(ctx, x + 175 - cw - 6, G - 104, 26, 72, 12, [150, 195, 250], 3);
+      // la couette : un vrai volume posé SUR tout le corps (de toute son épaisseur), qu'on remonte des pieds jusqu'au menton
+      const pieds = x - 165 + haut * ech, menton = pieds - ((st ? st.L + st.T * 0.8 : 100)) * ech, bas = pieds - (st ? st.L * 0.5 : 30) * ech;
+      const bord = lerp(bas, menton, couette), haute = G - 152, coul = [120, 170, 240];
+      ctx.beginPath(); ctx.moveTo(x + 182, G - 34); ctx.lineTo(x + 182, G - 100); ctx.quadraticCurveTo(x + 182, haute + 4, x + 140, haute);
+      ctx.lineTo(bord + 26, haute); ctx.quadraticCurveTo(bord, haute, bord, haute + 26); ctx.lineTo(bord - 4, G - 34); ctx.closePath();
+      ctx.fillStyle = css(coul); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = css(fonce(coul, 0.8)); ctx.stroke();
+      ctx.save(); ctx.clip(); for (let k = 0; k < 14; k++) rond(ctx, x + 170 - (k % 7) * 40 - (k > 6 ? 20 : 0), G - 120 + (k > 6 ? 46 : 0), 5, [255, 230, 120]);
+      ctx.fillStyle = "rgba(30,50,90,0.12)"; ctx.fillRect(bord - 10, G - 60, x + 200 - bord, 30); ctx.restore(); // l'ombre du pli en bas
+      rrect(ctx, bord - 10, haute - 4, 30, G - 30 - haute, 14, [235, 242, 252], 2); // le drap retourné, au bord de la couette
       if (eteint) for (let k = 0; k < 3; k++) { const u = mod(e.t * 0.5 + k / 3, 1); ctx.globalAlpha = 1 - u; ecrireCentre(ctx, "z", x - 150 + 40 * u, G - 160 - 80 * u - k * 4, 20 + k * 6, [255, 255, 255]); ctx.globalAlpha = 1; }
     } },
   repas: { fr: "Manger à table", en: "Mealtime", decor: "cuisine", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "croque", cx: 500,
@@ -964,15 +973,22 @@ const ACTIVITES_VIE = {
       rrect(ctx, x + 68, G - 140, 26, 22, 8, col, 2);
       for (let k = 0; k < 3; k++) { const u = mod(e.t * 0.6 + k / 3, 1); ctx.globalAlpha = 0.5 * (1 - u); rond(ctx, fx + 10 * Math.sin(e.t + k), G - 100 - 120 * u, 10 + 10 * u, [210, 210, 215]); ctx.globalAlpha = 1; }
     } },
-  plonger: { fr: "Plonger sous la mer", en: "Diving", decor: "sousmarin", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "splash", cx: 480,
+  plonger: { fr: "Plonger sous la mer", en: "Diving", decor: "sousmarin", lieuFort: true, passagers: true, sansEngin: true, clics: 3, son: "splash", cx: 480,
     mots: "plong(e|ent|er|ee)|nag(e|ent|er) sous l'eau|\\btuba\\b|masque de plongee|snorkel|\\bdiv(e|es|ing)\\b|swim underwater",
     modele: ["Avec un masque et un tuba, on plonge sous la mer ! Les poissons viennent dire bonjour.", "With a mask and a snorkel, we dive under the sea! The fish come to say hello."],
     consigne: ["Touche les bulles pour appeler les poissons !", "Tap the bubbles to call the fish!"],
     cible: (sc) => [sc.cx + 120, G - 260],
     dessin(ctx, x, G, e) {
       const y = G - 200 + 14 * Math.sin(e.t * 1.6), px = x - 40 + 20 * Math.sin(e.t * 0.7);
-      ctx.save(); ctx.translate(px - 90, y); ctx.rotate(PI / 2 - 0.15); // l'enfant qui nage
-      dessineAmi(ctx, e.acteur || "arthur", 0, 0, e.t, 1, Math.sin(e.t * 6) * 0.6, 0, 0.82, "joie"); ctx.restore();
+      const kinds = kindsDe(e), nageurs = personnes(kinds).slice(0, 4), autres = nageurs.filter((k) => k !== (e.acteur || "arthur"));
+      const nage = (k, nx, ny, s, ph) => { // nager à plat ventre, la tête vers l'avant, un petit masque bleu
+        ctx.save(); ctx.translate(nx, ny); ctx.rotate(PI / 2 - 0.12 + 0.06 * Math.sin(e.t * 2 + ph));
+        (AMIS_DESSIN[k] || chat)(ctx, 0, 0, s, e.t, 1, e.t * 5 + ph, 0, "joie"); ctx.restore();
+        const st = STYLES[k], hx = nx + (st ? (st.L + st.T + st.R) * s : 90), hy = ny - 6; rrect(ctx, hx - 18, hy - 10, 26, 14, 6, [120, 200, 240], 2); trait(ctx, [hx - 22, hy - 14], [hx - 22, hy - 40], 4, [250, 200, 60], "round");
+      };
+      autres.forEach((k, i) => nage(k, px - 260 - i * 40, y - 90 + i * 70 + 10 * Math.sin(e.t * 1.3 + i), 0.72, i + 1)); // les autres nagent derrière
+      nage(e.acteur || "arthur", px - 90, y, 0.82, 0);
+      betes(kinds).forEach((k, i) => dessineAmi(ctx, k, x + 260 + i * 70, G - 20, e.t, -1, 0, 0, 0.7)); // les animaux de la mer
       for (let k = 0; k < 5; k++) { const u = mod(e.t * 0.7 + k / 5, 1); ctx.globalAlpha = 0.7 * (1 - u); rond(ctx, px + 70 + 10 * Math.sin(e.t * 3 + k), y - 40 - 160 * u, 5 + k % 3 * 2, [220, 240, 255], 1.5); ctx.globalAlpha = 1; }
       const nb = Math.min(e.n, e.k + (e.p !== null && e.p !== undefined && e.p > 0.5 ? 1 : 0));
       for (let i = 0; i < nb; i++) petitPoisson(ctx, px + 140 + i * 50 + 6 * Math.sin(e.t * 3 + i), y - 60 + i * 34 + 8 * Math.sin(e.t * 2 + i), [[255, 170, 60], [240, 120, 170], [250, 220, 70]][i % 3], -1, 1.2);
@@ -1006,7 +1022,7 @@ for (const [id, A] of Object.entries(ACTIVITES_VIE)) {
   ACTIVITES[id] = A;
   CLICS_DEFAUT[id] = A.clics; CONSIGNES[id] = A.consigne[0]; CONSIGNES_EN[id] = A.consigne[1];
   TEXTES.fr.actions[id] = A.fr; TEXTES.en.actions[id] = A.en; MODELES[id] = A.modele;
-  ALIAS_ACTION[id] = id; ALIAS_ACTION[sansAccent(A.fr)] = id; ACTIONS.push(id);
+  ALIAS_ACTION[id] = id; ALIAS_ACTION[id.toLowerCase()] = id; ALIAS_ACTION[sansAccent(A.fr)] = id; ACTIONS.push(id);
   MOTS_ACTIVITES.unshift([new RegExp(A.mots), id]); // avant les activités plus générales (« dormir », « manger »…)
 }
 Object.assign(ZONES_ACTIVITES, { dodo: [-240, 300], jongle: [-90, 90], pain: [-210, 330], guimauves: [-150, 140], plonger: [-200, 240], glisser: [-330, 330], poissons: [-240, 240] });

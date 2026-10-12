@@ -308,9 +308,10 @@ const ACTIVITES = {
     consigne: ["Touche la baignoire pour faire de la mousse !", "Tap the bathtub to make bubbles!"],
     cible: (sc) => [sc.cx, G - 120],
     dessin(ctx, x, G, e) {
-      if (!e.objet) personnage(ctx, e, x, G - 40, 0.8);
+      if (!e.objet) personnage(ctx, e, x - 20, G - 46, 0.8); // assis dans l'eau : la tête et les épaules dépassent
       const mousse = e.objet ? 3 : e.k + avanceEtape(e);
-      for (let k = 0; k < 5 + 4 * mousse; k++) rond(ctx, x - 130 + ((k * 53) % 260), G - 95 - ((k * 29) % 30), 16 + (k % 3) * 5, [255, 255, 255], 2, [200, 220, 240]);
+      for (let k = 0; k < 5 + 4 * mousse; k++) { let bx = x - 130 + ((k * 53) % 260); if (Math.abs(bx - (x - 20)) < 48) bx += bx < x - 20 ? -50 : 50; // la mousse autour de l'enfant, jamais sur son visage
+        rond(ctx, bx, G - 95 - ((k * 29) % 22), 16 + (k % 3) * 5, [255, 255, 255], 2, [200, 220, 240]); }
       rrect(ctx, x - 160, G - 100, 320, 92, 30, [255, 255, 255], 4, [170, 190, 210]);
       for (const dx of [-130, 130]) rond(ctx, x + dx, G - 4, 10, [200, 170, 90], 2);
       if (e.objet || e.k >= 1) { const cx = x + 80, cy = G - 112 + 4 * Math.sin(e.t * 3); ovale(ctx, cx - 22, cy - 14, 44, 24, [255, 220, 70], 2); rond(ctx, cx + 14, cy - 18, 12, [255, 220, 70], 2); poly(ctx, [[cx + 24, cy - 20], [cx + 36, cy - 16], [cx + 24, cy - 12]], [250, 140, 40]); }

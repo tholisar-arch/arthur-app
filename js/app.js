@@ -190,20 +190,29 @@ class Scene {
     for (const a of m.amis) if (d.partent.includes(a.kind)) { a.part = true; a.cible = a.x < VW / 2 ? -200 : VW + 200; }
     const ecarts = this.act === "manger" ? [-280, 300, -430, 440] : [-250, 250, -420, 420];
     const restants = m.amis.filter((a) => !a.part);
-    const zA = A ? ZONES_ACTIVITES[this.act] || [-150, 150] : null, avecZone = A && !A.devant && !A.passagers && zA[1] > zA[0];
-    const interdits = (avecZone ? [[this.cx + zA[0] - 25, this.cx + zA[1] + 25]] : []).concat(this.cacheHeros ? [] : [[poste - 170, poste + 200]]);
+    // la place que prend ce qui se passe (le trou, la maison en feu, la rivière du pont…) : personne ne se met dessus
+    const ZONES_ACTIONS = { trou: [-120, 120], deblayer: [-120, 120], construire: [-100, 130], route: [-330, 130], fenetres: [-140, 140], pont: [-150, 150], arbre: [-180, 130],
+      panne: [-140, 140], feu: [-140, 140], chateau: [-120, 120], piscine: [-175, 175], cadeau: [-95, 95], cueillir: [-100, 100] };
+    const zA = A ? ZONES_ACTIVITES[this.act] || [-150, 150] : ZONES_ACTIONS[this.act] || null, avecZone = !!zA && !(A && (A.devant || A.passagers)) && zA[1] > zA[0];
+    // les places prises : l'activité, le camion là où il se gare VRAIMENT, l'engin qui travaille, les camions copains
+    const interdits = (avecZone ? [[this.cx + zA[0] - 25, this.cx + zA[1] + 25]] : [])
+      .concat(this.cacheHeros ? [] : [[hero.cible - 150, hero.cible + 175]])
+      .concat(this.acteur ? [[poste - 160, poste + 185]] : [])
+      .concat(this.act === "voler" || this.act === "velo" ? [] : m.copains.map((c) => [c.cible - 0.72 * 130, c.cible + 0.72 * 150]));
     const largeurZones = (z) => z.reduce((t, [a, b]) => t + b - a, 0);
     let zones = zonesHors(interdits);
-    if (largeurZones(zones) < 140 && interdits.length > 1) zones = zonesHors(interdits.slice(0, 1)); // pas de place : on se serre près du camion
+    for (let n = interdits.length - 1; largeurZones(zones) < 140 && n >= 1; n--) zones = zonesHors(interdits.slice(0, n)); // pas de place : on lâche d'abord les copains, puis le camion
     if (largeurZones(zones) < 140) zones = [[70, Math.max(200, (avecZone ? this.cx + zA[0] - 25 : 300))]]; // toujours à côté, jamais dessus
     const largeurs = restants.map((a) => largeurAmi(a.kind));
     const place = zones.reduce((t, [a, b]) => t + b - a, 0), besoin = largeurs.reduce((t, l) => t + l, 0) || 1;
-    this.echelleFoule = A || restants.length >= 3 ? borne(place / besoin, 0.62, 1) : 1; // trop de monde : tout le monde un peu plus petit
-    const reparties = (A && restants.length) || restants.length >= 3 ? placesDansZones(zones, restants.length, largeurs) : null; // loin de l'activité et du camion
+    this.echelleFoule = A || avecZone || restants.length >= 3 ? borne(place / besoin, 0.62, 1) : 1; // trop de monde : tout le monde un peu plus petit
+    const reparties = ((A || avecZone) && restants.length) || restants.length >= 3 ? placesDansZones(zones, restants.length, largeurs) : null; // loin de l'activité et du camion
     restants.forEach((a, i) => {
       const aGauche = { arbre: [150, 80, 220, 40], pont: [120, 60, 180, 30], panne: [130, 60, 200, 30], chercher: [300, 240, 340, 200], chiffres: [400, 540, 680, 820], lettres: [400, 540, 680, 820] }[this.act]; // loin de l'obstacle
       a.cible = borne(d.positions[a.kind] ?? (reparties ? reparties[i] : aGauche ? aGauche[i % 4] : poste + ecarts[i % 4]), 70, VW - 70);
       if (nouveaux.includes(a) && a.cible < VW / 2) a.x = -150; // arrive par le côté où il va se placer
+      // pas de place libre : il se met DEVANT les engins (plus près de nous), jamais dessus ni derrière, à moitié caché
+      a.devant = interdits.slice(avecZone ? 1 : 0).some(([g0, g1]) => a.cible > g0 + 10 && a.cible < g1 - 10);
     });
     for (const a of m.amis) { a.mange = a.dy = 0; a.humeur = d.humeur[a.kind] || null; }
     const enfants = m.amis.filter((a) => !a.part);
@@ -645,6 +654,7 @@ class Scene {
       if (this.A && this.A.prendActeur && a.kind === this.acteurAct) continue; // l'activité le dessine (sur le toboggan…)
       const dansLEau = this.act === "piscine" && a.kind === "papi" ? 44 : 0; // Papi est dans la piscine
       if (this.A && this.A.passagers) continue; // ils sont dans le bateau
+      if (a.devant && !this.cacheHeros) continue; // dessiné après les engins, au premier plan
       dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + a.dy + dansLEau, m.t, a.f, a.marche, a.mange, this.echelleFoule || 1, a.humeur);
     }
     if (this.act === "manger") for (let i = 0; i < this.n; i++) { const [x, k] = this.posRepas(i); nourriture(ctx, k, x, G, this.qte[i]); }
@@ -657,6 +667,8 @@ class Scene {
       if (this.act === "voler" && v === m.hero) // les passagers, debout sur le capot
         m.amis.forEach((a, i) => dessineAmi(ctx, a.kind, v.x + 2 + i * 32, G + dy - 108, m.t, 1, 0, 0, 0.62, "joie"));
     }
+    if (this.act !== "voler" && !this.cacheHeros) for (const a of parTaille) if (a.devant && !(this.A && (this.A.passagers || (this.A.prendActeur && a.kind === this.acteurAct)))) // au premier plan, devant les engins
+      dessineAmi(ctx, a.kind, a.x + (a.dx || 0), G + 26 + a.dy, m.t, a.f, a.marche, a.mange, (this.echelleFoule || 1) * 1.08, a.humeur);
     if (this.act === "piscine") piscineDevant(ctx, this.cx, G, m.t);
     if (this.A && this.A.devant) this.A.dessin(ctx, this.cx, G, this.etatAct()); // le train passe devant le quai
     if (this.act === "velo") { // le vélo jaune qui vole, avec Arthur devant et Mamie derrière
