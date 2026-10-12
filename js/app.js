@@ -1262,7 +1262,7 @@ async function demarre() {
       app.maj(dt);
       const t0 = performance.now(); app.dessine(); erreurs = 0;
       // appareil un peu lent (vieille tablette) : on repasse au dessin tout plat pour garder une animation fluide
-      if (RELIEF.on && !document.hidden) { lent.push(performance.now() - t0); if (lent.length > 90) { lent.sort((x, y) => x - y); if (lent[45] > 13) RELIEF.on = false; lent = []; } }
+      if ((RELIEF.on || STYLE_DESSIN.decorReel) && !document.hidden) { lent.push(performance.now() - t0); if (lent.length > 90) { lent.sort((x, y) => x - y); if (lent[45] > 13) { RELIEF.on = false; STYLE_DESSIN.decorReel = false; } lent = []; } }
     }
     catch (e) { // un souci dans un écran : on ne bloque jamais l'enfant, on passe à la suite
       console.error(e);

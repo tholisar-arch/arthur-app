@@ -47,6 +47,11 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   fond crème chaud. `js/bluey.js` (chargé en dernier avant app.js) : ciels bleus clairs et chauds, herbe vert-jaune,
   terre sable pour tous les décors ; arbres en grosses touffes à deux tons (`arbre` remplacé, l'ancien dans `arbre.avant`).
   `STYLE_DESSIN.bluey = false` : retour au style Peppa / Trotro.
+- `STYLE_DESSIN.decorReel = true` : les paysages et les scènes un peu plus réalistes, les personnages restent façon
+  Bluey. `dessineDecor` allume `RELIEF` le temps de dessiner le décor (`dessineDecorBase`) : ciel en dégradé, brume
+  légère, volume des collines et des arbres, herbe et cailloux, montagnes bleutées au loin et bosquets (`collines`),
+  ombre des arbres au sol, lumière chaude du soleil et bas d'image un peu plus sombre ; ombres douces sous les
+  personnages et les engins. La boucle coupe `decorReel` si l'appareil est trop lent.
 
 ## Style des dessins : « entre Peppa Pig et Trotro »
 - `STYLE_DESSIN.plat = true` (dessins.js) : couleurs plates (pas de dégradés, reflets, brume ni herbe), contours

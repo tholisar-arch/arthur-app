@@ -33,7 +33,8 @@ const TRAIT = 0.62;
 // bien marqués. RELIEF.on = true redonne la version avec volume et lumière.
 // bluey : façon « Bluey » — pas de contour sombre (juste un liseré à peine plus foncé), une ombre plate sur le côté des
 // formes, des yeux pleins avec un petit reflet, une palette chaude et douce (voir js/bluey.js).
-const STYLE_DESSIN = { plat: true, bluey: true };
+// decorReel : les paysages un peu plus réalistes (lumière, profondeur, brume, herbe, ombres), les personnages restent façon Bluey
+const STYLE_DESSIN = { plat: true, bluey: true, decorReel: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (!RELIEF.on || w < 7 || h < 7 || w * h > 600000 || !ctx.createLinearGradient) return css(fill);
@@ -295,7 +296,7 @@ const VEHICULES_DESSIN = {
 
 function ombre(ctx, x, g, largeur, hauteur) { // ombre douce au sol (plus foncée au centre)
   ctx.beginPath(); ctx.ellipse(x, g + 2, largeur / 2, hauteur / 2, 0, 0, 2 * PI);
-  if (RELIEF.on && ctx.createRadialGradient && largeur > 4) {
+  if ((RELIEF.on || STYLE_DESSIN.decorReel) && ctx.createRadialGradient && largeur > 4) {
     ctx.save(); ctx.translate(x, g + 2); ctx.scale(1, Math.max(0.05, hauteur / largeur));
     const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, largeur / 2);
     ctx.restore();
@@ -416,10 +417,19 @@ function arbre(ctx, x, g, s = 1, col = [95, 175, 70]) { // arbre : tronc et bouq
   for (const [dx, dy, r] of touffes) rond(ctx, x + dx * s, g + dy * s, (r - 1.5) * s, col);   // puis l'intérieur, sans traits
   for (const [dx, dy] of [[-16, -100], [12, -118], [6, -92]]) rond(ctx, x + dx * s, g + dy * s, 7 * s, clair(col, 0.22)); // des reflets de lumière
 }
+const mele2 = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
 function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [120, 190, 80], maison = true) {
   // collines toutes rondes, cernées d'un fin trait, avec une petite maison et des arbres au sommet
   const x1 = boucle(200, scroll, 0.12, W, 700), x2 = boucle(820, scroll, 0.12, W, 700), x3 = boucle(450, scroll, 0.18, W, 700);
+  if (RELIEF.on) { // au loin : une chaîne de montagnes bleutées, à peine visible dans la brume
+    const loin = [168, 196, 214], f = boucle(0, scroll, 0.05, W, 400);
+    ctx.beginPath(); ctx.moveTo(-10, horizon - 60);
+    for (let k = 0; k <= 12; k++) { const x = f - 400 + k * 160; ctx.lineTo(x, horizon - 150 - 70 * Math.abs(Math.sin(k * 1.7)) - 30 * (k % 2)); }
+    ctx.lineTo(W + 10, horizon - 60); ctx.closePath(); ctx.fillStyle = css(loin, 0.75); ctx.fill();
+    for (let k = 0; k < 18; k++) { const x = boucle(k * 97, scroll, 0.09, W, 100); rond(ctx, x, horizon - 132 + (k % 3) * 6, 14 + (k % 4) * 3, mele2(foncee, loin, 0.55)); } // des bois au loin
+  }
   ovale(ctx, x1 - 450, horizon - 150, 900, 340, foncee, 4);
+  if (RELIEF.on) for (let k = 0; k < 7; k++) rond(ctx, x1 - 300 + k * 90, horizon - 118 + Math.abs(k - 3) * 9, 13 + (k % 3) * 4, fonce(foncee, 0.85)); // des bosquets sur la colline
   if (maison) { // la petite maison jaune sur la colline du fond
     const hx = x1 + 60, hy = horizon - 150 + 6;
     rrect(ctx, hx - 22, hy - 30, 44, 30, 0, [250, 220, 120], 3);
@@ -451,6 +461,22 @@ function ecrireCentre(ctx, txt, x, y, taille, col) {
 }
 
 function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
+  const avant = RELIEF.on;
+  RELIEF.on = avant || !!STYLE_DESSIN.decorReel;
+  try {
+    dessineDecorBase(ctx, W, H, nom, scroll, t, nuit, G);
+    if (RELIEF.on && !nuit && ctx.createRadialGradient) {
+      const dedans = typeof INTERIEURS !== "undefined" && INTERIEURS.has(nom);
+      if (!dedans) { // la lumière chaude du soleil, qui vient d'en haut à droite
+        const l = ctx.createRadialGradient(W - 110, 90, 20, W - 110, 90, W * 0.9);
+        if (l && l.addColorStop) { l.addColorStop(0, "rgba(255,235,180,0.14)"); l.addColorStop(0.5, "rgba(255,230,170,0.06)"); l.addColorStop(1, "rgba(255,230,170,0)"); ctx.fillStyle = l; ctx.fillRect(0, 0, W, H); }
+      }
+      const v = ctx.createLinearGradient(0, G - 40, 0, H); // le bas de l'image un peu plus sombre : de la profondeur
+      if (v && v.addColorStop) { v.addColorStop(0, "rgba(40,50,30,0)"); v.addColorStop(1, dedans ? "rgba(60,40,30,0.10)" : "rgba(40,60,30,0.14)"); ctx.fillStyle = v; ctx.fillRect(0, G - 40, W, H - G + 40); }
+    }
+  } finally { RELIEF.on = avant; }
+}
+function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   if (!SOLS[nom]) nom = "chantier";
   const [haut, bas] = CIELS[nuit ? "nuit" : nom];
   if (RELIEF.on) { // le ciel : plus profond en haut, plus clair vers l'horizon
@@ -637,7 +663,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   const [herbe, route] = SOLS[nom];
   if (RELIEF.on) { // un voile de brume sur le fond : les choses lointaines paraissent plus claires
     const brume = ctx.createLinearGradient(0, horizon - 160, 0, horizon);
-    brume.addColorStop(0, css(bas, 0)); brume.addColorStop(1, css(bas, nuit ? 0.12 : 0.28));
+    brume.addColorStop(0, css(bas, 0)); brume.addColorStop(1, css(bas, nuit ? 0.08 : 0.14));
     ctx.fillStyle = brume; ctx.fillRect(0, horizon - 160, W, 160);
   }
   rrect(ctx, 0, horizon, W, H - horizon, 0, herbe);

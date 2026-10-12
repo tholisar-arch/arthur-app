@@ -20,6 +20,7 @@ if (STYLE_DESSIN.bluey) {
   const arbreAvant = arbre;
   arbre = function (ctx, x, g, s = 1, col = [95, 175, 70]) {
     const base = mele(col, [116, 172, 84], 0.5), clairT = mele(base, [190, 220, 120], 0.35), sombre = mele(base, [60, 110, 70], 0.3), tronc = [160, 128, 100];
+    if (RELIEF.on) { ctx.beginPath(); ctx.ellipse(x + 14 * s, g + 2, 62 * s, 11 * s, 0, 0, 2 * PI); ctx.fillStyle = "rgba(40,70,30,0.2)"; ctx.fill(); } // son ombre par terre
     poly(ctx, [[x - 8 * s, g], [x + 8 * s, g], [x + 4 * s, g - 78 * s], [x - 4 * s, g - 78 * s]], tronc, 2);
     trait(ctx, [x + 1 * s, g - 56 * s], [x + 16 * s, g - 76 * s], Math.max(1, 5 * s), tronc, "round");
     for (const [dx, dy, r] of [[-26, -86, 28], [24, -84, 27], [0, -80, 30]]) rond(ctx, x + dx * s, g + dy * s, r * s, sombre);
