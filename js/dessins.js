@@ -45,6 +45,15 @@ const TRAIT = 0.62;
 // Décors propres et lumineux façon Peppa Pig (couleurs franches, ciel bleu net, sans brume ni texture), personnages
 // façon Justin Time, léger modelé sur les formes. texture / decorReel : les fonds « peints » (jugés trop sales).
 const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true, texture: false };
+// Aperçu d'un autre style par l'adresse (…/?style=bebe) : pour comparer les propositions sans rien changer pour Arthur.
+const STYLES_PROPOSES = {
+  bebe: { plat: true, peppa: true, bluey: false, decorReel: false, justin: false, ombrage: false, texture: false },     // 1. tout-petits (Peppa / Trotro)
+  peppa: { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true, texture: false },      // 2. Peppa + visages Justin (l'actuel)
+  bluey: { plat: true, peppa: false, bluey: true, decorReel: false, justin: false, ombrage: false, texture: false },    // 3. Bluey
+  justin: { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true, texture: false },     // 4. dessin animé en relief
+  realiste: { plat: false, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: false, texture: false, proportions: "reelles" }, // 5. le plus réaliste
+};
+try { const choisi = new URLSearchParams(location.search).get("style"); if (STYLES_PROPOSES[choisi]) Object.assign(STYLE_DESSIN, STYLES_PROPOSES[choisi]); } catch (e) { /* pas d'adresse */ }
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (STYLE_DESSIN.ombrage && !RELIEF.on) { // modelé doux de dessin animé (les fonds immenses et les tout petits détails restent unis)
@@ -1142,7 +1151,8 @@ function styleDe(p) { // modèle -> mesures et couleurs pour le dessin
   const adulte = p.age === "adulte", k = { petit: 0.92, moyen: 1, grand: 1.07 }[p.taille] || 1;
   const corp = CORPULENCES.includes(p.corpulence) ? p.corpulence : p.muscle ? "costaud" : "moyen";
   const kW = { mince: 0.86, moyen: 1, costaud: 1.25, rond: 1.25 }[corp];
-  const b = adulte ? { L: 78, T: 72, R: 32, W: 50 } : { L: 34, T: 40, R: 30, W: 38 }; // grosses têtes rondes, petits corps (façon Peppa / Trotro)
+  const b = STYLE_DESSIN.proportions === "reelles" ? (adulte ? { L: 92, T: 80, R: 24, W: 46 } : { L: 46, T: 46, R: 25, W: 36 }) // de vraies proportions : petites têtes, longues jambes
+    : adulte ? { L: 78, T: 72, R: 32, W: 50 } : { L: 34, T: 40, R: 30, W: 38 }; // grosses têtes rondes, petits corps (façon Peppa / Trotro)
   const typeHaut = HAUTS.includes(p.haut_type) ? p.haut_type : p.robe ? "robe" : "teeshirt";
   const typeBas = typeHaut === "salopette" ? "pantalon" : BAS.includes(p.bas_type) ? p.bas_type : "pantalon";
   return {
@@ -1330,7 +1340,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   }
   // --- le visage : deux yeux ronds côte à côte, une joue rose ronde, une bouche en trait
   const ey = -0.12, er = 0.17 + (adulte ? 0 : 0.02), cligne = humeur === "dort" || (mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur); // « dort » : les yeux fermés
-  const OEILJ = [[-0.06, 0.17], [0.45, 0.2]]; // yeux façon Justin : centre et largeur (l'œil du fond un peu plus petit)
+  const OEILJ = STYLE_DESSIN.proportions === "reelles" ? [[-0.02, 0.13], [0.42, 0.15]] : [[-0.06, 0.17], [0.45, 0.2]]; // (des yeux moins grands quand c'est réaliste) // yeux façon Justin : centre et largeur (l'œil du fond un peu plus petit)
   if (J) {
     const fonceOeil = [60, 42, 38], vy = -0.06 + (joie ? 0.02 : 0), kh = adulte ? 1.2 : 1.32;
     for (const [u, rx] of OEILJ) {
