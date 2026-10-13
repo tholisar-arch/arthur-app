@@ -44,7 +44,7 @@ const TRAIT = 0.62;
 // personnages Justin, modelé doux sur les objets. (peppa: true = l'ancien style Peppa Pig, tout plat et cerné.)
 // Décors propres et lumineux façon Peppa Pig (couleurs franches, ciel bleu net, sans brume ni texture), personnages
 // façon Justin Time, léger modelé sur les formes. texture / decorReel : les fonds « peints » (jugés trop sales).
-const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true, texture: false };
+const STYLE_DESSIN = { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true, texture: false }; // = la proposition 4, choisie par les parents
 // Aperçu d'un autre style par l'adresse (…/?style=bebe) : pour comparer les propositions sans rien changer pour Arthur.
 const STYLES_PROPOSES = {
   bebe: { plat: true, peppa: true, bluey: false, decorReel: false, justin: false, ombrage: false, texture: false },     // 1. tout-petits (Peppa / Trotro)
@@ -546,7 +546,7 @@ function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [12
   if (maison) { // la petite maison jaune sur la colline du fond
     const hx = x1 + 60, hy = horizon - 150 + 6;
     if (RELIEF.on) {
-      facade3D(ctx, hx - 22, hy, 44, 30, 22, [250, 220, 120]); pignon3D(ctx, hx - 22, hy - 30, 44, 20, 22, [250, 220, 120], [215, 85, 70], 6);
+      facade3D(ctx, hx - 22, hy, 44, 30, 22, [250, 220, 120]); toitLongPan(ctx, hx - 22, hy - 30, 44, 20, 22, [250, 220, 120], [215, 85, 70], 6);
       rrect(ctx, hx - 6, hy - 16, 12, 16, 2, [150, 100, 60]); rrect(ctx, hx + 8, hy - 25, 9, 9, 1, VITRE);
     } else {
       rrect(ctx, hx - 22, hy - 30, 44, 30, 0, [250, 220, 120], 3);
@@ -644,7 +644,29 @@ function briques(ctx, x, y, w, h, col, pas = 14) { // de petites briques dessin�
 function bardage(ctx, x, y, w, h, col, pas = 16) { // des planches verticales (grange)
   for (let xx = x + pas; xx < x + w; xx += pas) trait(ctx, [xx, y], [xx, y + h], 1.5, fonce(col, 0.85));
 }
-function cheminee3D(ctx, x, y, col) { facade3D(ctx, x, y, 26, 44, 16, col, true); for (let k = 0; k < 3; k++) { ctx.globalAlpha = 0.3; rond(ctx, x + 18 + k * 6, y - 64 - k * 16, 8 + k * 3, [240, 240, 240]); ctx.globalAlpha = 1; } }
+// Un toit vu de face, comme une vraie maison dessinée : le grand pan de tuiles au-dessus de la façade, le faîtage,
+// et le pignon en triangle sur le côté (dans l'ombre). y = haut des murs. Renvoie pt(u, v) : un point posé sur le pan
+// (u de gauche à droite, v du bas vers le faîtage), pour y poser une cheminée.
+function toitLongPan(ctx, x, y, w, rh, d, mur, tuiles, debord = 16, croupe = false) { // croupe : un toit à quatre pans
+  const dx = d * PROF.dx, dy = d * PROF.dy, rx = dx / 2, ry = dy / 2, retrait = croupe ? rh * 0.9 : 0;
+  const A = [x - debord, y + 8], B = [x + w + debord, y + 8], C = [x + w + rx + debord * 0.4 - retrait, y - rh + ry], D = [x + rx - debord * 0.6 + retrait, y - rh + ry];
+  if (croupe) poly(ctx, [B, [B[0] + dx, B[1] + dy], C], fonce(tuiles, 0.8), 2); // le pan du côté (la croupe)
+  else poly(ctx, [[x + w, y], [x + w + dx, y + dy], [x + w + rx, y - rh + ry]], fonce(mur, 0.76), 2); // le pignon, sur le côté
+  poly(ctx, [A, B, C, D], tuiles, 2); // le pan de devant
+  const pt = (u, v) => [lerp(lerp(A[0], B[0], u), lerp(D[0], C[0], u), v), lerp(lerp(A[1], B[1], u), lerp(D[1], C[1], u), v)];
+  for (let k = 1; k < 6; k++) trait(ctx, pt(0, k / 6), pt(1, k / 6), 1.6, fonce(tuiles, 0.84)); // les rangées de tuiles
+  trait(ctx, A, B, 4, fonce(tuiles, 0.72), "round"); // le bord du toit (la gouttière)
+  trait(ctx, B, C, 4, fonce(tuiles, 0.7), "round"); trait(ctx, D, C, 6, fonce(tuiles, 0.68), "round"); // la rive et le faîtage
+  ctx.fillStyle = "rgba(40,30,20,0.14)"; ctx.fillRect(x, y + 10, w, 8); // l'ombre sous le toit
+  return pt;
+}
+function cheminee3D(ctx, x, y, col) { // (x, y) = bas-gauche de la cheminée, posée sur le pan du toit
+  const dx = 16 * PROF.dx, dy = 16 * PROF.dy;
+  poly(ctx, [[x + 26, y], [x + 26 + dx, y + dy], [x + 26 + dx, y - 44 + dy], [x + 26, y - 44]], fonce(col, 0.76), 2); // le côté
+  rrect(ctx, x, y - 44, 26, 44, 0, col, 2);
+  rrect(ctx, x - 4, y - 52, 34 + dx * 0.6, 9, 2, clair(col, 0.2), 2); // le chapeau
+  for (let k = 0; k < 3; k++) { ctx.globalAlpha = 0.3; rond(ctx, x + 18 + k * 6, y - 66 - k * 16, 8 + k * 3, [240, 240, 240]); ctx.globalAlpha = 1; }
+}
 
 // Une légère texture de peinture (taches claires et sombres, coups de pinceau), comme les fonds peints de Justin Time
 let MOTIF_PEINT = null;
@@ -766,7 +788,7 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   } else if (nom === "ecole") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300);
-    if (RELIEF.on) enCache(ctx, "ecole", x, horizon, 320, 330, 640, 350, (ctx) => { facade3D(ctx, x - 230, horizon, 460, 200, 110, [250, 232, 195]); briques(ctx, x - 230, horizon - 60, 460, 50, [250, 232, 195], 12); pignon3D(ctx, x - 230, horizon - 200, 460, 90, 110, [250, 232, 195], [210, 85, 70], 22); });
+    if (RELIEF.on) enCache(ctx, "ecole2", x, horizon, 320, 330, 640, 350, (ctx) => { facade3D(ctx, x - 230, horizon, 460, 200, 110, [250, 232, 195]); briques(ctx, x - 230, horizon - 60, 460, 50, [250, 232, 195], 12); toitLongPan(ctx, x - 230, horizon - 200, 460, 80, 110, [250, 232, 195], [210, 85, 70], 22); });
     else { rrect(ctx, x - 230, horizon - 200, 460, 200, 0, [250, 232, 195], 3); poly(ctx, [[x - 255, horizon - 200], [x + 255, horizon - 200], [x, horizon - 290]], [210, 85, 70], 3); }
     rrect(ctx, x - 85, horizon - 192, 170, 40, 10, [90, 150, 230]);
     ecrireCentre(ctx, tr("ecole"), x, horizon - 171, 30, [255, 255, 255]);
@@ -786,12 +808,9 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "vacances") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(560, scroll, 0.3, W, 300); // la maison de vacances (x = 260 au début)
-    if (RELIEF.on) enCache(ctx, "vacances", x, horizon, 250, 270, 520, 290, (ctx) => {
+    if (RELIEF.on) enCache(ctx, "vacances2", x, horizon, 250, 290, 520, 310, (ctx) => {
       facade3D(ctx, x - 170, horizon, 340, 170, 120, [252, 248, 235]);
-      const dx = 120 * PROF.dx, dy = 120 * PROF.dy; // un toit à quatre pans, vu un peu de côté
-      poly(ctx, [[x - 195, horizon - 166], [x + 195, horizon - 166], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 2);
-      poly(ctx, [[x + 195, horizon - 166], [x + 195 + dx, horizon - 166 + dy], [x + 150 + dx * 0.6, horizon - 235 + dy * 0.6], [x + 150, horizon - 235]], fonce([215, 110, 70], 0.8), 2);
-      for (let k = 1; k < 4; k++) trait(ctx, [x - 195 + k * 11, horizon - 166 - k * 17], [x + 195 - k * 11, horizon - 166 - k * 17], 1.5, fonce([215, 110, 70], 0.85));
+      toitLongPan(ctx, x - 170, horizon - 170, 340, 70, 120, [252, 248, 235], [215, 110, 70], 24, true); // un toit à quatre pans
       for (const wx of [-125, 65]) fenetre3D(ctx, x + wx, horizon - 140, 60, 55, { volets: [70, 140, 220] });
       porte3D(ctx, x - 30, horizon, 60, 85, [70, 140, 220]);
     });
@@ -815,10 +834,11 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "jardin") {
     collines(ctx, W, horizon, scroll);
     const x = boucle(470, scroll, 0.3, W, 300); // la maison de la famille
-    if (RELIEF.on) enCache(ctx, "maisonJardin", x, horizon, 240, 330, 480, 350, (ctx) => {
-      facade3D(ctx, x - 150, horizon, 300, 190, 130, [250, 225, 190]); pignon3D(ctx, x - 150, horizon - 190, 300, 90, 130, [250, 225, 190], [180, 80, 70]);
-      cheminee3D(ctx, x + 84, horizon - 222, [190, 110, 90]); // posée sur le pan du toit
-      fenetre3D(ctx, x - 22, horizon - 260, 44, 36, { simple: true }); // la petite fenêtre du grenier
+    if (RELIEF.on) enCache(ctx, "maisonJardin2", x, horizon, 240, 380, 480, 400, (ctx) => {
+      facade3D(ctx, x - 150, horizon, 300, 190, 130, [250, 225, 190]);
+      const pt = toitLongPan(ctx, x - 150, horizon - 190, 300, 95, 130, [250, 225, 190], [200, 85, 70]);
+      const [cx, cy] = pt(0.74, 0.62); cheminee3D(ctx, cx, cy, [190, 110, 90]); // posée sur le pan du toit
+      const [lx, ly] = pt(0.3, 0.35); rrect(ctx, lx - 2, ly - 30, 40, 30, 3, [240, 240, 236], 2); rrect(ctx, lx + 3, ly - 25, 30, 20, 2, VITRE); // une fenêtre de toit
       for (const wx of [-110, 55]) fenetre3D(ctx, x + wx, horizon - 160, 55, 50, { volets: [110, 160, 120] });
       porte3D(ctx, x - 30, horizon, 60, 90, [130, 80, 55]);
     });
@@ -848,7 +868,7 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "pms") { // la société PMS
     const x = boucle(600, scroll, 0.3, W, 300);
     if (RELIEF.on) enCache(ctx, "pms" + (nuit ? "n" : ""), x, horizon, 330, 240, 700, 260, (ctx) => {
-      facade3D(ctx, x + 70, horizon, 230, 150, 90, [200, 205, 215]); pignon3D(ctx, x + 70, horizon - 150, 230, 50, 90, [200, 205, 215], [150, 160, 180], 10); // l'atelier
+      facade3D(ctx, x + 70, horizon, 230, 150, 90, [200, 205, 215]); toitLongPan(ctx, x + 70, horizon - 150, 230, 50, 90, [200, 205, 215], [150, 160, 180], 10); // l'atelier
       rrect(ctx, x + 120, horizon - 105, 130, 105, 4, [170, 175, 185], 2); for (let k = 1; k < 5; k++) trait(ctx, [x + 120, horizon - 105 + k * 21], [x + 250, horizon - 105 + k * 21], 2, [140, 145, 155]);
       facade3D(ctx, x - 260, horizon, 330, 200, 70, [225, 230, 240], true); // les bureaux
       for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) fenetre3D(ctx, x - 240 + c * 78, horizon - 185 + r * 55, 58, 36, { simple: true, nuit });
@@ -890,14 +910,14 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   else if (nom === "ferme") {
     collines(ctx, W, horizon, scroll, [170, 215, 100], [145, 200, 85], false);
     const x = boucle(560, scroll, 0.3, W, 300); // la grange rouge et le silo
-    if (RELIEF.on) enCache(ctx, "ferme", x, horizon, 220, 310, 500, 330, (ctx) => {
+    if (RELIEF.on) enCache(ctx, "ferme2", x, horizon, 220, 310, 500, 330, (ctx) => {
       facade3D(ctx, x + 160, horizon, 70, 230, 40, [200, 205, 215]); ovale(ctx, x + 160, horizon - 262, 70 + 40 * PROF.dx, 64, [170, 175, 190], 2); // le silo
       for (let k = 1; k < 7; k++) trait(ctx, [x + 160, horizon - k * 32], [x + 230, horizon - k * 32], 1.5, [175, 180, 192]);
       facade3D(ctx, x - 140, horizon, 280, 170, 150, [210, 70, 60]); bardage(ctx, x - 140, horizon - 170, 280, 160, [210, 70, 60]);
-      pignon3D(ctx, x - 140, horizon - 170, 280, 80, 150, [205, 68, 58], [120, 60, 55]);
+      toitLongPan(ctx, x - 140, horizon - 170, 280, 80, 150, [205, 68, 58], [120, 60, 55], 18);
       rrect(ctx, x - 54, horizon - 114, 108, 114, 4, [245, 235, 220], 2); rrect(ctx, x - 50, horizon - 110, 100, 110, 3, [190, 60, 52], 2);
       trait(ctx, [x - 46, horizon - 106], [x + 46, horizon - 4], 6, [245, 235, 220]); trait(ctx, [x + 46, horizon - 106], [x - 46, horizon - 4], 6, [245, 235, 220]);
-      fenetre3D(ctx, x - 22, horizon - 196, 44, 30, { simple: true, cadre: [245, 235, 220] });
+      fenetre3D(ctx, x - 22, horizon - 156, 44, 30, { simple: true, cadre: [245, 235, 220] }); // la lucarne à foin
     });
     else {
       rrect(ctx, x - 140, horizon - 170, 280, 170, 0, [210, 70, 60], 3);

@@ -110,7 +110,7 @@ const DECORS_EXTRA = {
     fond(ctx, W, H, hz, scroll, t) {
       collines(ctx, W, hz, scroll);
       const x = boucle(860, scroll, 0.3, W, 300);
-      if (RELIEF.on) enCache(ctx, "gare", x, hz, 270, 240, 540, 260, (ctx) => { facade3D(ctx, x - 200, hz, 400, 150, 90, [235, 215, 180]); briques(ctx, x - 200, hz - 150, 400, 140, [235, 215, 180], 13); pignon3D(ctx, x - 200, hz - 150, 400, 50, 90, [235, 215, 180], [180, 80, 70], 18); });
+      if (RELIEF.on) enCache(ctx, "gare", x, hz, 270, 240, 540, 260, (ctx) => { facade3D(ctx, x - 200, hz, 400, 150, 90, [235, 215, 180]); briques(ctx, x - 200, hz - 150, 400, 140, [235, 215, 180], 13); toitLongPan(ctx, x - 200, hz - 150, 400, 50, 90, [235, 215, 180], [180, 80, 70], 18); });
       else { rrect(ctx, x - 200, hz - 150, 400, 150, 0, [235, 215, 180], 3); poly(ctx, [[x - 230, hz - 150], [x + 230, hz - 150], [x + 190, hz - 200], [x - 190, hz - 200]], [180, 80, 70], 3); }
       rond(ctx, x, hz - 175, 20, [255, 255, 255], 3); trait(ctx, [x, hz - 175], [x, hz - 188], 3, CONTOUR); trait(ctx, [x, hz - 175], [x + 9, hz - 175], 3, CONTOUR);
       for (const dx of [-150, -60, 60, 150]) rrect(ctx, x + dx - 26, hz - 120, 52, 70, 6, VITRE, 3);
