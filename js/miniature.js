@@ -72,7 +72,7 @@ function dessineZoneMiniature(ctx, h, mini, zx, zy, zw, zh, t, colHeros, kind = 
 }
 function dessineCarte(ctx, h, x, y, w, hh, t, options = {}) {
   const erreur = !!h.erreur, mini = erreur ? null : options.mini !== undefined ? options.mini : miniatureDe(h);
-  rrect(ctx, x, y + 8, w, hh, 24, [200, 170, 110]);
+  rrect(ctx, x, y + 8, w, hh, 24, STYLE_DESSIN.justin ? [140, 170, 210] : [200, 170, 110]);
   rrect(ctx, x, y, w, hh, 24, erreur ? [255, 235, 235] : [255, 255, 255]);
   const camion = camionDe(h), colHeros = erreur ? [220, 90, 90] : COULEURS[camion.col];
   const col = (mini && mini.bande && COULEURS_BANDE[mini.bande]) || colHeros;
@@ -80,7 +80,7 @@ function dessineCarte(ctx, h, x, y, w, hh, t, options = {}) {
   if (!erreur) dessineZoneMiniature(ctx, h, mini, x + ZONE_MINI[0], y + ZONE_MINI[1], ZONE_MINI[2], hh - ZONE_MINI[1], t, colHeros);
   rrect(ctx, x, y, w, 22, 0, col);
   ctx.restore();
-  rrect(ctx, x, y, w, hh, 24, null, 4);
+  rrect(ctx, x, y, w, hh, 24, null, STYLE_DESSIN.justin ? 3 : 4, STYLE_DESSIN.justin ? [38, 98, 182] : CONTOUR);
   const lignes = coupe(ctx, titreDe(h), 26, w - 190).slice(0, 4), y0 = y + 40 + (4 - lignes.length) * 16;
   lignes.forEach((l, i) => ecrit(ctx, l, 26, CONTOUR, [x + 165, y0 + i * 34], null, true));
   if (erreur) ecrit(ctx, tr("illisible"), 20, [200, 40, 40], [x + 165, y + hh - 36], null, true);

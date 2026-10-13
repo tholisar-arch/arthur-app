@@ -40,7 +40,19 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
-## Style « Peppa Pig » (le style actuel)
+## Style « Justin Time » (le style actuel, toute l'appli)
+- `STYLE_DESSIN = { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true }`.
+- Décors peints : `decorReel` (ciel en dégradé, brume, relief des collines et des arbres, bâtiments en 3D façon dessin,
+  lumière chaude, bas d'image plus sombre) + `texturePeinte()` (motif 256 px en cache : grandes taches très douces et
+  coups de pinceau, sans couture). Traits fins et doux : `bordure` (branche justin : la couleur de la forme en plus
+  foncé, 0,6 × l'épaisseur). Personnages : visages Justin (voir plus bas). Objets : `ombrage`.
+- Interface (app.js) : fond « ciel du matin » en dégradé avec des étincelles qui scintillent (`fond`), boutons bombés et
+  brillants avec ombre douce (`Bouton.dessine`), titres façon logo Justin Time (jaune-orangé dégradé cerné de bleu
+  `#1d4f9c` : `ecrit` le fait tout seul pour un texte jaune avec contour), écran de l'histoire dans un cadre bleu
+  profond à liseré doré aux coins arrondis, boîte de texte à liseré bleu, cartes d'histoires à liseré bleu, collines
+  peintes en bas de l'accueil. La boucle coupe `decorReel` et `ombrage` si une image dépasse ~16 ms.
+
+## Style « Peppa Pig » (ancien style, `peppa: true, decorReel: false`)
 - `STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false }` (dessins.js), d'après l'épisode
   « Peppa Pig and George Pig's Dino Adventures » : couleurs toutes plates, chaque forme cernée d'un trait de SA
   couleur en plus foncé, jamais noir (`bordure` : `fonce(fill, 0.62)`, et `cerne` des personnages pareil). Ciel bleu

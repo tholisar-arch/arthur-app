@@ -14,6 +14,13 @@ function ecrit(ctx, txt, taille, col, pos, contour = null, gauche = false) {
   ctx.font = police(taille);
   ctx.textAlign = gauche ? "left" : "center";
   ctx.textBaseline = gauche ? "top" : "middle";
+  if (STYLE_DESSIN.justin && contour && col[0] > 240 && col[1] > 180 && col[2] < 120) { // un titre : façon logo de Justin Time
+    ctx.lineWidth = Math.max(7, taille * 0.24); ctx.lineJoin = "round"; ctx.strokeStyle = "#1d4f9c"; ctx.strokeText(txt, pos[0], pos[1] + 3);
+    ctx.strokeText(txt, pos[0], pos[1]);
+    const y0 = gauche ? pos[1] : pos[1] - taille / 2, g = ctx.createLinearGradient(0, y0, 0, y0 + taille);
+    g.addColorStop(0, "#fff38a"); g.addColorStop(0.5, "#ffc928"); g.addColorStop(1, "#ff8d1e"); ctx.fillStyle = g; ctx.fillText(txt, pos[0], pos[1]);
+    return;
+  }
   if (contour) { ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.strokeStyle = css(contour); ctx.strokeText(txt, pos[0], pos[1]); }
   ctx.fillStyle = css(col);
   ctx.fillText(txt, pos[0], pos[1]);
@@ -36,8 +43,17 @@ class Bouton {
   dessine(ctx, t = 0, pulse = false) {
     let [x, y, w, h] = this.r;
     if (pulse) { const k = 0.04 * Math.sin(t * 5); x -= (w * k) / 2; y -= (h * k) / 2; w *= 1 + k; h *= 1 + k; }
+    if (STYLE_DESSIN.justin && ctx.createLinearGradient) { // façon Justin Time : un bouton bombé et brillant
+      const c = this.col, r = Math.min(26, h / 2);
+      ctx.save(); ctx.shadowColor = "rgba(25,45,90,0.3)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r); const g = ctx.createLinearGradient(0, y, 0, y + h);
+      g.addColorStop(0, css(clair(c, 0.28))); g.addColorStop(0.55, css(c)); g.addColorStop(1, css(fonce(c, 0.8))); ctx.fillStyle = g; ctx.fill(); ctx.restore();
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.lineWidth = 3; ctx.strokeStyle = css(fonce(c, 0.55)); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(x + 8, y + 4, w - 16, h * 0.38, Math.min(18, h * 0.19)); ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fill(); // le reflet
+    } else {
     rrect(ctx, x, y + 5, w, h, 24, fonce(this.col, 0.78)); // une ombre douce, pas de trait noir
     rrect(ctx, x, y, w, h, 24, this.col, 4);
+    }
     ecrit(ctx, typeof this.texte === "function" ? this.texte() : this.texte, this.taille, [255, 255, 255], [x + w / 2, y + h / 2], fonce(this.col, 0.5));
   }
   touche(p) { return dans(this.r, p); }
@@ -1072,7 +1088,14 @@ class App {
     }
   }
   fond(ctx) {
-    rrect(ctx, 0, 0, W, H_, 0, FOND); // fond uni, plus sobre
+    if (!STYLE_DESSIN.justin || !ctx.createLinearGradient) { rrect(ctx, 0, 0, W, H_, 0, FOND); return; } // fond uni, plus sobre
+    const g = ctx.createLinearGradient(0, 0, 0, H_); // façon Justin Time : un ciel du matin, du bleu vers le doré
+    g.addColorStop(0, "#9fd2f3"); g.addColorStop(0.55, "#e2f1fb"); g.addColorStop(1, "#ffe3bd"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H_);
+    for (let k = 0; k < 16; k++) { // des petites étincelles magiques qui scintillent
+      const x = (k * 197 + 60) % W, y = (k * 113 + 30) % 560;
+      ctx.globalAlpha = 0.25 + 0.2 * Math.sin(this.t * 1.5 + k); etoile(ctx, x, y, 5 + (k % 3) * 3, [255, 255, 255], this.t * 0.2 + k);
+    }
+    ctx.globalAlpha = 1;
   }
   dessine() {
     const ctx = this.ctx;
@@ -1104,8 +1127,15 @@ class App {
     if (this.charge && !this.histoires.length) ecrit(ctx, tr("aucune"), 30, CONTOUR, [W / 2, 330]);
     if (!this.charge) ecrit(ctx, tr("chargement"), 30, CONTOUR, [W / 2, 330]);
     const pages = Math.max(1, Math.ceil(this.histoires.length / 6));
+    if (STYLE_DESSIN.justin) { // des collines peintes, en deux plans, et un chemin
+      const avant = RELIEF.on; RELIEF.on = true;
+      ovale(ctx, 500, 600, 1100, 240, [125, 190, 95], 2); ovale(ctx, -300, 585, W + 500, 280, [150, 210, 100], 3);
+      rrect(ctx, 0, 662, W, 34, 0, [232, 212, 168]); RELIEF.on = avant;
+      ctx.fillStyle = "rgba(0,0,0,0.06)"; ctx.fillRect(0, 662, W, 4);
+    } else {
     ovale(ctx, -200, 590, W + 400, 260, [150, 210, 95], 4); // une colline verte et un chemin beige
     rrect(ctx, 0, 662, W, 34, 0, [228, 210, 165]);
+    }
     const defile = ["tractopelle", "licorne", "benne", "dino", "toupie", "dragon", "pompier", "trex", "bulldozer", "licorne", "grue", "stego"], pas = 190;
     defile.forEach((kind, k) => {
       const x = mod(k * pas + this.t * 70, defile.length * pas) - 150;
@@ -1177,14 +1207,22 @@ class App {
       m.dessineParticules(vc);
       ecrit(vc, tr("fin"), 110, [255, 220, 60], [VW / 2, 120], [200, 70, 60]);
     }
+    const J = STYLE_DESSIN.justin;
+    if (J) { // façon Justin Time : un cadre bleu profond, liseré doré, coins arrondis
+      ctx.save(); ctx.shadowColor = "rgba(20,40,80,0.32)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6; rrect(ctx, VX - 11, VY - 11, VW + 22, VH + 22, 26, [38, 98, 182]); ctx.restore();
+      rrect(ctx, VX - 5, VY - 5, VW + 10, VH + 10, 19, [255, 204, 60]);
+      ctx.save(); ctx.beginPath(); ctx.roundRect(VX, VY, VW, VH, 15); ctx.clip();
+    } else {
     rrect(ctx, VX - 8, VY - 2, VW + 16, VH + 16, 22, [225, 210, 185]); // ombre douce
     rrect(ctx, VX - 6, VY - 6, VW + 12, VH + 12, 20, [255, 255, 255]); // cadre blanc tout simple
+    }
     ctx.drawImage(this.video, VX, VY);
     if (this.fondu > 0) { // l'ancienne scène s'efface en douceur
       const k = this.fondu / DUREE_FONDU;
       ctx.globalAlpha = k * k * (3 - 2 * k); ctx.drawImage(this.ancienne, VX, VY); ctx.globalAlpha = 1;
     }
     if (this.ouverture > 0) { ctx.globalAlpha = this.ouverture / 0.6; rrect(ctx, VX, VY, VW, VH, 0, [255, 255, 255]); ctx.globalAlpha = 1; }
+    if (J) ctx.restore();
     if (this.fin) { this.bEncore.dessine(ctx, t, true); this.bAutres.dessine(ctx); }
     else this.boutonsNav().forEach((r, k) => { // discrets, pour les parents
       rrect(ctx, ...r, 22, [255, 255, 255], 2, [215, 205, 190]);
@@ -1206,7 +1244,10 @@ class App {
       for (const c of this.histoire.chapitres.slice(1)) trait(ctx, [bx0 + (bw0 * c.debut) / n, 24], [bx0 + (bw0 * c.debut) / n, 48], 3, [235, 130, 40]);
     }
     const bx = VX, by = VY + VH + 16, bw = VW, bh = H_ - VY - VH - 26;
-    rrect(ctx, bx, by, bw, bh, 18, [255, 255, 255], 3);
+    if (STYLE_DESSIN.justin) { // la boîte du texte : blanche, liseré bleu, ombre douce
+      ctx.save(); ctx.shadowColor = "rgba(25,45,90,0.22)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; rrect(ctx, bx, by, bw, bh, 18, [255, 255, 255]); ctx.restore();
+      rrect(ctx, bx, by, bw, bh, 18, null, 3, [38, 98, 182]);
+    } else rrect(ctx, bx, by, bw, bh, 18, [255, 255, 255], 3);
     if (this.fin) return ecrit(ctx, tr("recommence", { prenom: this.prenom }), 26, CONTOUR, [bx + bw / 2, by + bh / 2]);
     if (this.carte) return ecrit(ctx, this.phraseChapitre(this.carte.n - 1), 26, [235, 130, 40], [bx + bw / 2, by + bh / 2]);
     const sc = this.scene, consigne = (sc.attendClic() || sc.p !== null) && sc.fait < sc.n ? sc.consigne : "";
@@ -1274,7 +1315,7 @@ async function demarre() {
       app.maj(dt);
       const t0 = performance.now(); app.dessine(); erreurs = 0;
       // appareil un peu lent (vieille tablette) : on repasse au dessin tout plat pour garder une animation fluide
-      if ((RELIEF.on || STYLE_DESSIN.decorReel || STYLE_DESSIN.ombrage) && !document.hidden) { lent.push(performance.now() - t0); if (lent.length > 90) { lent.sort((x, y) => x - y); if (lent[45] > 13) { RELIEF.on = false; STYLE_DESSIN.decorReel = false; STYLE_DESSIN.ombrage = false; } lent = []; } }
+      if ((RELIEF.on || STYLE_DESSIN.decorReel || STYLE_DESSIN.ombrage) && !document.hidden) { lent.push(performance.now() - t0); if (lent.length > 90) { lent.sort((x, y) => x - y); if (lent[45] > 16) { RELIEF.on = false; STYLE_DESSIN.decorReel = false; STYLE_DESSIN.ombrage = false; } lent = []; } }
     }
     catch (e) { // un souci dans un écran : on ne bloque jamais l'enfant, on passe à la suite
       console.error(e);

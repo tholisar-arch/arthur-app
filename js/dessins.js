@@ -40,7 +40,9 @@ const TRAIT = 0.62;
 // justin : les personnages façon « Justin Time » (Justin et ses rêves) — visage de trois quarts face, grands yeux ovales
 // avec un iris coloré et un reflet, petit nez rond, joues rosées, bouche au milieu, ombre douce sur le côté du visage.
 // ombrage : un modelé doux de dessin animé sur les formes (un peu plus clair en haut, un peu plus foncé en bas).
-const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true };
+// Le style actuel : « Justin Time » partout — décors peints (relief, lumière, texture de peinture), traits fins et doux,
+// personnages Justin, modelé doux sur les objets. (peppa: true = l'ancien style Peppa Pig, tout plat et cerné.)
+const STYLE_DESSIN = { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (STYLE_DESSIN.ombrage && !RELIEF.on) { // modelé doux de dessin animé (les fonds immenses et les tout petits détails restent unis)
@@ -61,6 +63,9 @@ function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : co
   return g;
 }
 function bordure(ctx, fill, bord, colBord) {
+  if (STYLE_DESSIN.justin && !STYLE_DESSIN.peppa && colBord === CONTOUR && fill) { // façon Justin Time : un trait fin, de la couleur de la forme en plus foncé
+    ctx.lineWidth = Math.max(1, bord * TRAIT * 0.6); ctx.strokeStyle = css(fonce(fill, 0.68)); ctx.lineJoin = "round"; ctx.stroke(); return;
+  }
   if (STYLE_DESSIN.peppa && colBord === CONTOUR && fill) {
     ctx.lineWidth = Math.max(1.2, bord * TRAIT * 1.15); ctx.strokeStyle = css(fonce(fill, 0.62)); ctx.lineJoin = "round"; ctx.stroke(); return;
   }
@@ -408,7 +413,7 @@ const SOLS = {
   foret: [[95, 165, 80], [190, 155, 110]], montagne: [[140, 195, 110], [185, 178, 168]],
   ferme: [[140, 205, 90], [215, 185, 135]], port: [[205, 195, 175], [175, 165, 155]],
 };
-if (STYLE_DESSIN.peppa) { // comme l'épisode des dinosaures de Peppa : ciel bleu, prairie verte, chemin de sable
+if (STYLE_DESSIN.peppa || STYLE_DESSIN.justin) { // le pays des dinosaures : ciel bleu, prairie verte : ciel bleu, prairie verte, chemin de sable
   CIELS.dinosaures = [[105, 185, 245], [215, 240, 255]];
   SOLS.dinosaures = [[135, 205, 85], [215, 185, 125]];
 }
@@ -630,6 +635,25 @@ function bardage(ctx, x, y, w, h, col, pas = 16) { // des planches verticales (g
 }
 function cheminee3D(ctx, x, y, col) { facade3D(ctx, x, y, 26, 44, 16, col, true); for (let k = 0; k < 3; k++) { ctx.globalAlpha = 0.3; rond(ctx, x + 18 + k * 6, y - 64 - k * 16, 8 + k * 3, [240, 240, 240]); ctx.globalAlpha = 1; } }
 
+// Une légère texture de peinture (taches claires et sombres, coups de pinceau), comme les fonds peints de Justin Time
+let MOTIF_PEINT = null;
+function texturePeinte(ctx, W, H) {
+  if (!ctx.createPattern || typeof document === "undefined") return;
+  if (!MOTIF_PEINT) {
+    const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d"), r = hasard(99);
+    for (let k = 0; k < 160; k++) { // de grandes taches très douces (la peinture qui n'est pas tout à fait égale)
+      const x = r() * 256, y = r() * 256, rr = 8 + r() * 18;
+      for (const [dx, dy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) { // (le motif se raccorde sans couture)
+        g.fillStyle = k % 2 ? `rgba(255,255,255,${(0.012 + r() * 0.016).toFixed(3)})` : `rgba(70,50,30,${(0.008 + r() * 0.012).toFixed(3)})`;
+        g.beginPath(); g.ellipse(x + dx, y + dy, rr * 1.6, rr, 0.3, 0, 2 * PI); g.fill();
+      }
+    }
+    g.lineCap = "round";
+    for (let k = 0; k < 40; k++) { const x = r() * 256, y = r() * 256; g.strokeStyle = "rgba(255,255,255,0.02)"; g.lineWidth = 3 + r() * 5; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 20, y - 6, x + 40 + r() * 30, y + r() * 8); g.stroke(); }
+    MOTIF_PEINT = ctx.createPattern(c, "repeat");
+  }
+  if (MOTIF_PEINT) { ctx.save(); ctx.fillStyle = MOTIF_PEINT; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+}
 function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
   const avant = RELIEF.on;
   RELIEF.on = avant || !!STYLE_DESSIN.decorReel;
@@ -644,6 +668,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       const v = ctx.createLinearGradient(0, G - 40, 0, H); // le bas de l'image un peu plus sombre : de la profondeur
       if (v && v.addColorStop) { v.addColorStop(0, "rgba(40,50,30,0)"); v.addColorStop(1, dedans ? "rgba(60,40,30,0.10)" : "rgba(40,60,30,0.14)"); ctx.fillStyle = v; ctx.fillRect(0, G - 40, W, H - G + 40); }
     }
+    if (STYLE_DESSIN.justin) texturePeinte(ctx, W, H);
   } finally { RELIEF.on = avant; }
 }
 function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
@@ -951,7 +976,7 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     const x = boucle(k * 230 + 60, scroll, 1.25, W, 120), y = H - 8;
     if (nom === "chantier") { poly(ctx, [[x - 16, y], [x + 16, y], [x, y - 44]], [255, 130, 30]); rrect(ctx, x - 8, y - 26, 16, 7, 0, [255, 255, 255]); }
     else if (nom === "ecole") { trait(ctx, [x, y], [x, y - 40], 2, [90, 90, 100]); ovale(ctx, x - 14, y - 72, 28, 34, [[255, 90, 120], [90, 170, 250], [255, 210, 60]][k % 3]); }
-    else if ((nom === "campagne" || nom === "jardin") && STYLE_DESSIN.peppa) { for (const dx of [-14, 2, 16]) fleurPeppa(ctx, x + dx, y + (dx === 2 ? 0 : -3), [[255, 90, 130], [255, 210, 60], [180, 120, 250], [255, 150, 60]][mod(k + dx, 4)], 0.85); }
+    else if ((nom === "campagne" || nom === "jardin") && (STYLE_DESSIN.peppa || STYLE_DESSIN.justin)) { for (const dx of [-14, 2, 16]) fleurPeppa(ctx, x + dx, y + (dx === 2 ? 0 : -3), [[255, 90, 130], [255, 210, 60], [180, 120, 250], [255, 150, 60]][mod(k + dx, 4)], 0.85); }
     else if (nom === "campagne" || nom === "jardin") {
       for (const dx of [-12, 0, 12]) { trait(ctx, [x + dx, y], [x + dx, y - 22], 3, [60, 140, 60]); rond(ctx, x + dx, y - 24, 7, [[255, 90, 120], [255, 220, 60], [180, 120, 255]][mod(k + dx, 3)]); }
     } else if (nom === "ville") { rrect(ctx, x - 3, y - 70, 6, 70, 0, [80, 80, 90]); rond(ctx, x, y - 74, 10, [255, 240, 150]); }
@@ -1143,7 +1168,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const joie = humeur === "joie", peur = humeur === "peur", peau = st.peau, cheveux = st.cheveux, co = st.coiffure;
   const pts = (l) => l.map(([u, v]) => [tx + u * R, ty + v * R]);
   const tete = (cmds) => cmds.map(([op, ...a]) => [op, ...a.map((n, i) => (i % 2 ? ty + n * R : tx + n * R))]);
-  const cerne = (c) => (STYLE_DESSIN.peppa ? fonce(c, 0.62) : STYLE_DESSIN.bluey ? fonce(c, 0.82) : fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45)))); // la couleur des contours
+  const cerne = (c) => (STYLE_DESSIN.justin && !STYLE_DESSIN.peppa ? fonce(c, 0.7) : STYLE_DESSIN.peppa ? fonce(c, 0.62) : STYLE_DESSIN.bluey ? fonce(c, 0.82) : fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45)))); // la couleur des contours
   const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
   const manche = { teeshirt: 0.45, pull: 1, chemise: 1, debardeur: 0, salopette: 0.45, robe: 0.3 }[st.typeHaut];
   const vers = (a, b, q) => [a[0] + (b[0] - a[0]) * q, a[1] + (b[1] - a[1]) * q];
