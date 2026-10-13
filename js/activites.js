@@ -8,7 +8,8 @@ const INTERIEURS = new Set(["maison", "magasin", "docteur"]); // dedans : le cam
 const AVEC_ENGIN = new Set(["rouler", "trou", "deblayer", "construire", "route", "fenetres", "pont", "arbre", "panne", "laver", "copains", "spectacle", "voler", "feu"]);
 const murInterieur = (ctx, W, horizon, col, scroll) => {
   rrect(ctx, 0, 0, W, horizon + 20, 0, col);
-  for (let x = mod(-scroll * 0.3, 60) - 60; x < W; x += 60) rrect(ctx, x, 0, 22, horizon, 0, clair(col, 0.25));
+  if (!STYLE_DESSIN.peppa || RELIEF.on) for (let x = mod(-scroll * 0.3, 60) - 60; x < W; x += 60) rrect(ctx, x, 0, 22, horizon, 0, clair(col, 0.25));
+  else rrect(ctx, 0, horizon - 150, W, 6, 0, fonce(col, 0.9)); // mur uni, juste une cimaise (comme chez Peppa)
   if (RELIEF.on) { // la pièce en volume : le plafond, et les deux murs de côté qui viennent vers nous
     poly(ctx, [[0, 0], [W, 0], [W - 70, 26], [70, 26]], fonce(col, 0.93));
     poly(ctx, [[0, 0], [70, 26], [70, horizon + 4], [0, horizon + 40]], fonce(col, 0.86));
@@ -22,6 +23,7 @@ const fenetreMur = (ctx, x, y, w, h, nuit, t) => {
   if (nuit) { rond(ctx, x + w * 0.7, y + h * 0.3, 14, [250, 245, 200]); for (let k = 0; k < 5; k++) rond(ctx, x + 10 + k * w / 5, y + 12 + (k % 2) * 20, 2, [255, 255, 220]); }
   else { nuage(ctx, x + 14, y + h * 0.35, 0.5); rond(ctx, x + w - 22, y + 22, 13, [255, 220, 70]); }
   trait(ctx, [x + w / 2, y], [x + w / 2, y + h], 5, [255, 255, 255]); trait(ctx, [x, y + h / 2], [x + w, y + h / 2], 5, [255, 255, 255]);
+  if (STYLE_DESSIN.peppa) rrect(ctx, x - 16, y + h + 6, w + 32, 10, 4, [255, 255, 255], 2.5); // l'appui de fenêtre
 };
 const DECORS_EXTRA = {
   parc: { ciel: [[100, 185, 250], [220, 245, 255]], sol: [[140, 205, 90], [222, 200, 150]],

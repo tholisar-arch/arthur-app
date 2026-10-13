@@ -313,7 +313,7 @@ function ombre(ctx, x, g, largeur, hauteur) { // ombre douce au sol (plus foncé
       return;
     }
   }
-  ctx.fillStyle = "rgba(0,0,0,0.27)"; ctx.fill();
+  ctx.fillStyle = STYLE_DESSIN.peppa ? "rgba(30,50,20,0.16)" : "rgba(0,0,0,0.27)"; ctx.fill();
 }
 
 function dessineVehicule(ctx, kind, col, x, g, t = 0, outil = 0, rot = 0, s = 1, f = 1, dort = false) {
@@ -423,8 +423,45 @@ function etoile(ctx, x, y, r, col, a = 0) {
   poly(ctx, pts, col, 0);
 }
 const boucle = (base, scroll, k, w, marge = 200) => mod(base - scroll * k, w + 2 * marge) - marge;
+const peppaPlat = () => STYLE_DESSIN.peppa && !RELIEF.on;
+// Une fenêtre façon Peppa : gros cadre blanc, vitre bleu ciel, croisillon blanc, appui (et volets si on veut)
+function fenetrePlate(ctx, x, y, w, h, o = {}) {
+  const cadre = o.cadre || [255, 255, 255];
+  if (o.volets) for (const vx of [x - 6 - w * 0.45, x + w + 6]) { rrect(ctx, vx, y - 4, w * 0.45, h + 8, 3, o.volets, 2); for (let k = 1; k < 4; k++) trait(ctx, [vx + 4, y - 4 + k * (h + 8) / 4], [vx + w * 0.45 - 4, y - 4 + k * (h + 8) / 4], 1.5, fonce(o.volets, 0.8)); }
+  rrect(ctx, x - 5, y - 5, w + 10, h + 10, 5, cadre, 2.5);
+  rrect(ctx, x, y, w, h, 2, o.nuit ? [255, 225, 120] : [165, 215, 250], 1.5);
+  const ep = Math.max(2.5, w * 0.07);
+  trait(ctx, [x + w / 2, y], [x + w / 2, y + h], ep, cadre); trait(ctx, [x, y + h / 2], [x + w, y + h / 2], ep, cadre);
+  rrect(ctx, x - 9, y + h + 3, w + 18, 7, 3, cadre, 2); // l'appui de fenêtre
+}
+// Une porte façon Peppa : panneaux, petite vitre ronde, poignée dorée, marche
+function portePlate(ctx, x, yBas, w, h, col) {
+  rrect(ctx, x - 6, yBas - 6, w + 12, 8, 3, [200, 200, 205], 2); // la marche
+  rrect(ctx, x, yBas - h, w, h - 4, Math.min(10, w * 0.2), col, 3);
+  rrect(ctx, x + w * 0.18, yBas - h * 0.48, w * 0.64, h * 0.34, 3, clair(col, 0.12), 1.5);
+  rond(ctx, x + w / 2, yBas - h * 0.72, Math.min(w, h) * 0.14, [165, 215, 250], 1.5);
+  rond(ctx, x + w * 0.8, yBas - h * 0.5, Math.max(3, w * 0.06), [250, 205, 70], 1.5);
+}
+// Une fleur façon Peppa : cinq pétales ronds autour d'un cœur jaune, une tige et une feuille
+function fleurPeppa(ctx, x, y, c, s = 1) {
+  trait(ctx, [x, y], [x, y - 26 * s], 3 * s, [70, 150, 60]);
+  ovale(ctx, x, y - 14 * s, 12 * s, 6 * s, [95, 175, 70], 1.2);
+  for (let k = 0; k < 5; k++) { const a = -PI / 2 + k * 2 * PI / 5; rond(ctx, x + 6.5 * s * Math.cos(a), y - 30 * s + 6.5 * s * Math.sin(a), 5 * s, c, 1.2); }
+  rond(ctx, x, y - 30 * s, 4 * s, [255, 215, 60], 1.2);
+}
+// Une flaque de boue (on adore y sauter !)
+function flaque(ctx, x, y, w = 130) {
+  ovale(ctx, x - w / 2, y - w * 0.09, w, w * 0.18, [150, 100, 60], 2.5);
+  ovale(ctx, x - w * 0.32, y - w * 0.07, w * 0.42, w * 0.06, [175, 125, 80]);
+}
 
 function arbre(ctx, x, g, s = 1, col = [95, 175, 70]) { // arbre : tronc et bouquet de feuillage
+  if (STYLE_DESSIN.peppa && !RELIEF.on) {
+    poly(ctx, [[x - 6 * s, g], [x + 6 * s, g], [x + 3.5 * s, g - 78 * s], [x - 3.5 * s, g - 78 * s]], [160, 110, 70], 2.5);
+    ovale(ctx, x - 42 * s, g - 150 * s, 84 * s, 96 * s, col, 3);
+    if (s > 0.6 && Math.round(x) % 3 === 0) for (const [dx, dy] of [[-18, -118], [14, -128], [8, -92], [-22, -86]]) rond(ctx, x + dx * s, g + dy * s, 5 * s, [230, 70, 60], 1.2);
+    return;
+  }
   if (!RELIEF.on) { rrect(ctx, x - 5 * s, g - 72 * s, 10 * s, 72 * s, 3 * s, [150, 105, 65], 3); rond(ctx, x, g - 98 * s, 40 * s, col, 4); return; }
   poly(ctx, [[x - 7 * s, g], [x + 7 * s, g], [x + 4 * s, g - 74 * s], [x - 4 * s, g - 74 * s]], [150, 105, 65], 3);
   trait(ctx, [x, g - 62 * s], [x + 14 * s, g - 80 * s], Math.max(1, 4 * s), [140, 98, 60], "round");
@@ -457,6 +494,7 @@ function collines(ctx, W, horizon, scroll, claire = [150, 210, 95], foncee = [12
       rrect(ctx, hx + 9, hy - 25, 9, 9, 1, VITRE);
     }
   }
+  if (peppaPlat()) for (const dx of [-260, -200, 230, 300]) arbre(ctx, x1 + dx, horizon - 128 + Math.abs(dx) * 0.08, 0.26, fonce(foncee, 0.85));
   ovale(ctx, x2 - 500, horizon - 120, 1000, 300, claire, 4);
   for (const dx of [-150, 170]) arbre(ctx, x2 + dx, horizon - 112 + Math.abs(dx) * 0.06, 0.38);
   ovale(ctx, x3 - 400, horizon - 75, 800, 230, foncee, 4);
@@ -604,6 +642,12 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
         porte3D(ctx, x + 40, horizon - 2, 30, 40, fonce(c, 0.7));
         rrect(ctx, x + 30, horizon - 54, 50, 8, 2, fonce(c, 0.6), 2); // l'auvent au-dessus de la porte
       });
+      else if (STYLE_DESSIN.peppa) enCache(ctx, `villeP${k}${nuit ? "n" : ""}`, x, horizon, 14, h + 20, 150, h + 30, (ctx) => {
+        rrect(ctx, x, horizon - h, 120, h, 0, c, 3);
+        rrect(ctx, x - 6, horizon - h - 10, 132, 12, 3, fonce(c, 0.8), 2.5); // la corniche du toit
+        for (let yy = horizon - h + 20; yy < horizon - 80; yy += 44) for (const xx of [x + 18, x + 72]) fenetrePlate(ctx, xx, yy, 30, 28, { nuit: nuit && (xx - x + yy + k) % 3 !== 0 });
+        portePlate(ctx, x + 42, horizon, 36, 50, fonce(c, 0.62));
+      });
       else {
         rrect(ctx, x, horizon - h, 120, h, 0, c);
         for (let yy = horizon - h + 15; yy < horizon - 25; yy += 32)
@@ -647,10 +691,10 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     ecrireCentre(ctx, tr("ecole"), x, horizon - 171, 30, [255, 255, 255]);
     const vitres = [[255, 210, 60], [255, 120, 150], [120, 200, 120], [160, 120, 230]];
     [-190, -120, 70, 140].forEach((wx, k) => {
-      if (RELIEF.on) fenetre3D(ctx, x + wx, horizon - 135, 50, 50, { simple: true }); else rrect(ctx, x + wx, horizon - 135, 50, 50, 4, VITRE, 3);
-      rond(ctx, x + wx + 25, horizon - 110, 11, vitres[k]);
+      if (RELIEF.on) fenetre3D(ctx, x + wx, horizon - 135, 50, 50, { simple: true }); else if (STYLE_DESSIN.peppa) fenetrePlate(ctx, x + wx, horizon - 135, 50, 50, { cadre: vitres[k] }); else rrect(ctx, x + wx, horizon - 135, 50, 50, 4, VITRE, 3);
+      if (!peppaPlat()) rond(ctx, x + wx + 25, horizon - 110, 11, vitres[k]);
     });
-    if (RELIEF.on) porte3D(ctx, x - 35, horizon, 70, 80, [150, 95, 60], { rond: true }); else rrect(ctx, x - 35, horizon - 80, 70, 80, 8, [150, 95, 60], 3);
+    if (RELIEF.on) porte3D(ctx, x - 35, horizon, 70, 80, [150, 95, 60], { rond: true }); else if (STYLE_DESSIN.peppa) portePlate(ctx, x - 35, horizon, 70, 82, [90, 150, 230]); else rrect(ctx, x - 35, horizon - 80, 70, 80, 8, [150, 95, 60], 3);
     for (let k = 0; k < 3; k++) arbre(ctx, boucle(k * 520 + 60, scroll, 0.4, W), horizon + 5, 0.9);
     const tx = boucle(940, scroll, 0.35, W, 300);
     trait(ctx, [tx, horizon], [tx, horizon - 110], 6, [230, 80, 80]);
@@ -673,12 +717,15 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     else {
       rrect(ctx, x - 170, horizon - 170, 340, 170, 0, [252, 248, 235], 3);
       poly(ctx, [[x - 195, horizon - 170], [x + 195, horizon - 170], [x + 150, horizon - 235], [x - 150, horizon - 235]], [215, 110, 70], 3);
+      if (STYLE_DESSIN.peppa) { for (const wx of [-125, 65]) fenetrePlate(ctx, x + wx + 4, horizon - 138, 52, 50, { volets: [70, 140, 220] }); portePlate(ctx, x - 30, horizon - 12, 60, 80, [70, 140, 220]); }
+      else {
       for (const wx of [-125, 65]) {
         rrect(ctx, x + wx, horizon - 140, 60, 55, 4, VITRE, 3);
         rrect(ctx, x + wx - 22, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
         rrect(ctx, x + wx + 62, horizon - 140, 20, 55, 3, [70, 140, 220], 2);
       }
       rrect(ctx, x - 30, horizon - 85, 60, 85, 8, [70, 140, 220], 3);
+      }
     }
     for (let k = 0; k < 4; k++) palmier(ctx, boucle(k * 320 + 520, scroll, 0.4, W), horizon + 5, 0.85);
     rrect(ctx, x - 200, horizon - 12, 400, 12, 0, [200, 120, 90]); // bacs de fleurs
@@ -695,11 +742,20 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       porte3D(ctx, x - 30, horizon, 60, 90, [130, 80, 55]);
     });
     else {
+      if (STYLE_DESSIN.peppa) {
+        rrect(ctx, x + 70, horizon - 290, 32, 70, 2, [200, 110, 90], 3); rrect(ctx, x + 64, horizon - 298, 44, 12, 3, [180, 95, 80], 2.5); // la cheminée
+        rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [252, 222, 150], 3);
+        poly(ctx, [[x - 178, horizon - 186], [x + 178, horizon - 186], [x, horizon - 284]], [215, 85, 65], 3);
+        rond(ctx, x, horizon - 222, 17, [255, 255, 255], 2.5); rond(ctx, x, horizon - 222, 12, [165, 215, 250], 1.5); // le petit œil-de-bœuf
+        for (const wx of [-115, 58]) fenetrePlate(ctx, x + wx, horizon - 158, 56, 50);
+        portePlate(ctx, x - 30, horizon, 60, 92, [230, 90, 70]);
+      } else {
       rrect(ctx, x - 150, horizon - 190, 300, 190, 0, [250, 225, 190], 3);
       poly(ctx, [[x - 175, horizon - 190], [x + 175, horizon - 190], [x, horizon - 280]], [180, 80, 70], 3);
       for (const wx of [-110, 55]) rrect(ctx, x + wx, horizon - 160, 55, 50, 4, VITRE, 3);
       rrect(ctx, x - 30, horizon - 90, 60, 90, 8, [130, 80, 55], 3);
       rond(ctx, x + 18, horizon - 45, 4, [250, 210, 80]);
+      }
     }
     for (let k = 0; k < 3; k++) arbre(ctx, boucle(k * 420 + 120, scroll, 0.4, W), horizon + 5, 1, [80, 170, 80]);
     for (let k = 0; k < 40; k++) { // la palissade du jardin
@@ -844,11 +900,13 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       if (k % 3 === 0) rond(ctx, x, horizon + 25 + r2() * (G - horizon + 30), 3 + r2.int(0, 3), [180, 145, 105]);
     }
   }
+  if (peppaPlat() && ["campagne", "ferme", "foret", "jardin", "parc"].includes(nom)) for (const bx of [330, 1180]) flaque(ctx, boucle(bx, scroll, 1, W, 200), G + 34, 150);
   if (DECORS_EXTRA[nom] && DECORS_EXTRA[nom].devant) DECORS_EXTRA[nom].devant(ctx, W, H, horizon, scroll, t, nuit, G);
   for (let k = 0; k < 6; k++) {
     const x = boucle(k * 230 + 60, scroll, 1.25, W, 120), y = H - 8;
     if (nom === "chantier") { poly(ctx, [[x - 16, y], [x + 16, y], [x, y - 44]], [255, 130, 30]); rrect(ctx, x - 8, y - 26, 16, 7, 0, [255, 255, 255]); }
     else if (nom === "ecole") { trait(ctx, [x, y], [x, y - 40], 2, [90, 90, 100]); ovale(ctx, x - 14, y - 72, 28, 34, [[255, 90, 120], [90, 170, 250], [255, 210, 60]][k % 3]); }
+    else if ((nom === "campagne" || nom === "jardin") && STYLE_DESSIN.peppa) { for (const dx of [-14, 2, 16]) fleurPeppa(ctx, x + dx, y + (dx === 2 ? 0 : -3), [[255, 90, 130], [255, 210, 60], [180, 120, 250], [255, 150, 60]][mod(k + dx, 4)], 0.85); }
     else if (nom === "campagne" || nom === "jardin") {
       for (const dx of [-12, 0, 12]) { trait(ctx, [x + dx, y], [x + dx, y - 22], 3, [60, 140, 60]); rond(ctx, x + dx, y - 24, 7, [[255, 90, 120], [255, 220, 60], [180, 120, 255]][mod(k + dx, 3)]); }
     } else if (nom === "ville") { rrect(ctx, x - 3, y - 70, 6, 70, 0, [80, 80, 90]); rond(ctx, x, y - 74, 10, [255, 240, 150]); }
@@ -887,7 +945,8 @@ function maisonFeu(ctx, x, G, feu, t, sauvee) {
   pen.rect([250, 230, 190], -85, -150, 85, 0, 4);
   pen.poly([200, 80, 70], [[-100, -150], [100, -150], [0, -225]]);
   pen.rect([140, 90, 60], -18, -62, 18, 0, 6);
-  for (const wx of [-55, 55]) pen.rect(VITRE, wx - 18, -125, wx + 18, -90, 4);
+  if (STYLE_DESSIN.peppa) { for (const wx of [-55, 55]) fenetrePlate(ctx, x + wx - 17, G - 124, 34, 32); portePlate(ctx, x - 18, G, 36, 62, [230, 90, 70]); }
+  else for (const wx of [-55, 55]) pen.rect(VITRE, wx - 18, -125, wx + 18, -90, 4);
   if (sauvee && feu < 0.05) pen.arc(CONTOUR, -30, -90, 30, -50, PI * 1.1, PI * 1.9, 4);
   if (feu > 0.02) {
     [[-55, -125, 0.8], [55, -125, 0.8], [-20, -205, 1.0], [30, -190, 0.9], [0, -150, 1.2]].forEach(([fx, fy, s], k) => {
@@ -1059,7 +1118,8 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     const sx = k ? 1 : -1, sw = Math.sin(marche + k * PI) * 8;
     const demi = (st.robe ? 0.36 : 0.42) * W;
     const a = [sx * demi, epaule + 8];
-    const m = joie ? [sx * (demi + R * 0.7), ty - R * 0.55 - 5 * Math.sin(t * 8 + k)] : [sx * (demi + T * (adulte ? 0.2 : 0.3)) + sw * 0.4, epaule + T * (adulte ? 0.66 : 0.72) + Math.abs(sw) * 0.2];
+    const m = joie ? [sx * (demi + R * 0.7), ty - R * 0.55 - 5 * Math.sin(t * 8 + k)] : STYLE_DESSIN.peppa ? [sx * (demi + T * (adulte ? 0.4 : 0.48)) + sw * 0.4, epaule + T * (adulte ? 0.56 : 0.6) + Math.abs(sw) * 0.2] // les bras un peu écartés du corps, comme chez Peppa
+      : [sx * (demi + T * (adulte ? 0.2 : 0.3)) + sw * 0.4, epaule + T * (adulte ? 0.66 : 0.72) + Math.abs(sw) * 0.2];
     baton(peau, a, m, largB * (st.muscle ? 1.4 : 1));
     if (manche >= 1) baton(st.haut, a, vers(a, m, 0.85), largB * 1.55 * (st.muscle ? 1.25 : 1));
     else if (manche > 0) baton(st.haut, a, vers(a, m, manche), largB * 1.8 * (st.muscle ? 1.25 : 1));
@@ -1196,6 +1256,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const levres = st.cils ? [215, 70, 100] : CONTOUR;
   if (peur) pen.ellipse([150, 50, 60], tx + 0.6 * R, ty + 0.52 * R, tx + 0.76 * R, ty + 0.72 * R, true);
   else if (joie || mange > 0.3) pen.forme([200, 60, 75], tete([["M", 0.48, 0.56], ["Q", 0.7, 0.6, 0.92, 0.5], ["Q", 0.84, 0.88, 0.48, 0.56], ["Z"]]));
+  else if (STYLE_DESSIN.peppa && !st.moustache && !st.barbe) pen.courbe(levres, pts([[0.4, 0.52], [0.68, 0.76], [0.96, 0.5]]), adulte ? 2.6 : 2.4); // le grand sourire de Peppa
   else pen.courbe(levres, pts([[0.5, 0.58], [0.72, 0.72], [0.9, 0.54]]), adulte ? 2.4 : 2.2);
   if (st.nezRouge) pen.circle([230, 40, 50], tx + 1.06 * R, ty + 0.12 * R, 0.17 * R, true);
   if (st.tetine) { pen.circle([255, 255, 255], tx + 0.72 * R, ty + 0.62 * R, 0.16 * R, true); pen.circle([120, 190, 240], tx + 0.72 * R, ty + 0.62 * R, 0.1 * R, true); }

@@ -46,6 +46,13 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   couleur en plus foncé, jamais noir (`bordure` : `fonce(fill, 0.62)`, et `cerne` des personnages pareil). Ciel bleu
   franc uni, nuages blancs cernés de gris-bleu clair, petites touffes d'herbe en « v » sur l'herbe, collines rondes,
   arbres sucettes. Le pays des dinosaures a le ciel bleu et la prairie verte de l'épisode (`CIELS`/`SOLS` remplacés).
+- Morceaux façon Peppa (dessins.js, `peppaPlat()`) : `fenetrePlate` (gros cadre blanc, vitre bleu ciel, croisillon,
+  appui, volets en option), `portePlate` (panneau, petite vitre ronde, poignée dorée, marche), `fleurPeppa` (5 pétales
+  ronds), `flaque` (flaques de boue : campagne, ferme, forêt, jardin, parc). La maison de la famille est jaune avec un
+  toit rouge, une cheminée et un œil-de-bœuf ; les immeubles de la ville ont une corniche, de grandes fenêtres et une
+  porte (mis en cache). Arbres sucettes ovales (des pommes sur certains), petits arbres sur la colline du fond. Pièces :
+  murs unis avec une cimaise (plus de rayures), appui sous les fenêtres ; meubles plus détaillés (coussins, pieds…).
+  Personnages : bras un peu écartés du corps et grand sourire, comme chez Peppa ; ombre au sol plus légère.
 - Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
 
 ## Style « Bluey » (désactivé, gardé en réserve)
