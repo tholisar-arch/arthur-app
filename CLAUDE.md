@@ -61,6 +61,16 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   Têtes : joues pleines, oreille du fond qui dépasse, frange en mèches pointues, épi sur les cheveux courts, cheveux
   en volume (`chev()` : reflet clair sur le dessus, ombre du côté du dos). Corps : petit cou (tête un peu plus haute),
   vêtements avec ombre douce côté dos (`corps()`), encolure, mains avec un pouce, baskets à semelle blanche.
+- `STYLE_DESSIN.ombrage = true` : modelé doux de dessin animé dans `teinte()` (un peu plus clair en haut, plus foncé en
+  bas ; dégradé rond pour les ronds) sur les formes de 900 à 150 000 px² (pas le ciel ni les grands fonds). La boucle le
+  coupe si l'appareil est trop lent.
+- Contenants « pour de vrai » : `collecte(…, dessineDest, dessineDevant)` — la destination se dessine en deux fois :
+  le fond (et ce qui est déjà dedans), puis le bord de devant PAR-DESSUS les objets (ce qui tombe passe derrière).
+  Utilisé pour le caddie (`caddie()` : paroi du fond, grille de devant, rebord, poignée rouge, roues), le coffre à
+  jouets (couvercle ouvert), le seau de coquillages et le sac de la boulangerie. À faire pour tout nouveau contenant.
+- Magasin : `rayonsMagasin()` (mis en cache) — étagères en métal, montants, étiquettes de prix, produits par lots
+  (`produitRayon` : céréales, bouteilles, conserves, confitures, briques de lait, cagettes de fruits).
+  `banane()` et `rocher()` dessinés pour de vrai.
 - Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
 
 ## Style « Bluey » (désactivé, gardé en réserve)

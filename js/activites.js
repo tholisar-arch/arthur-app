@@ -25,6 +25,30 @@ const fenetreMur = (ctx, x, y, w, h, nuit, t) => {
   trait(ctx, [x + w / 2, y], [x + w / 2, y + h], 5, [255, 255, 255]); trait(ctx, [x, y + h / 2], [x + w, y + h / 2], 5, [255, 255, 255]);
   if (STYLE_DESSIN.peppa) rrect(ctx, x - 16, y + h + 6, w + 32, 10, 4, [255, 255, 255], 2.5); // l'appui de fenêtre
 };
+// Les rayons du supermarché : des étagères en métal, des étiquettes de prix, et de vrais produits rangés par lots
+const COULEURS_PRODUITS = [[230, 80, 80], [255, 200, 60], [90, 170, 240], [110, 200, 110], [240, 140, 200], [250, 150, 60], [160, 110, 220]];
+function produitRayon(ctx, type, x, y, c) {
+  switch (type) {
+    case 0: rrect(ctx, x, y - 46, 28, 46, 3, c, 2); rrect(ctx, x + 3, y - 30, 22, 12, 2, [255, 250, 235]); rond(ctx, x + 14, y - 38, 4, [255, 220, 70]); break; // boîte de céréales
+    case 1: rrect(ctx, x + 6, y - 50, 10, 14, 3, c, 1.5); rrect(ctx, x + 5, y - 55, 12, 6, 2, [230, 60, 60], 1.5); rrect(ctx, x + 2, y - 40, 20, 40, 8, c, 2); rrect(ctx, x + 2, y - 26, 20, 11, 0, [255, 255, 255]); break; // bouteille
+    case 2: rrect(ctx, x + 1, y - 30, 24, 30, 4, [205, 210, 220], 2); rrect(ctx, x + 1, y - 25, 24, 18, 0, c); ovale(ctx, x + 1, y - 34, 24, 8, [225, 228, 235], 1.5); break; // conserve
+    case 3: rrect(ctx, x + 2, y - 30, 22, 30, 7, [255, 245, 230], 2); rrect(ctx, x + 4, y - 22, 18, 20, 5, c); rrect(ctx, x + 1, y - 36, 24, 8, 3, fonce(c, 0.7), 1.5); break; // bocal de confiture
+    case 4: rrect(ctx, x, y - 38, 26, 38, 2, [255, 255, 255], 2); poly(ctx, [[x, y - 38], [x + 13, y - 50], [x + 26, y - 38]], [245, 245, 248], 1.5); rrect(ctx, x, y - 26, 26, 12, 0, c); break; // brique de lait
+    default: rrect(ctx, x - 4, y - 18, 34, 18, 2, [200, 150, 95], 2); for (const [dx, dy] of [[4, -22], [14, -22], [24, -22], [9, -30], [19, -30]]) rond(ctx, x + dx, y + dy, 6, c, 1.2); // cagette de fruits
+  }
+}
+function rayonsMagasin(ctx, x0, hz, w) {
+  for (let px = x0; px <= x0 + w; px += 264) rrect(ctx, px - 6, hz - 296, 12, 296, 3, [190, 196, 206], 2); // les montants
+  for (let r = 0; r < 4; r++) {
+    const y = hz - 52 - r * 64;
+    for (let k = 0; x0 + k * 33 < x0 + w; k++) { // les produits, par lots de quatre
+      const lot = Math.floor(k / 4), type = (lot * 7 + r * 3) % 6, c = COULEURS_PRODUITS[(lot * 5 + r * 2) % COULEURS_PRODUITS.length];
+      produitRayon(ctx, type, x0 + 6 + k * 33, y, type === 5 ? [[230, 60, 60], [255, 170, 40], [120, 200, 80]][lot % 3] : c);
+    }
+    rrect(ctx, x0, y, w, 12, 2, [205, 210, 220], 2); rrect(ctx, x0, y + 9, w, 4, 0, [170, 176, 188]); // l'étagère et son rebord
+    for (let k = 0; x0 + k * 132 < x0 + w; k++) { rrect(ctx, x0 + 20 + k * 132, y + 1, 26, 10, 2, [255, 230, 80], 1); } // les étiquettes de prix
+  }
+}
 const DECORS_EXTRA = {
   parc: { ciel: [[100, 185, 250], [220, 245, 255]], sol: [[140, 205, 90], [222, 200, 150]],
     fond(ctx, W, H, hz, scroll, t) {
@@ -64,12 +88,8 @@ const DECORS_EXTRA = {
   magasin: { ciel: [[240, 244, 250], [240, 244, 250]], sol: [[200, 205, 215], [230, 232, 238]], interieur: true,
     fond(ctx, W, H, hz, scroll, t) {
       murInterieur(ctx, W, hz, [235, 242, 250], scroll);
-      const produits = [[230, 80, 80], [255, 200, 60], [90, 170, 240], [110, 200, 110], [240, 140, 200], [250, 150, 60]];
-      for (let r = 0; r < 4; r++) {
-        const y = hz - 60 - r * 62;
-        rrect(ctx, 0, y, W, 10, 0, [170, 150, 130]);
-        for (let k = 0; k < 26; k++) { const x = mod(k * 44 + r * 17 - scroll * 0.3, W + 44) - 22; rrect(ctx, x, y - 40, 30, 40, 5, produits[(k + r) % produits.length], 2); }
-      }
+      const P = 528, x0 = mod(-scroll * 0.3, P) - P; // les rayons (dessinés une fois, puis recollés)
+      enCache(ctx, "rayons", x0, hz, 0, 300, 3 * P, 312, (ctx) => rayonsMagasin(ctx, x0, hz, 3 * P));
       const x = boucle(820, scroll, 0.2, W, 300);
       rrect(ctx, x - 150, 20, 300, 56, 16, [235, 90, 80], 4);
       ecrireCentre(ctx, LANGUE === "en" ? "SHOP" : "MAGASIN", x, 50, 34, [255, 255, 255]);
@@ -137,7 +157,7 @@ const PRODUITS = [ // de petites choses à ramasser, ranger, acheter…
   (ctx, x, y) => { rond(ctx, x, y - 14, 15, [230, 60, 60], 3); trait(ctx, [x, y - 28], [x + 3, y - 36], 3, [120, 80, 40]); ovale(ctx, x + 2, y - 38, 12, 7, [90, 170, 70]); }, // pomme
   (ctx, x, y) => { ovale(ctx, x - 30, y - 18, 60, 18, [225, 170, 90], 3); for (const dx of [-14, 0, 14]) trait(ctx, [x + dx - 4, y - 14], [x + dx + 4, y - 6], 2, [180, 120, 60]); }, // pain
   (ctx, x, y) => { rrect(ctx, x - 12, y - 40, 24, 40, 5, [255, 255, 255], 3); rrect(ctx, x - 12, y - 28, 24, 12, 0, [90, 160, 240]); rrect(ctx, x - 6, y - 48, 12, 10, 3, [90, 160, 240], 2); }, // lait
-  (ctx, x, y) => { poly(ctx, [[x - 22, y - 30], [x + 20, y - 4], [x + 24, y - 12], [x - 14, y - 34]], [255, 220, 70], 3); }, // banane
+  (ctx, x, y) => banane(ctx, x, y, 0.9), // banane
   (ctx, x, y) => { poly(ctx, [[x - 22, y], [x + 22, y], [x + 22, y - 22], [x - 22, y - 30]], [255, 210, 80], 3); rond(ctx, x - 6, y - 14, 4, [235, 180, 60]); rond(ctx, x + 10, y - 10, 3, [235, 180, 60]); }, // fromage
 ];
 const JOUETS = [
@@ -152,14 +172,38 @@ const COQUILLES = [
   (ctx, x, y) => { ovale(ctx, x - 16, y - 22, 32, 22, [255, 230, 180], 3); arcRect(ctx, x - 8, y - 18, 16, 12, 0, 2 * PI, 2, [230, 180, 120]); },
   (ctx, x, y) => etoile(ctx, x, y - 14, 16, [250, 150, 90]),
 ];
-function collecte(ctx, x, G, e, choses, depart, dest, dessineDest) { // des choses volent une à une vers un endroit
+function collecte(ctx, x, G, e, choses, depart, dest, dessineDest, dessineDevant) { // des choses volent une à une vers un endroit
   dessineDest(ctx, e);
+  let vol = null;
   for (let i = 0; i < e.n; i++) {
     const [sx, sy] = depart(i), [dx, dy] = dest(i), f = choses[i % choses.length];
     if (i < e.k) continue; // déjà rangée (dans la destination)
-    if (i === e.k && e.p !== null && e.p !== undefined) { const u = Math.min(1, e.p * 1.4); f(ctx, lerp(sx, dx, u), lerp(sy, dy, u) - 120 * Math.sin(PI * u)); }
+    if (i === e.k && e.p !== null && e.p !== undefined) { const u = Math.min(1, e.p * 1.4); vol = () => f(ctx, lerp(sx, dx, u), lerp(sy, dy, u) - 120 * Math.sin(PI * u)); if (!dessineDevant) vol(); }
     else f(ctx, sx, sy);
   }
+  if (dessineDevant) { if (vol) vol(); dessineDevant(ctx, e); } // ce qui tombe passe DERRIÈRE le bord de devant
+}
+// Un vrai caddie : la paroi du fond, les courses rangées dedans (elles dépassent un peu), la grille de devant, la poignée, les roues
+function caddie(ctx, cx, G, dedans, devant) {
+  const bas = G - 62, haut = G - 134, gx = cx - 82, dx = cx + 92, gb = cx - 66, db = cx + 72;
+  if (!devant) {
+    trait(ctx, [gb + 8, bas], [cx - 52, G - 22], 5, [140, 145, 155], "round"); trait(ctx, [db - 6, bas], [cx + 58, G - 22], 5, [140, 145, 155], "round"); // les montants
+    trait(ctx, [cx - 60, G - 22], [cx + 66, G - 22], 5, [140, 145, 155], "round"); trait(ctx, [cx - 54, G - 34], [cx + 60, G - 34], 3, [170, 175, 185]); // le plateau du bas
+    for (const [wx, r] of [[cx - 30, 9], [cx + 76, 9]]) { rond(ctx, wx, G - 10, r, [70, 70, 80], 2); rond(ctx, wx, G - 10, 3, [190, 190, 200]); } // les roues du fond
+    poly(ctx, [[gx, haut], [dx, haut], [db, bas], [gb, bas]], [176, 184, 196], 3); // l'intérieur du panier (la paroi du fond)
+    for (let k = 1; k < 6; k++) trait(ctx, [gx + k * 29, haut + 4], [gb + k * 23, bas - 4], 1.5, [150, 158, 170]);
+    ctx.save(); ctx.beginPath(); ctx.rect(gx - 40, haut - 80, dx - gx + 80, bas - haut + 78); ctx.clip(); dedans(); ctx.restore(); // les courses, posées au fond
+    return;
+  }
+  ctx.save(); ctx.globalAlpha = 0.55; poly(ctx, [[gx, haut], [dx, haut], [db, bas], [gb, bas]], [215, 222, 232]); ctx.restore(); // la grille de devant
+  for (let k = 1; k < 6; k++) trait(ctx, [gx + k * 29, haut + 2], [gb + k * 23, bas], 2.5, [150, 156, 168]);
+  for (const v of [0.35, 0.68]) trait(ctx, [lerp(gx, gb, v), lerp(haut, bas, v)], [lerp(dx, db, v), lerp(haut, bas, v)], 2.5, [150, 156, 168]);
+  poly(ctx, [[gx, haut], [dx, haut], [db, bas], [gb, bas]], null, 3, [110, 115, 128]);
+  trait(ctx, [gx - 4, haut], [dx + 4, haut], 7, [120, 126, 138], "round"); trait(ctx, [gx - 2, haut - 2], [dx + 2, haut - 2], 2, [200, 206, 216], "round"); // le rebord
+  trait(ctx, [gx, haut + 6], [gx - 34, haut - 18], 6, [120, 126, 138], "round"); // la poignée…
+  trait(ctx, [gx - 40, haut - 22], [gx - 26, haut - 14], 11, [220, 60, 60], "round"); // …et son manche rouge
+  rrect(ctx, dx - 44, haut + 14, 34, 22, 4, [230, 70, 70], 2); ecrireCentre(ctx, "€", dx - 27, haut + 25, 16, [255, 255, 255]); // la plaque du magasin
+  for (const wx of [cx - 52, cx + 56]) { rond(ctx, wx, G - 11, 12, [60, 60, 70], 2.5); rond(ctx, wx, G - 11, 4.5, [200, 200, 210]); } // les roues de devant
 }
 function personnage(ctx, e, x, y, s = 0.8, humeur = "joie") { dessineAmi(ctx, acteurDe(e), x, y, e.t, 1, 0, 0, s, humeur); }
 
@@ -340,9 +384,15 @@ const ACTIVITES = {
     cible(sc) { const [a, b] = this.depart(sc.cx, Math.min(sc.fait, sc.n - 1)); return [a, b - 20]; },
     dessin(ctx, x, G, e) {
       const bx = x + 220;
-      collecte(ctx, x, G, e, JOUETS, (i) => this.depart(x, i), () => [bx, G - 70], () => {
-        rrect(ctx, bx - 80, G - 90, 160, 90, 8, [230, 120, 80], 3); rrect(ctx, bx - 86, G - 100, 172, 18, 6, [210, 100, 70], 3);
-        ecrireCentre(ctx, LANGUE === "en" ? "TOYS" : "JOUETS", bx, G - 45, 22, [255, 255, 255]);
+      const places = [-48, 22, -14, 50, -36];
+      collecte(ctx, x, G, e, JOUETS, (i) => this.depart(x, i), (i) => [bx + places[i % 5], G - 66], () => { // le coffre : couvercle ouvert, l'intérieur, les jouets dedans
+        ctx.save(); ctx.translate(bx - 84, G - 92); ctx.rotate(-0.35); rrect(ctx, 0, -70, 170, 70, 8, [210, 100, 70], 3); rrect(ctx, 8, -62, 154, 54, 6, [235, 140, 100], 2); ctx.restore();
+        rrect(ctx, bx - 80, G - 96, 160, 30, 6, [140, 65, 45], 3);
+        for (let i = Math.min(e.k, 5) - 1; i >= 0; i--) JOUETS[i % 5](ctx, bx + places[i], G - 66);
+      }, () => {
+        rrect(ctx, bx - 80, G - 84, 160, 84, 8, [230, 120, 80], 3); rrect(ctx, bx - 86, G - 92, 172, 14, 6, [210, 100, 70], 3);
+        for (const d of [-60, 60]) rrect(ctx, bx + d - 8, G - 70, 16, 54, 4, [210, 100, 70], 2);
+        ecrireCentre(ctx, LANGUE === "en" ? "TOYS" : "JOUETS", bx, G - 40, 22, [255, 255, 255]);
       });
     } },
   cuisine: { fr: "Cuisine", en: "Cooking", decor: "maison", clics: 4, sansEngin: true, son: "pop", cx: 640,
@@ -416,15 +466,10 @@ const ACTIVITES = {
     depart: (x, i) => [x - 240 + i * 75, G - 150 - (i % 2) * 30],
     cible(sc) { const [a, b] = this.depart(sc.cx, Math.min(sc.fait, sc.n - 1)); return [a, b - 20]; },
     dessin(ctx, x, G, e) {
-      const cx = x + 210;
-      collecte(ctx, x, G, e, PRODUITS, (i) => this.depart(x, i), () => [cx, G - 110], () => {
-        trait(ctx, [cx - 110, G - 150], [cx - 80, G - 130], 5, [120, 120, 130]);
-        poly(ctx, [[cx - 80, G - 130], [cx + 90, G - 130], [cx + 70, G - 60], [cx - 66, G - 60]], [200, 205, 215], 3);
-        for (let k = 1; k < 5; k++) trait(ctx, [cx - 76 + k * 33, G - 128], [cx - 64 + k * 27, G - 62], 2, [150, 155, 165]);
-        for (let i = 0; i < Math.min(e.k, 5); i++) PRODUITS[i % 5](ctx, cx - 50 + i * 26, G - 120);
-        for (const dx of [-50, 50]) rond(ctx, cx + dx, G - 12, 12, [60, 60, 70], 2);
-        trait(ctx, [cx - 66, G - 50], [cx + 70, G - 50], 4, [120, 120, 130]);
-      });
+      const cx = x + 210, places = [[-40, -92], [20, -90], [52, -96], [-10, -100], [-48, -104]]; // où se posent les courses, au fond du panier
+      collecte(ctx, x, G, e, PRODUITS, (i) => this.depart(x, i), (i) => [cx + places[i % 5][0], G + places[i % 5][1]],
+        () => caddie(ctx, cx, G, () => { for (let i = Math.min(e.k, 5) - 1; i >= 0; i--) PRODUITS[i % 5](ctx, cx + places[i][0], G + places[i][1]); }, false),
+        () => caddie(ctx, cx, G, null, true));
     } },
   sapin: { fr: "Sapin de Noël", en: "Christmas tree", decor: "maison", clics: 5, son: "magie", poste: 160, cx: 640,
     mots: "noel|sapin de noel|guirlandes?|boules de noel|christmas|xmas", modele: ["C'est bientôt Noël ! On décore le sapin avec des boules.", "Christmas is coming! Let's decorate the tree with baubles."],
@@ -508,10 +553,13 @@ const ACTIVITES = {
     cible(sc) { const [a, b] = this.depart(sc.cx, Math.min(sc.fait, sc.n - 1)); return [a, b - 14]; },
     dessin(ctx, x, G, e) {
       const sx = x + 230;
-      collecte(ctx, x, G, e, COQUILLES, (i) => this.depart(x, i), () => [sx, G - 40], () => {
+      collecte(ctx, x, G, e, COQUILLES, (i) => this.depart(x, i), (i) => [sx - 22 + (i % 4) * 15, G - 60], () => { // le seau : l'anse, l'intérieur, les coquillages dedans
+        arcRect(ctx, sx - 38, G - 112, 76, 84, PI, 2 * PI, 3, [90, 90, 100]);
+        ovale(ctx, sx - 40, G - 78, 80, 16, [50, 120, 190], 3);
+        for (let i = 0; i < Math.min(e.k, 4); i++) COQUILLES[i % 3](ctx, sx - 22 + i * 15, G - 62);
+      }, () => {
         poly(ctx, [[sx - 40, G - 70], [sx + 40, G - 70], [sx + 30, G], [sx - 30, G]], [90, 170, 240], 3);
-        arcRect(ctx, sx - 34, G - 110, 68, 80, PI, 2 * PI, 3, [90, 90, 100]);
-        for (let i = 0; i < Math.min(e.k, 4); i++) COQUILLES[i % 3](ctx, sx - 24 + i * 16, G - 66);
+        trait(ctx, [sx - 39, G - 66], [sx + 39, G - 66], 5, [60, 140, 210], "round"); trait(ctx, [sx - 34, G - 26], [sx + 34, G - 26], 3, [70, 150, 220]);
       });
     } },
   glace: { fr: "Glace", en: "Ice cream", decor: "plage", clics: 3, son: "pop", poste: 150, cx: 640,

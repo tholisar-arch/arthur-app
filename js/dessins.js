@@ -39,9 +39,18 @@ const TRAIT = 0.62;
 // Les autres styles restent disponibles : bluey (sans contour, ombres plates), decorReel (lumière, brume, bâtiments en 3D).
 // justin : les personnages façon « Justin Time » (Justin et ses rêves) — visage de trois quarts face, grands yeux ovales
 // avec un iris coloré et un reflet, petit nez rond, joues rosées, bouche au milieu, ombre douce sur le côté du visage.
-const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true };
+// ombrage : un modelé doux de dessin animé sur les formes (un peu plus clair en haut, un peu plus foncé en bas).
+const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
+  if (STYLE_DESSIN.ombrage && !RELIEF.on) { // modelé doux de dessin animé (les fonds immenses et les tout petits détails restent unis)
+    if (w < 10 || h < 10 || w * h < 900 || w * h > 150000 || !ctx.createLinearGradient) return css(fill);
+    const g = arrondi ? ctx.createRadialGradient(x + w * 0.38, y + h * 0.32, Math.min(w, h) * 0.05, x + w * 0.5, y + h * 0.5, Math.max(w, h) * 0.6)
+      : ctx.createLinearGradient(0, y, 0, y + h);
+    if (!g || !g.addColorStop) return css(fill);
+    g.addColorStop(0, css(clair(fill, 0.1))); g.addColorStop(0.5, css(fill)); g.addColorStop(1, css(fonce(fill, 0.87)));
+    return g;
+  }
   if (!RELIEF.on || w < 7 || h < 7 || w * h < 1000 || w * h > 600000 || !ctx.createLinearGradient) return css(fill); // les toutes petites formes : couleur unie (invisible à cette taille, et bien plus rapide)
   const lum = (fill[0] * 0.3 + fill[1] * 0.59 + fill[2] * 0.11) / 255, k = RELIEF.fort;
   const haut = clair(fill, 0.24 * k), bas = fonce(fill, 1 - (lum > 0.9 ? 0.06 : 0.15) * k);
@@ -426,6 +435,20 @@ function etoile(ctx, x, y, r, col, a = 0) {
 }
 const boucle = (base, scroll, k, w, marge = 200) => mod(base - scroll * k, w + 2 * marge) - marge;
 const peppaPlat = () => STYLE_DESSIN.peppa && !RELIEF.on;
+function banane(ctx, x, y, s = 1) { // une vraie banane : un croissant, la queue, le bout brun, une arête
+  ctx.beginPath(); ctx.moveTo(x - 26 * s, y - 34 * s); ctx.quadraticCurveTo(x - 22 * s, y + 4 * s, x + 28 * s, y - 8 * s);
+  ctx.quadraticCurveTo(x - 4 * s, y - 12 * s, x - 18 * s, y - 38 * s); ctx.closePath();
+  ctx.fillStyle = teinte(ctx, [255, 220, 70], x - 26 * s, y - 38 * s, 54 * s, 40 * s); ctx.fill(); bordure(ctx, [255, 220, 70], 2, CONTOUR);
+  ctx.beginPath(); ctx.moveTo(x - 20 * s, y - 30 * s); ctx.quadraticCurveTo(x - 12 * s, y - 6 * s, x + 20 * s, y - 8 * s); ctx.lineWidth = 1.5 * s; ctx.strokeStyle = css([235, 190, 50]); ctx.stroke();
+  trait(ctx, [x - 23 * s, y - 36 * s], [x - 26 * s, y - 44 * s], 4 * s, [120, 150, 60], "round"); rond(ctx, x + 27 * s, y - 8 * s, 2.5 * s, [110, 80, 40]);
+}
+function rocher(ctx, x, y, s = 1) { // un rocher à facettes, un peu de mousse
+  const g = [140, 140, 150];
+  poly(ctx, [[x - 48 * s, y], [x - 40 * s, y - 34 * s], [x - 12 * s, y - 52 * s], [x + 22 * s, y - 46 * s], [x + 46 * s, y - 20 * s], [x + 50 * s, y]], g, 2.5);
+  poly(ctx, [[x - 40 * s, y - 34 * s], [x - 12 * s, y - 52 * s], [x + 22 * s, y - 46 * s], [x + 4 * s, y - 30 * s]], clair(g, 0.3));
+  poly(ctx, [[x + 4 * s, y - 30 * s], [x + 22 * s, y - 46 * s], [x + 46 * s, y - 20 * s], [x + 50 * s, y], [x + 14 * s, y]], fonce(g, 0.85));
+  for (const d of [-30, -20, 34]) ovale(ctx, x + d * s, y - 6 * s, 14 * s, 7 * s, [110, 170, 80]);
+}
 // Une fenêtre façon Peppa : gros cadre blanc, vitre bleu ciel, croisillon blanc, appui (et volets si on veut)
 function fenetrePlate(ctx, x, y, w, h, o = {}) {
   const cadre = o.cadre || [255, 255, 255];
@@ -902,7 +925,7 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       if (k % 3 === 0) rond(ctx, x, horizon + 25 + r2() * (G - horizon + 30), 3 + r2.int(0, 3), [180, 145, 105]);
     }
   }
-  if (peppaPlat() && ["campagne", "ferme", "foret", "jardin", "parc"].includes(nom)) for (const bx of [330, 1180]) flaque(ctx, boucle(bx, scroll, 1, W, 200), G + 34, 150);
+  if (peppaPlat() && ["campagne", "ferme", "foret", "jardin", "parc"].includes(nom)) flaque(ctx, boucle(1150, scroll, 1.25, W, 200), H - 22, 120); // une flaque de boue au premier plan
   if (DECORS_EXTRA[nom] && DECORS_EXTRA[nom].devant) DECORS_EXTRA[nom].devant(ctx, W, H, horizon, scroll, t, nuit, G);
   for (let k = 0; k < 6; k++) {
     const x = boucle(k * 230 + 60, scroll, 1.25, W, 120), y = H - 8;
@@ -1690,7 +1713,7 @@ const OBJETS_DECOR = {
   buisson: [130, 100, (ctx) => buissonCachette(ctx, 0, 0)],
   fleurs: [70, 40, (ctx) => { for (const [dx, c] of [[-20, [255, 90, 120]], [0, [255, 220, 60]], [20, [180, 120, 255]]]) { trait(ctx, [dx, 0], [dx, -26], 3, [60, 140, 60]); rond(ctx, dx, -28, 9, c); } }],
   champignon: [60, 55, (ctx) => champignon(ctx, 0, 0, 1.6)],
-  rocher: [100, 60, (ctx) => { ovale(ctx, -48, -50, 96, 56, [160, 160, 170], 3); ovale(ctx, 6, -34, 46, 36, [180, 180, 190], 3); }],
+  rocher: [100, 60, (ctx) => rocher(ctx, 0, 0, 1)],
   cadeau: [150, 150, (ctx, t) => cadeau(ctx, 0, 0, 0, t)],
   velo: [200, 110, (ctx, t) => velo(ctx, 0, 0, 1, t, 0)],
   ballon: [70, 70, (ctx, t) => objetPerdu(ctx, "ballon", 0, 0, t)],

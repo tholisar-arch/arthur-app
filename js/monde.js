@@ -409,7 +409,7 @@ const CHOSES = {
   robot: [80, 130, (ctx, t) => { rrect(ctx, -30, -80, 60, 70, 8, [170, 180, 200], 3); rrect(ctx, -24, -126, 48, 40, 8, [190, 200, 220], 3); for (const d of [-10, 10]) rond(ctx, d, -108, 6, Math.sin(t * 4) > 0 ? [90, 200, 255] : [255, 255, 255], 2); trait(ctx, [0, -126], [0, -140], 3, CONTOUR); rond(ctx, 0, -142, 5, [240, 80, 80], 2); for (const d of [-16, 16]) trait(ctx, [d, -10], [d, 0], 8, [140, 150, 170]); rrect(ctx, -14, -60, 28, 18, 4, [250, 200, 60], 2); }, 0.9],
   ballons: [120, 230, (ctx, t) => { [[-30, -200, [240, 80, 90]], [10, -220, [90, 160, 240]], [40, -190, [250, 200, 60]]].forEach(([x, y, c], k) => { const dx = 6 * Math.sin(t * 1.5 + k); trait(ctx, [0, 0], [x + dx, y + 30], 1.5, [120, 120, 130]); ovale(ctx, x + dx - 22, y - 28, 44, 56, c, 2); }); }, 0.85],
   pomme: [40, 44, (ctx) => { rond(ctx, 0, -20, 18, [225, 50, 50], 2); trait(ctx, [0, -36], [3, -46], 3, [120, 80, 50]); ovale(ctx, 4, -48, 16, 8, [90, 170, 80]); }, 1],
-  banane: [60, 30, (ctx) => { ctx.beginPath(); ctx.arc(0, -40, 30, 0.2 * PI, 0.8 * PI); ctx.lineWidth = 12; ctx.strokeStyle = css([250, 215, 60]); ctx.lineCap = "round"; ctx.stroke(); ctx.lineCap = "butt"; }, 1],
+  banane: [60, 40, (ctx) => banane(ctx, 0, 0, 1), 1],
   fraise: [40, 40, (ctx) => { poly(ctx, [[-16, -34], [16, -34], [0, -2]], [230, 50, 70], 2); for (const [x, y] of [[-6, -26], [6, -26], [0, -16]]) rond(ctx, x, y, 1.5, [255, 230, 120]); poly(ctx, [[-12, -36], [0, -44], [12, -36], [0, -32]], [90, 170, 80]); }, 1],
   carotte: [30, 70, (ctx) => { poly(ctx, [[-10, -50], [10, -50], [0, 0]], [250, 140, 40], 2); for (const d of [-6, 0, 6]) trait(ctx, [d * 0.5, -50], [d, -66], 3, [90, 170, 80]); }, 1],
   pizza: [100, 30, (ctx) => { ovale(ctx, -50, -16, 100, 16, [255, 255, 255], 2); ovale(ctx, -42, -22, 84, 14, [240, 200, 110], 2); ovale(ctx, -36, -20, 72, 10, [230, 80, 60]); for (const d of [-20, 0, 20]) rond(ctx, d, -16, 4, [200, 50, 50]); }, 1],
@@ -956,9 +956,12 @@ const ACTIVITES_VIE = {
     cible(sc) { return this.depart(sc.cx, Math.min(sc.fait, sc.n - 1)); },
     dessin(ctx, x, G, e) {
       rrect(ctx, x + 60, G - 100, 260, 100, 6, [190, 140, 100], 3); rrect(ctx, x + 60, G - 104, 260, 10, 3, [240, 230, 215], 2); // le comptoir
-      collecte(ctx, x, G, e, [PRODUITS[1], (c, px, py) => poly(c, [[px - 22, py], [px - 6, py - 20], [px + 8, py - 20], [px + 24, py]], [235, 175, 85], 2)], (i) => this.depart(x, i), () => [x - 160, G - 60], () => {
-        poly(ctx, [[x - 200, G], [x - 120, G], [x - 126, G - 90], [x - 194, G - 90]], [230, 200, 150], 3); // le sac en papier
-        for (let k = 0; k < Math.min(e.k, 3); k++) { ctx.save(); ctx.translate(x - 176 + k * 14, G - 96); ctx.rotate(-0.3 + k * 0.2); rrect(ctx, -6, -40, 12, 60, 6, [225, 170, 90], 2); ctx.restore(); }
+      collecte(ctx, x, G, e, [PRODUITS[1], (c, px, py) => poly(c, [[px - 22, py], [px - 6, py - 20], [px + 8, py - 20], [px + 24, py]], [235, 175, 85], 2)], (i) => this.depart(x, i), () => [x - 160, G - 70], () => {
+        poly(ctx, [[x - 200, G], [x - 120, G], [x - 126, G - 90], [x - 194, G - 90]], [205, 172, 122], 3); // le fond du sac en papier
+        for (let k = 0; k < Math.min(e.k, 3); k++) { ctx.save(); ctx.translate(x - 176 + k * 14, G - 50); ctx.rotate(-0.3 + k * 0.2); rrect(ctx, -6, -80, 12, 92, 6, [225, 170, 90], 2); for (let j = 0; j < 3; j++) trait(ctx, [-4, -64 + j * 18], [4, -58 + j * 18], 2, [180, 120, 60]); ctx.restore(); } // les baguettes, DANS le sac
+      }, () => {
+        poly(ctx, [[x - 200, G], [x - 120, G], [x - 123, G - 66], [x - 197, G - 66]], [230, 200, 150], 3); // le devant du sac
+        trait(ctx, [x - 196, G - 60], [x - 124, G - 60], 2, [200, 168, 120]); rond(ctx, x - 160, G - 32, 10, [200, 120, 70], 2);
       });
     } },
   guimauves: { fr: "Feu de camp", en: "Campfire", decor: "camping", lieuFort: true, prendActeur: true, sansEngin: true, clics: 3, son: "croque", cx: 520,
