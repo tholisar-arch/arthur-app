@@ -52,7 +52,12 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   toit rouge, une cheminée et un œil-de-bœuf ; les immeubles de la ville ont une corniche, de grandes fenêtres et une
   porte (mis en cache). Arbres sucettes ovales (des pommes sur certains), petits arbres sur la colline du fond. Pièces :
   murs unis avec une cimaise (plus de rayures), appui sous les fenêtres ; meubles plus détaillés (coussins, pieds…).
-  Personnages : bras un peu écartés du corps et grand sourire, comme chez Peppa ; ombre au sol plus légère.
+  Personnages : bras un peu écartés du corps, comme chez Peppa ; ombre au sol plus légère.
+- Visages façon « Justin Time » (`STYLE_DESSIN.justin = true`, dans `personne()`) : visage de trois quarts face (plus de
+  nez de profil), deux grands yeux ovales (`OEILJ`, l'œil du fond plus petit) avec iris de la couleur `yeux` de l'atelier,
+  pupille, reflet, paupière marquée ; sourcils courts et épais ; petit nez rond ; joues rosées douces ; petit sourire
+  ouvert au milieu du visage (dents, langue quand on rit) ; ombre douce sur le côté du visage ; taches de rousseur pour
+  les roux. Moustache, lunettes, nez rouge et tétine suivent. `justin: false` = l'ancien visage Peppa / Trotro.
 - Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
 
 ## Style « Bluey » (désactivé, gardé en réserve)

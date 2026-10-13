@@ -37,7 +37,9 @@ const TRAIT = 0.62;
 // peppa : façon « Peppa Pig » (le style choisi) — couleurs toutes plates, chaque forme cernée d'un trait de SA couleur en
 // plus foncé (jamais noir), ciel bleu uni, nuages blancs cernés, collines rondes avec des touffes d'herbe, arbres sucettes.
 // Les autres styles restent disponibles : bluey (sans contour, ombres plates), decorReel (lumière, brume, bâtiments en 3D).
-const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false };
+// justin : les personnages façon « Justin Time » (Justin et ses rêves) — visage de trois quarts face, grands yeux ovales
+// avec un iris coloré et un reflet, petit nez rond, joues rosées, bouche au milieu, ombre douce sur le côté du visage.
+const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (!RELIEF.on || w < 7 || h < 7 || w * h < 1000 || w * h > 600000 || !ctx.createLinearGradient) return css(fill); // les toutes petites formes : couleur unie (invisible à cette taille, et bien plus rapide)
@@ -1183,7 +1185,13 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const visage = [["M", 0.0, -1.0], ["C", 0.58, -1.0, 0.98, -0.62, 1.0, -0.1], ["C", 0.98, 0.5, 0.62, 0.92, 0.02, 0.92],
     ["C", -0.6, 0.92, -0.98, 0.52, -0.98, -0.04], ["C", -0.98, -0.62, -0.58, -1.0, 0.0, -1.0], ["Z"]];
   pen.forme(peau, tete(visage));
-  pen.forme(peau, tete([["M", 0.86, 0.02], ["C", 1.0, -0.12, 1.22, 0.0, 1.16, 0.17], ["C", 1.12, 0.32, 0.92, 0.32, 0.86, 0.22]])); // le nez rond
+  if (!STYLE_DESSIN.justin) pen.forme(peau, tete([["M", 0.86, 0.02], ["C", 1.0, -0.12, 1.22, 0.0, 1.16, 0.17], ["C", 1.12, 0.32, 0.92, 0.32, 0.86, 0.22]])); // le nez rond
+  else { // une ombre douce sur le côté du visage qui s'éloigne (comme dans Justin Time)
+    ctx.save(); pen.chemin(tete(visage)); ctx.clip();
+    const o = pen.P(tx - 1.05 * R, ty + 0.15 * R); ctx.beginPath(); ctx.ellipse(o[0], o[1], 0.62 * R * s, 1.2 * R * s, 0, 0, 2 * PI); ctx.fillStyle = css(fonce(peau, 0.88), 0.55); ctx.fill();
+    const o2 = pen.P(tx + 0.05 * R, ty + 1.12 * R); ctx.beginPath(); ctx.ellipse(o2[0], o2[1], 1.1 * R * s, 0.3 * R * s, 0, 0, 2 * PI); ctx.fillStyle = css(fonce(peau, 0.9), 0.45); ctx.fill();
+    ctx.restore();
+  }
 
   // --- les cheveux : une forme simple et plate, frange en petites vagues
   const frange = [["Q", 0.78, -0.42, 0.58, -0.48], ["Q", 0.42, -0.36, 0.26, -0.54], ["Q", 0.06, -0.4, -0.12, -0.56], ["Q", -0.32, -0.42, -0.46, -0.5]];
@@ -1223,7 +1231,39 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   }
   // --- le visage : deux yeux ronds côte à côte, une joue rose ronde, une bouche en trait
   const ey = -0.12, er = 0.17 + (adulte ? 0 : 0.02), cligne = humeur === "dort" || (mod(t + (style.length % 5) * 0.7, 4.2) < 0.12 && !peur); // « dort » : les yeux fermés
-  for (const u of [0.24, 0.62]) {
+  const J = STYLE_DESSIN.justin, OEILJ = [[-0.06, 0.17], [0.45, 0.2]]; // yeux façon Justin : centre et largeur (l'œil du fond un peu plus petit)
+  if (J) {
+    const fonceOeil = [60, 42, 38], vy = -0.06 + (joie ? 0.02 : 0), kh = adulte ? 1.2 : 1.32;
+    for (const [u, rx] of OEILJ) {
+      const ry = rx * kh, c = pen.P(tx + u * R, ty + vy * R);
+      if (cligne) { pen.courbe(fonceOeil, pts([[u - rx, vy], [u, vy + ry * 0.55], [u + rx, vy]]), 2.2); continue; }
+      ctx.beginPath(); ctx.ellipse(c[0], c[1], rx * R * s, ry * R * s, 0, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.save(); ctx.clip();
+      const k = peur ? 0.55 : 0.78, ic = pen.P(tx + (u + rx * 0.22) * R, ty + (vy + ry * 0.08) * R); // l'iris regarde un peu vers l'avant
+      ctx.beginPath(); ctx.arc(ic[0], ic[1], rx * k * R * s, 0, 2 * PI); ctx.fillStyle = css(st.yeux || [120, 75, 40]); ctx.fill();
+      ctx.beginPath(); ctx.arc(ic[0], ic[1], rx * k * 0.55 * R * s, 0, 2 * PI); ctx.fillStyle = css([25, 20, 22]); ctx.fill();
+      ctx.beginPath(); ctx.arc(ic[0] - rx * 0.28 * R * s * f, ic[1] - rx * 0.3 * R * s, rx * 0.22 * R * s, 0, 2 * PI); ctx.fillStyle = "#fff"; ctx.fill(); // le reflet
+      ctx.beginPath(); ctx.ellipse(c[0], c[1] - ry * 1.15 * R * s, rx * 1.3 * R * s, ry * 0.5 * R * s, 0, 0, 2 * PI); ctx.fillStyle = css(fonce(peau, 0.88), 0.5); ctx.fill(); // l'ombre de la paupière
+      ctx.restore();
+      ctx.beginPath(); ctx.ellipse(c[0], c[1], rx * R * s, ry * R * s, 0, 0, 2 * PI); ctx.lineWidth = Math.max(1, 1.3 * s); ctx.strokeStyle = css(fonceOeil); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(c[0], c[1], rx * R * s, ry * R * s, 0, PI * 1.1, PI * 1.9); ctx.lineWidth = Math.max(1.4, 2.6 * s); ctx.lineCap = "round"; ctx.stroke(); ctx.lineCap = "butt"; // la paupière, bien marquée
+      if (st.cils) for (const d of [0, 1]) { const a = PI * (1.72 + d * 0.12); pen.line(fonceOeil, [tx + (u + Math.cos(a) * rx) * R, ty + (vy + Math.sin(a) * ry) * R], [tx + (u + Math.cos(a) * rx * 1.5) * R, ty + (vy + Math.sin(a) * ry * 1.42) * R], 1.6); }
+    }
+    if (st.lunettes) {
+      for (const [u, rx] of OEILJ) { const c = pen.P(tx + u * R, ty + vy * R); ctx.beginPath(); ctx.arc(c[0], c[1], (rx + 0.08) * kh * R * s, 0, 2 * PI); ctx.lineWidth = Math.max(1, 2.4 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke(); }
+      pen.line(CONTOUR, [tx + 0.13 * R, ty + (vy - 0.04) * R], [tx + 0.24 * R, ty + (vy - 0.04) * R], 2);
+      pen.line(CONTOUR, [tx - 0.3 * R, ty + vy * R], [tx - 0.62 * R, ty - 0.02 * R], 2);
+    }
+    // les sourcils : courts, épais et arrondis
+    for (const [u, rx] of OEILJ) { const lev = peur ? 0.1 : joie ? 0.05 : 0, y0 = vy - rx * kh - 0.13 - lev; pen.courbe(fonce(cheveux, 0.72), pts([[u - rx * 0.85, y0 + 0.06], [u, y0 - 0.06], [u + rx * 0.85, y0 + 0.06 + (peur ? (u > 0.2 ? -0.04 : 0.04) : 0)]]), adulte ? 3.2 : 2.8); }
+    // le petit nez rond, entre les deux yeux mais du côté du regard
+    pen.circle(fonce(peau, 0.94), tx + 0.27 * R, ty + 0.2 * R, 0.1 * R);
+    pen.courbe(fonce(peau, 0.68), pts([[0.21, 0.26], [0.3, 0.31], [0.38, 0.22]]), 1.6);
+    // les joues rosées, toutes douces
+    ctx.save(); ctx.globalAlpha = 0.42; pen.circle([240, 120, 125], tx - 0.4 * R, ty + 0.3 * R, 0.15 * R); pen.circle([240, 120, 125], tx + 0.7 * R, ty + 0.28 * R, 0.16 * R); ctx.restore();
+    if (st.roux || (cheveux[0] > 190 && cheveux[1] < 120)) for (const [u, v] of [[-0.46, 0.2], [-0.36, 0.26], [0.62, 0.2], [0.72, 0.26], [0.67, 0.14]]) pen.circle([200, 120, 80], tx + u * R, ty + v * R, 0.025 * R); // des taches de rousseur
+  }
+  if (!J) for (const u of [0.24, 0.62]) {
     if (cligne) { pen.courbe(CONTOUR, pts([[u - er, ey], [u, ey + er * 0.6], [u + er, ey]]), 2); continue; }
     if (STYLE_DESSIN.bluey) { // des yeux pleins, foncés, avec un petit reflet (façon Bluey)
       const p = pen.P(tx + (u + 0.03) * R, ty + (ey + 0.02) * R), k = peur ? 0.8 : 1;
@@ -1235,13 +1275,13 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     }
     if (st.cils) for (const d of [-0.5, 0, 0.5]) { const a = -PI / 2 + d * 0.9; pen.line(CONTOUR, [tx + (u + Math.cos(a) * er) * R, ty + (ey + Math.sin(a) * er) * R], [tx + (u + Math.cos(a) * er * 1.5) * R, ty + (ey + Math.sin(a) * er * 1.5) * R], 1.6); }
   }
-  if (st.lunettes) {
+  if (st.lunettes && !J) {
     for (const u of [0.24, 0.62]) { const p = pen.P(tx + u * R, ty + ey * R); ctx.beginPath(); ctx.arc(p[0], p[1], (er + 0.07) * R * s, 0, 2 * PI); ctx.lineWidth = Math.max(1, 2.4 * s); ctx.strokeStyle = css(CONTOUR); ctx.stroke(); }
     pen.line(CONTOUR, [tx + (0.24 - er - 0.07) * R, ty + ey * R], [tx - 0.4 * R, ty - 0.08 * R], 2);
   }
   // les sourcils : petits traits courbes (ils bougent avec l'humeur)
-  for (const u of [0.24, 0.62]) { const lev = peur ? 0.08 : joie ? 0.05 : 0; pen.courbe(cerne(cheveux), pts([[u - 0.13, ey - er - 0.1 - lev], [u, ey - er - 0.17 - lev], [u + 0.13, ey - er - 0.1 - lev + (peur ? (u > 0.5 ? -0.05 : 0.05) : 0)]]), adulte ? 2.2 : 1.8); }
-  pen.circle(STYLE_DESSIN.bluey ? peau.map((v, i) => Math.round(lerp(v, [245, 140, 150][i], 0.35))) : [248, 150, 165], tx + 0.36 * R, ty + 0.3 * R, 0.16 * R); // la joue rose
+  if (!J) for (const u of [0.24, 0.62]) { const lev = peur ? 0.08 : joie ? 0.05 : 0; pen.courbe(cerne(cheveux), pts([[u - 0.13, ey - er - 0.1 - lev], [u, ey - er - 0.17 - lev], [u + 0.13, ey - er - 0.1 - lev + (peur ? (u > 0.5 ? -0.05 : 0.05) : 0)]]), adulte ? 2.2 : 1.8); }
+  if (!J) pen.circle(STYLE_DESSIN.bluey ? peau.map((v, i) => Math.round(lerp(v, [245, 140, 150][i], 0.35))) : [248, 150, 165], tx + 0.36 * R, ty + 0.3 * R, 0.16 * R); // la joue rose
   if (st.barbe) pen.forme(cheveux, tete([["M", -0.6, 0.1], ["C", -0.55, 0.8, -0.1, 1.08, 0.3, 1.05], ["C", 0.8, 1.0, 1.0, 0.6, 0.98, 0.3], ["Q", 0.7, 0.62, 0.36, 0.6], ["Q", -0.1, 0.55, -0.6, 0.1], ["Z"]]));
   if (st.petiteBarbe) { // barbe légère : une ombre de poils sur la mâchoire et autour de la bouche, sans contour
     ctx.save(); pen.chemin(tete(visage)); ctx.clip();
@@ -1252,14 +1292,24 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
     for (let k = 0; k < 26; k++) { const a = r() * PI * 0.9 + 0.1, rr = 0.72 + r() * 0.2; pen.circle(fonce(cheveux, 0.8), tx + (0.2 + Math.cos(a) * rr * 0.85) * R, ty + (0.3 + Math.sin(a) * rr * 0.75) * R, 0.022 * R); }
     ctx.restore();
   }
-  if (st.moustache || st.barbe) pen.forme(cheveux, tete([["M", 0.5, 0.5], ["Q", 0.72, 0.34, 1.0, 0.42], ["Q", 0.94, 0.56, 0.74, 0.54], ["Q", 0.62, 0.52, 0.5, 0.5], ["Z"]]));
+  if ((st.moustache || st.barbe) && J) pen.forme(cheveux, tete([["M", -0.1, 0.46], ["Q", 0.0, 0.3, 0.24, 0.36], ["Q", 0.5, 0.3, 0.58, 0.46], ["Q", 0.42, 0.5, 0.24, 0.45], ["Q", 0.04, 0.52, -0.1, 0.46], ["Z"]]));
+  else if (st.moustache || st.barbe) pen.forme(cheveux, tete([["M", 0.5, 0.5], ["Q", 0.72, 0.34, 1.0, 0.42], ["Q", 0.94, 0.56, 0.74, 0.54], ["Q", 0.62, 0.52, 0.5, 0.5], ["Z"]]));
   const levres = st.cils ? [215, 70, 100] : CONTOUR;
-  if (peur) pen.ellipse([150, 50, 60], tx + 0.6 * R, ty + 0.52 * R, tx + 0.76 * R, ty + 0.72 * R, true);
+  if (J) { // la bouche façon Justin, au milieu du visage
+    const bouche = [120, 40, 48];
+    if (peur) pen.ellipse(bouche, tx + 0.16 * R, ty + 0.5 * R, tx + 0.32 * R, ty + 0.68 * R, true);
+    else if (joie || mange > 0.3) {
+      pen.forme(bouche, tete([["M", 0.0, 0.48], ["Q", 0.24, 0.56, 0.5, 0.45], ["Q", 0.46, 0.8, 0.24, 0.8], ["Q", 0.04, 0.78, 0.0, 0.48], ["Z"]]));
+      pen.forme([255, 255, 255], tete([["M", 0.04, 0.5], ["Q", 0.24, 0.57, 0.46, 0.48], ["L", 0.44, 0.56], ["Q", 0.24, 0.62, 0.06, 0.56], ["Z"]]), false); // les dents
+      pen.circle([235, 110, 120], tx + 0.25 * R, ty + 0.72 * R, 0.08 * R); // la langue
+    } else if (st.moustache || st.barbe) pen.courbe([110, 50, 50], pts([[0.04, 0.52], [0.24, 0.62], [0.46, 0.5]]), 2.2);
+    else { pen.forme(st.cils ? [190, 70, 85] : bouche, tete([["M", 0.04, 0.5], ["Q", 0.24, 0.56, 0.46, 0.47], ["Q", 0.4, 0.68, 0.24, 0.68], ["Q", 0.08, 0.66, 0.04, 0.5], ["Z"]])); pen.forme([255, 255, 255], tete([["M", 0.08, 0.52], ["Q", 0.24, 0.57, 0.42, 0.5], ["L", 0.41, 0.55], ["Q", 0.24, 0.6, 0.09, 0.56], ["Z"]]), false); } // un petit sourire ouvert
+  } else if (peur) pen.ellipse([150, 50, 60], tx + 0.6 * R, ty + 0.52 * R, tx + 0.76 * R, ty + 0.72 * R, true);
   else if (joie || mange > 0.3) pen.forme([200, 60, 75], tete([["M", 0.48, 0.56], ["Q", 0.7, 0.6, 0.92, 0.5], ["Q", 0.84, 0.88, 0.48, 0.56], ["Z"]]));
   else if (STYLE_DESSIN.peppa && !st.moustache && !st.barbe) pen.courbe(levres, pts([[0.4, 0.52], [0.68, 0.76], [0.96, 0.5]]), adulte ? 2.6 : 2.4); // le grand sourire de Peppa
   else pen.courbe(levres, pts([[0.5, 0.58], [0.72, 0.72], [0.9, 0.54]]), adulte ? 2.4 : 2.2);
-  if (st.nezRouge) pen.circle([230, 40, 50], tx + 1.06 * R, ty + 0.12 * R, 0.17 * R, true);
-  if (st.tetine) { pen.circle([255, 255, 255], tx + 0.72 * R, ty + 0.62 * R, 0.16 * R, true); pen.circle([120, 190, 240], tx + 0.72 * R, ty + 0.62 * R, 0.1 * R, true); }
+  if (st.nezRouge) pen.circle([230, 40, 50], tx + (J ? 0.27 : 1.06) * R, ty + (J ? 0.2 : 0.12) * R, 0.17 * R, true);
+  if (st.tetine) { const [u, v] = J ? [0.24, 0.6] : [0.72, 0.62]; pen.circle([255, 255, 255], tx + u * R, ty + v * R, 0.16 * R, true); pen.circle([120, 190, 240], tx + u * R, ty + v * R, 0.1 * R, true); }
   if (st.accessoire && st.accessoire !== "stethoscope") objetEnMain(pen, st.accessoire, main, t);
   if (st.chapeau === "astronaute") {
     const p = pen.P(tx + 0.05 * R, ty - 0.05 * R);
