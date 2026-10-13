@@ -1178,8 +1178,8 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   }
   bras(0);
   [0, 1].forEach((k) => {
-    const lx = (k ? 1 : -1) * W * 0.18, sw = Math.sin(marche + k * PI) * L * 0.3;
-    const pied = [lx + sw, -largJ * 1.1];
+    const lx = (k ? 1 : -1) * W * 0.18, sw = Math.sign(Math.sin(marche + k * PI)) * Math.min(W * 0.14, Math.abs(Math.sin(marche)) * L * 0.3); // les pieds ne se croisent jamais
+    const pied = [lx + sw, -largJ * 1.1 - Math.max(0, Math.sin(marche + k * PI + PI / 2)) * Math.abs(Math.sin(marche)) * L * 0.12]; // le pied qui avance se lève un peu
     const habille = !(jambeNue || st.typeBas === "short");
     baton(habille ? st.bas : peau, [lx, hanche], pied, habille ? largJ * 1.45 : largJ);
     if (st.typeBas === "short" && st.bas && !st.robe) baton(st.bas, [lx, hanche], vers([lx, hanche], pied, 0.4), largJ * 1.7);

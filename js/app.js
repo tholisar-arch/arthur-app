@@ -557,7 +557,7 @@ class Scene {
       a.x += pas;
       if (Math.abs(ecart) > 4) { a.f = ecart > 0 ? 1 : -1; a.marche += Math.abs(pas) / 12; }
       else if (defile) { a.f = 1; a.marche += dt * 9; }
-      else { const centre = this.cacheHeros ? VW / 2 : m.hero.x; a.f = a.x < centre ? 1 : -1; }
+      else { const centre = this.cacheHeros ? VW / 2 : m.hero.x; a.f = a.x < centre ? 1 : -1; a.marche += (Math.round(a.marche / PI) * PI - a.marche) * Math.min(1, dt * 10); } // à l'arrêt : les pieds reviennent côte à côte
       a.dy = this.act === "fete" ? -Math.abs(Math.sin(m.t * 5 + i + 2)) * 16 : 0;
     });
     m.amis = m.amis.filter((a) => !(a.part && Math.abs(a.cible - a.x) < 5));
