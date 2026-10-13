@@ -342,33 +342,53 @@ function pointOutil(kind, col, x, g, outil) { // position de l'outil sans rien d
 const NUL_CTX = new Proxy({}, { get: (o, k) => (k in o ? o[k] : () => {}), set: () => true });
 
 // ------------------------------------------------------------ dinosaures gentils
-function dinoLongCou(ctx, x, g, s = 1, col = [120, 200, 140], t = 0, f = 1) {
-  const pen = new Pen(ctx, x, g, s, f), h = Math.sin(t * 1.5) * 6;
-  pen.poly(col, [[-60, -70], [-150, -40], [-60, -50]]);
-  for (const lx of [-45, -20, 20, 45]) pen.rect(fonce(col, 0.85), lx - 10, -50, lx + 10, 0, 6);
-  pen.ellipse(col, -70, -105, 70, -35);
-  pen.poly(col, [[30, -90], [55, -100], [95, -200 + h], [80, -205 + h], [40, -80]]);
-  pen.ellipse(col, 70, -222 + h, 120, -192 + h);
-  pen.circle([255, 255, 255], 100, -211 + h, 6);
-  pen.circle(CONTOUR, 102, -211 + h, 3);
-  pen.arc(CONTOUR, 95, -208 + h, 115, -196 + h, PI, 2 * PI, 2);
-  for (let k = 0; k < 4; k++) pen.circle(clair(col, 0.4), -40 + k * 25, -80, 7);
+// Les dinosaures façon « Le Petit Dinosaure » : silhouettes en courbes douces, ventre clair, grands yeux expressifs
+// (iris coloré, pupille, reflet, paupière), ongles clairs au bout des pattes, pattes qui marchent.
+function oeilDino(pen, cx, cy, r, iris, col, t, ph = 0) {
+  const ctx = pen.ctx, ferme = mod(t + ph, 4.6) < 0.13;
+  pen.ellipse([255, 255, 255], cx - r * 0.85, cy - r, cx + r * 0.85, cy + r, true);
+  if (ferme) { pen.forme(col, [["M", cx - r * 0.9, cy - r * 0.2], ["Q", cx, cy - r * 1.3, cx + r * 0.9, cy - r * 0.2], ["Q", cx, cy + r * 0.5, cx - r * 0.9, cy - r * 0.2], ["Z"]]); return; }
+  pen.circle(iris, cx + r * 0.22, cy + r * 0.08, r * 0.62);
+  pen.circle([25, 20, 22], cx + r * 0.26, cy + r * 0.1, r * 0.34);
+  pen.circle([255, 255, 255], cx + r * 0.08, cy - r * 0.18, r * 0.2);
+  pen.forme(fonce(col, 0.92), [["M", cx - r * 0.95, cy - r * 0.35], ["Q", cx - r * 0.2, cy - r * 1.35, cx + r * 0.95, cy - r * 0.45], ["Q", cx + r * 0.2, cy - r * 0.95, cx - r * 0.95, cy - r * 0.35], ["Z"]]); // la paupière
 }
-function dinoStego(ctx, x, g, s = 1, col = [240, 160, 90], t = 0, f = 1) {
-  const pen = new Pen(ctx, x, g, s, f);
-  for (let k = 0; k < 5; k++) {
-    const cx = -45 + k * 22, h = 30 + 10 * Math.sin(k);
-    pen.poly(k % 2 ? clair(col, 0.2) : fonce(col, 0.85), [[cx - 12, -62], [cx, -62 - h], [cx + 12, -62]]);
+function patteDino(pen, col, lx, haut, larg, sw, fond) { // une patte bien ronde avec trois ongles
+  const c = fond ? fonce(col, 0.82) : col, x = lx + sw;
+  pen.forme(c, [["M", lx - larg * 0.55, haut], ["Q", x - larg * 0.62, haut * 0.45, x - larg * 0.6, 0], ["L", x + larg * 0.62, 0], ["Q", x + larg * 0.66, haut * 0.45, lx + larg * 0.55, haut], ["Z"]]);
+  for (let k = 0; k < 3; k++) pen.ellipse([250, 240, 220], x - larg * 0.42 + k * larg * 0.36, -larg * 0.16, x - larg * 0.18 + k * larg * 0.36, 0, false);
+}
+function dinoLongCou(ctx, x, g, s = 1, col = [190, 140, 95], t = 0, f = 1, marche = 0) { // façon Petit-Pied : long cou, tête ronde
+  const pen = new Pen(ctx, x, g, s, f), h = Math.sin(t * 1.5) * 6, ventre = clair(col, 0.38), q = 5 * Math.sin(t * 2);
+  for (const [lx, k] of [[-28, 1], [44, 0]]) patteDino(pen, col, lx, -74, 34, Math.sin(marche + k * PI) * 8, true); // les pattes du fond
+  for (const [lx, k] of [[-50, 0], [24, 1]]) patteDino(pen, col, lx, -74, 36, Math.sin(marche + k * PI) * 8, false); // les pattes de devant (sous le ventre)
+  pen.forme(col, [["M", -55, -88], ["C", -110, -84, -150, -60 + q, -182, -44 + q], ["Q", -150, -46 + q, -55, -46], ["Z"]]); // la queue
+  pen.forme(col, [["M", -82, -60], ["C", -88, -124, 36, -136, 78, -94], ["C", 96, -66, 68, -36, 22, -34], ["C", -26, -32, -76, -34, -82, -60], ["Z"]]); // le corps bien dodu
+  pen.forme(ventre, [["M", -56, -46], ["C", -14, -34, 36, -36, 62, -54], ["C", 38, -46, -12, -46, -56, -52], ["Z"]], false); // le ventre clair
+  pen.forme(col, [["M", 28, -102], ["C", 56, -140, 66, -176, 84, -204 + h], ["L", 122, -196 + h], ["C", 106, -160, 96, -118, 78, -66], ["Z"]]); // le long cou
+  pen.forme(ventre, [["M", 80, -72], ["C", 96, -114, 104, -154, 116, -192 + h], ["L", 122, -192 + h], ["C", 106, -152, 98, -112, 84, -68], ["Z"]], false);
+  pen.forme(col, [["M", 74, -210 + h], ["C", 70, -252 + h, 134, -260 + h, 158, -230 + h], ["C", 176, -210 + h, 166, -180 + h, 138, -178 + h], ["C", 110, -176 + h, 76, -184 + h, 74, -210 + h], ["Z"]]); // la grosse tête ronde
+  pen.circle(fonce(col, 0.7), 162, -214 + h, 2.6); // la narine
+  oeilDino(pen, 112, -220 + h, 15, [120, 80, 40], col, t);
+  pen.courbe(fonce(col, 0.55), [[130, -192 + h], [148, -184 + h], [164, -198 + h]], 2.6); // le sourire
+  pen.circle([240, 150, 140], 120, -194 + h, 6);
+}function dinoStego(ctx, x, g, s = 1, col = [170, 195, 95], t = 0, f = 1, marche = 0) { // façon Pointu : plaques sur le dos, queue à pointes
+  const pen = new Pen(ctx, x, g, s, f), ventre = clair(col, 0.4), plaque = [215, 120, 70], q = 4 * Math.sin(t * 2.2);
+  for (const [lx, k] of [[-30, 1], [36, 0]]) patteDino(pen, col, lx, -48, 26, Math.sin(marche + k * PI) * 6, true);
+  for (const [lx, k] of [[-44, 0], [22, 1]]) patteDino(pen, col, lx, -48, 28, Math.sin(marche + k * PI) * 6, false);
+  for (let k = 0; k < 6; k++) { // les plaques, en deux rangées
+    const cx = -52 + k * 20, hb = -62 - 14 * Math.sin((k + 0.5) / 6 * PI), hh = 26 + 10 * Math.sin((k + 0.5) / 6 * PI);
+    pen.forme(k % 2 ? plaque : fonce(plaque, 0.88), [["M", cx - 11, hb + 10], ["Q", cx - 10, hb - hh * 0.8, cx, hb - hh], ["Q", cx + 10, hb - hh * 0.8, cx + 11, hb + 10], ["Z"]]);
   }
-  pen.poly(col, [[-55, -40], [-110, -30], [-55, -25]]);
-  for (const lx of [-35, -10, 20, 40]) pen.rect(fonce(col, 0.85), lx - 8, -35, lx + 8, 0, 5);
-  pen.ellipse(col, -60, -80, 60, -25);
-  pen.ellipse(col, 45, -62, 85, -32);
-  pen.circle([255, 255, 255], 70, -52, 5);
-  pen.circle(CONTOUR, 72, -52, 2.5);
-  pen.arc(CONTOUR, 62, -50, 80, -38, PI, 2 * PI, 2);
+  pen.forme(col, [["M", -56, -60], ["C", -100, -56, -126, -40 + q, -140, -26 + q], ["Q", -110, -28 + q, -56, -28], ["Z"]]); // la queue
+  for (const [dx, dy] of [[-124, -38], [-136, -32]]) pen.poly([240, 230, 210], [[dx - 4, dy + q], [dx - 10, dy - 16 + q], [dx + 4, dy - 2 + q]]); // les pointes de la queue
+  pen.forme(col, [["M", -66, -40], ["C", -72, -92, 40, -104, 66, -62], ["C", 74, -42, 56, -28, 20, -26], ["C", -20, -24, -62, -24, -66, -40], ["Z"]]);
+  pen.forme(ventre, [["M", -52, -30], ["C", -14, -22, 30, -24, 56, -36], ["C", 32, -32, -12, -32, -52, -36], ["Z"]], false);
+  pen.forme(col, [["M", 48, -58], ["C", 56, -84, 102, -84, 110, -58], ["C", 114, -38, 94, -30, 74, -32], ["C", 56, -34, 46, -44, 48, -58], ["Z"]]); // la grosse tête
+  oeilDino(pen, 82, -62, 11, [90, 60, 30], col, t, 1.3);
+  pen.courbe(fonce(col, 0.5), [[80, -44], [96, -38], [109, -48]], 2.4); // le grand sourire
+  pen.circle(fonce(col, 0.65), 106, -60, 1.8);
 }
-
 // ------------------------------------------------------------ décors
 const CIELS = {
   chantier: [[120, 190, 245], [215, 238, 255]], ville: [[110, 175, 240], [205, 232, 255]],
@@ -1020,29 +1040,32 @@ function mainQuiClique(ctx, x, y, t) {
 }
 
 // ------------------------------------------------------------ amis (personnages)
-function trex(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) {
-  const col = [110, 200, 110], pen = new Pen(ctx, x, g, s, f);
-  pen.poly(col, [[-40, -95], [-150, -60 + 6 * Math.sin(t * 3)], [-35, -60]]);
-  [-22, 12].forEach((lx, k) => {
-    const sw = Math.sin(marche + k * PI) * 14;
-    pen.bras(fonce(col, 0.85), [lx, -62], [lx + sw, -12], 20);
-    pen.ellipse(fonce(col, 0.85), lx + sw - 16, -16, lx + sw + 22, 0);
-  });
-  for (let k = 0; k < 4; k++) { const cx = -40 + k * 20; pen.poly(clair(col, 0.35), [[cx - 9, -122 + k * 4], [cx, -142 + k * 6], [cx + 9, -124 + k * 4]]); }
-  pen.ellipse(col, -58, -135, 48, -48);
-  pen.ellipse(clair(col, 0.45), -18, -118, 38, -58, false);
-  pen.bras(fonce(col, 0.85), [26, -100], [44, -88], 7);
-  const dy = 10 * mange;
-  pen.ellipse(col, 8, -192 + dy, 100, -132 + dy);
-  pen.circle([255, 255, 255], 52, -170 + dy, 10, true);
-  pen.circle(CONTOUR, 55, -169 + dy, 5);
-  pen.circle([255, 255, 255], 57, -172 + dy, 2);
-  pen.circle(fonce(col, 0.6), 90, -170 + dy, 3);
-  pen.arc(CONTOUR, 44, -168 + dy, 96, -140 + dy, PI, 2 * PI, 3);
-  pen.poly([255, 255, 255], [[66, -143 + dy], [71, -134 + dy], [76, -143 + dy]], false);
-  pen.circle([255, 150, 160], 36, -150 + dy, 7);
-}
-function chat(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) {
+function trex(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) { // Rexou, façon Bec-Pointu : grosse tête, petits bras
+  const col = [110, 195, 105], ventre = [215, 235, 170], pen = new Pen(ctx, x, g, s, f), q = 6 * Math.sin(t * 3), dy = 8 * mange;
+  const jambe = (lx, k, fond) => { // une cuisse ronde, la patte et ses griffes
+    const sw = Math.sin(marche + k * PI) * 12, c = fond ? fonce(col, 0.82) : col;
+    pen.forme(c, [["M", lx - 4 + sw * 0.6, -40], ["L", lx + 12 + sw * 0.6, -40], ["L", lx + 14 + sw * 0.6, -30], ["L", lx - 6 + sw * 0.6, -30], ["Z"]]);
+    pen.ellipse(c, lx - 26 + sw * 0.3, -96, lx + 24 + sw * 0.3, -34); // la cuisse bien ronde
+    pen.forme(c, [["M", lx - 6 + sw * 0.6, -34], ["L", lx - 10 + sw, -4], ["Q", lx - 12 + sw, 0, lx - 4 + sw, 0], ["L", lx + 26 + sw, 0], ["Q", lx + 30 + sw, -10, lx + 14 + sw * 0.6, -34], ["Z"]]);
+    for (let k2 = 0; k2 < 3; k2++) pen.ellipse([250, 240, 220], lx + 6 + sw + k2 * 8, -5, lx + 13 + sw + k2 * 8, 1, false);
+  };
+  jambe(14, 1, true);
+  pen.forme(col, [["M", -30, -100], ["C", -80, -96, -120, -74 + q, -158, -58 + q], ["Q", -110, -60 + q, -34, -62], ["Z"]]); // la queue
+  for (let k = 0; k < 5; k++) { const cx = -30 + k * 16, cy = -128 + k * 2 - (k === 2 ? 3 : 0); pen.forme(clair(col, 0.3), [["M", cx - 7, cy + 6], ["Q", cx, cy - 12, cx + 7, cy + 6], ["Z"]]); } // les petites bosses du dos
+  pen.forme(col, [["M", -46, -82], ["C", -54, -128, 12, -144, 38, -112], ["C", 54, -92, 42, -52, 10, -46], ["C", -24, -42, -42, -56, -46, -82], ["Z"]]); // le corps en poire
+  pen.forme(ventre, [["M", -16, -54], ["C", 14, -48, 36, -66, 38, -96], ["C", 30, -112, 12, -110, 6, -100], ["C", -2, -84, -10, -66, -16, -54], ["Z"]], false); // le ventre clair…
+  for (let k = 0; k < 4; k++) pen.courbe(fonce(ventre, 0.85), [[0 + k * 4, -62 - k * 11], [14 + k * 3, -64 - k * 11], [26 + k * 2, -70 - k * 11]], 1.6); // …et ses rayures
+  jambe(-18, 0, false);
+  for (const [bx, k] of [[30, 0], [40, 1]]) { const a = 0.4 * Math.sin(t * 4 + k); pen.forme(k ? col : fonce(col, 0.85), [["M", bx - 4, -100], ["Q", bx + 10, -96 + a * 10, bx + 16, -84 + a * 6], ["L", bx + 10, -82 + a * 6], ["Q", bx + 4, -90, bx - 4, -92], ["Z"]]); } // les petits bras
+  pen.forme(col, [["M", 8, -150 + dy], ["C", 6, -198 + dy, 72, -210 + dy, 104, -182 + dy], ["C", 122, -166 + dy, 120, -140 + dy, 100, -134 + dy], ["C", 72, -128 + dy, 28, -126 + dy, 12, -136 + dy], ["Z"]]); // la grosse tête
+  pen.forme(fonce(col, 0.9), [["M", 34, -186 + dy], ["Q", 54, -198 + dy, 74, -186 + dy], ["Q", 54, -192 + dy, 34, -182 + dy], ["Z"]], false); // l'arcade
+  oeilDino(pen, 54, -168 + dy, 13, [230, 160, 40], col, t, 2.1);
+  pen.circle(fonce(col, 0.6), 108, -170 + dy, 2.5); // la narine
+  if (mange > 0.3) pen.forme([170, 60, 70], [["M", 66, -146 + dy], ["Q", 92, -150 + dy, 116, -150 + dy], ["Q", 100, -128 + dy, 72, -136 + dy], ["Z"]]);
+  else pen.courbe(fonce(col, 0.5), [[60, -146 + dy], [88, -138 + dy], [114, -152 + dy]], 2.6);
+  for (const dx of [74, 90, 104]) pen.poly([255, 255, 255], [[dx - 3, -146 + dy + (dx - 60) * 0.1], [dx, -139 + dy + (dx - 60) * 0.1], [dx + 3, -146 + dy + (dx - 60) * 0.1]], false); // les petites dents
+  pen.circle([255, 150, 160], 44, -146 + dy, 7);
+}function chat(ctx, x, g, s = 1, t = 0, f = 1, marche = 0, mange = 0) {
   const col = [250, 165, 70], pen = new Pen(ctx, x, g, s, f);
   pen.bras(col, [-36, -38], [-58, -78 + 6 * Math.sin(t * 4)], 8);
   [-26, -12, 14, 28].forEach((lx, k) => { const sw = Math.sin(marche + k * PI) * 6; pen.bras(fonce(col, 0.85), [lx, -26], [lx + sw, -3], 8); });
@@ -1428,8 +1451,8 @@ function objetEnMain(pen, quoi, m, t) { // ce que la personne tient dans sa main
 
 const AMIS_DESSIN = {
   trex, chat, dragon: (...a) => dragon(...a),
-  dino: (ctx, x, g, s, t, f, marche) => dinoLongCou(ctx, x, g + Math.sin(marche) * 2, 0.62 * s, undefined, t, f),
-  stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g + Math.sin(marche) * 2, 0.95 * s, undefined, t, f),
+  dino: (ctx, x, g, s, t, f, marche) => dinoLongCou(ctx, x, g, 0.62 * s, undefined, t, f, marche),
+  stego: (ctx, x, g, s, t, f, marche) => dinoStego(ctx, x, g, 0.95 * s, undefined, t, f, marche),
 };
 function definitPersonnages(liste) { // (re)construit les styles de dessin à partir des modèles
   for (const k of Object.keys(STYLES)) if (!liste[k] && !(typeof GENS !== "undefined" && GENS[k])) { delete STYLES[k]; delete AMIS_DESSIN[k]; } // les gens (monde.js) restent
@@ -1443,9 +1466,9 @@ definitPersonnages(PERSONNAGES_DEFAUT);
 const LARGEUR_OMBRE = { dino: 0.8, stego: 0.6 };
 
 function boucheAmi(kind, x, g, f = 1, s = 1) {
-  if (kind === "dino") return [x + f * 112 * 0.62 * s, g - 207 * 0.62 * s];
-  if (kind === "stego") return [x + f * 85 * 0.95 * s, g - 47 * 0.95 * s];
-  if (kind === "trex") return [x + f * 95 * s, g - 150 * s];
+  if (kind === "dino") return [x + f * 150 * 0.62 * s, g - 188 * 0.62 * s];
+  if (kind === "stego") return [x + f * 98 * 0.95 * s, g - 42 * 0.95 * s];
+  if (kind === "trex") return [x + f * 92 * s, g - 142 * s];
   if (kind === "dragon") return [x + f * 70 * s, g - 135 * s];
   if (STYLES[kind]) { const st = STYLES[kind]; return [x + f * st.R * 0.4 * s, g - (st.L + st.T + st.R * 0.5) * s]; }
   return [x, g - 60 * s];

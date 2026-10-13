@@ -71,6 +71,11 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - Magasin : `rayonsMagasin()` (mis en cache) — étagères en métal, montants, étiquettes de prix, produits par lots
   (`produitRayon` : céréales, bouteilles, conserves, confitures, briques de lait, cagettes de fruits).
   `banane()` et `rocher()` dessinés pour de vrai.
+- Dinosaures façon « Le Petit Dinosaure » (dessins.js) : silhouettes en courbes (`pen.forme`), ventre clair, grands yeux
+  (`oeilDino` : iris, pupille, reflet, paupière, clignement), pattes rondes à ongles clairs qui marchent (`patteDino`).
+  `dino` = Petit-Pied (brun, long cou, grosse tête ronde), `trex` = Rexou façon Bec-Pointu (grosse tête, petits bras,
+  ventre rayé, petites dents), `stego` = façon Pointu (vert, plaques orange en deux rangées, queue à pointes).
+  `boucheAmi` suit les nouvelles bouches.
 - Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
 
 ## Style « Bluey » (désactivé, gardé en réserve)
