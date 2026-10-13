@@ -34,7 +34,10 @@ const TRAIT = 0.62;
 // bluey : façon « Bluey » — pas de contour sombre (juste un liseré à peine plus foncé), une ombre plate sur le côté des
 // formes, des yeux pleins avec un petit reflet, une palette chaude et douce (voir js/bluey.js).
 // decorReel : les paysages un peu plus réalistes (lumière, profondeur, brume, herbe, ombres), les personnages restent façon Bluey
-const STYLE_DESSIN = { plat: true, bluey: true, decorReel: true };
+// peppa : façon « Peppa Pig » (le style choisi) — couleurs toutes plates, chaque forme cernée d'un trait de SA couleur en
+// plus foncé (jamais noir), ciel bleu uni, nuages blancs cernés, collines rondes avec des touffes d'herbe, arbres sucettes.
+// Les autres styles restent disponibles : bluey (sans contour, ombres plates), decorReel (lumière, brume, bâtiments en 3D).
+const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (!RELIEF.on || w < 7 || h < 7 || w * h < 1000 || w * h > 600000 || !ctx.createLinearGradient) return css(fill); // les toutes petites formes : couleur unie (invisible à cette taille, et bien plus rapide)
@@ -47,6 +50,9 @@ function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : co
   return g;
 }
 function bordure(ctx, fill, bord, colBord) {
+  if (STYLE_DESSIN.peppa && colBord === CONTOUR && fill) {
+    ctx.lineWidth = Math.max(1.2, bord * TRAIT * 1.15); ctx.strokeStyle = css(fonce(fill, 0.62)); ctx.lineJoin = "round"; ctx.stroke(); return;
+  }
   if (STYLE_DESSIN.bluey && colBord === CONTOUR && fill) { // façon Bluey : un liseré fin, à peine plus foncé que la forme
     ctx.lineWidth = Math.max(1, bord * TRAIT * 0.55); ctx.strokeStyle = css(fonce(fill, 0.84)); ctx.lineJoin = "round"; ctx.stroke(); return;
   }
@@ -371,6 +377,10 @@ const SOLS = {
   foret: [[95, 165, 80], [190, 155, 110]], montagne: [[140, 195, 110], [185, 178, 168]],
   ferme: [[140, 205, 90], [215, 185, 135]], port: [[205, 195, 175], [175, 165, 155]],
 };
+if (STYLE_DESSIN.peppa) { // comme l'épisode des dinosaures de Peppa : ciel bleu, prairie verte, chemin de sable
+  CIELS.dinosaures = [[105, 185, 245], [215, 240, 255]];
+  SOLS.dinosaures = [[135, 205, 85], [215, 185, 125]];
+}
 
 function soleil(ctx, x, y, t) { // soleil simple, sans visage, avec un halo de lumière
   if (RELIEF.on && ctx.createRadialGradient) {
@@ -395,6 +405,12 @@ function lune(ctx, x, y) { // un vrai croissant (découpé, donc joli sur n'impo
   ctx.restore();
 }
 function nuage(ctx, x, y, s = 1, col = [255, 255, 255]) {
+  if (STYLE_DESSIN.peppa && !RELIEF.on) {
+    const bords = [[0, 0, 28], [30, -12, 34], [62, 0, 28], [30, 8, 26]];
+    for (const [dx, dy, r] of bords) rond(ctx, x + dx * s, y + dy * s, r * s + 2, col[0] > 200 ? [196, 210, 228] : fonce(col, 0.8));
+    for (const [dx, dy, r] of bords) rond(ctx, x + dx * s, y + dy * s, r * s, col);
+    return;
+  }
   if (RELIEF.on) for (const [dx, dy, r] of [[2, 6, 27], [32, 14, 25], [62, 6, 27]]) rond(ctx, x + dx * s, y + dy * s, r * s, fonce(col, 0.9));
   for (const [dx, dy, r] of [[0, 0, 28], [30, -12, 34], [62, 0, 28], [30, 8, 26]]) rond(ctx, x + dx * s, y + dy * s, r * s, col);
 }
@@ -554,7 +570,7 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     const ciel = ctx.createLinearGradient(0, 0, 0, G);
     ciel.addColorStop(0, css(haut.map((v, i) => lerp(v, bas[i], 0.1)))); ciel.addColorStop(1, css(bas));
     ctx.fillStyle = ciel;
-  } else ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], 0.45))); // ciel uni
+  } else ctx.fillStyle = css(haut.map((v, i) => lerp(v, bas[i], STYLE_DESSIN.peppa ? 0.15 : 0.45))); // ciel uni (bleu franc façon Peppa)
   ctx.fillRect(0, 0, W, H);
   const rng = hasard(7), sansCiel = typeof DECORS_EXTRA !== "undefined" && DECORS_EXTRA[nom] && DECORS_EXTRA[nom].sansCiel; // sous la mer : ni soleil ni nuages
   if (sansCiel) { /* rien dans le ciel */ } else if (nuit) {
@@ -797,6 +813,12 @@ function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
     const ombreMur = ctx.createLinearGradient(0, y0, 0, y0 + 40); ombreMur.addColorStop(0, "rgba(60,40,30,0.18)"); ombreMur.addColorStop(1, "rgba(60,40,30,0)"); ctx.fillStyle = ombreMur; ctx.fillRect(0, y0, W, 40);
     ctx.restore();
   }
+  if (STYLE_DESSIN.peppa && !RELIEF.on && !dedans) {
+    const vertH = herbe[1] > herbe[0] + 25 && herbe[1] > herbe[2] + 25, vertR = route[1] > route[0] + 25 && route[1] > route[2] + 25, r4 = hasard(23);
+    const touffe = (x, y, c) => { ctx.beginPath(); ctx.moveTo(x - 7, y - 6); ctx.lineTo(x - 3, y); ctx.lineTo(x, y - 8); ctx.lineTo(x + 3, y); ctx.lineTo(x + 7, y - 6); ctx.lineWidth = 2; ctx.strokeStyle = css(c); ctx.lineJoin = "round"; ctx.stroke(); };
+    if (vertH) for (let k = 0; k < 14; k++) touffe(boucle(r4() * (W + 200), scroll, 1, W, 100), horizon + 12 + r4() * 4, fonce(herbe, 0.78));
+    if (vertR) for (let k = 0; k < 16; k++) touffe(boucle(r4() * (W + 200), scroll, 1, W, 100), horizon + 40 + r4() * (H - horizon - 60), fonce(route, 0.8));
+  }
   if (RELIEF.on && !dedans) { // brins d'herbe au bord, petits cailloux sur le chemin, ombre douce au bord de la route
     const r3 = hasard(11), vert = herbe[1] > herbe[0] + 25 && herbe[1] > herbe[2] + 25;
     ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.fillRect(0, horizon + 18, W, 5);
@@ -1014,7 +1036,7 @@ function personne(ctx, x, g, s, t, f, marche, mange, humeur, style) {
   const joie = humeur === "joie", peur = humeur === "peur", peau = st.peau, cheveux = st.cheveux, co = st.coiffure;
   const pts = (l) => l.map(([u, v]) => [tx + u * R, ty + v * R]);
   const tete = (cmds) => cmds.map(([op, ...a]) => [op, ...a.map((n, i) => (i % 2 ? ty + n * R : tx + n * R))]);
-  const cerne = (c) => (STYLE_DESSIN.bluey ? fonce(c, 0.82) : fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45)))); // la couleur des contours
+  const cerne = (c) => (STYLE_DESSIN.peppa ? fonce(c, 0.62) : STYLE_DESSIN.bluey ? fonce(c, 0.82) : fonce(c, 0.42).map((v, i) => Math.round(lerp(v, CONTOUR[i], 0.45)))); // la couleur des contours
   const jupe = st.typeBas === "jupe" && !st.robe, jambeNue = !st.bas || jupe;
   const manche = { teeshirt: 0.45, pull: 1, chemise: 1, debardeur: 0, salopette: 0.45, robe: 0.3 }[st.typeHaut];
   const vers = (a, b, q) => [a[0] + (b[0] - a[0]) * q, a[1] + (b[1] - a[1]) * q];

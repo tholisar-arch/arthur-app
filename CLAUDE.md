@@ -40,7 +40,15 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
-## Style « Bluey » (par-dessus le style plat)
+## Style « Peppa Pig » (le style actuel)
+- `STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false }` (dessins.js), d'après l'épisode
+  « Peppa Pig and George Pig's Dino Adventures » : couleurs toutes plates, chaque forme cernée d'un trait de SA
+  couleur en plus foncé, jamais noir (`bordure` : `fonce(fill, 0.62)`, et `cerne` des personnages pareil). Ciel bleu
+  franc uni, nuages blancs cernés de gris-bleu clair, petites touffes d'herbe en « v » sur l'herbe, collines rondes,
+  arbres sucettes. Le pays des dinosaures a le ciel bleu et la prairie verte de l'épisode (`CIELS`/`SOLS` remplacés).
+- Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
+
+## Style « Bluey » (désactivé, gardé en réserve)
 - `STYLE_DESSIN.bluey = true` (dessins.js) : plus de contour sombre (`bordure` : liseré fin à peine plus foncé que
   la forme), ombre plate et douce du côté du dos sur chaque `pen.forme` (personnages, habits, cheveux), yeux pleins
   foncés avec un petit reflet (personnages et `oeilA` des animaux), joues discrètes, boutons à ombre douce,
