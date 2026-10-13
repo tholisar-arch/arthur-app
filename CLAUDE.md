@@ -58,6 +58,9 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
   pupille, reflet, paupière marquée ; sourcils courts et épais ; petit nez rond ; joues rosées douces ; petit sourire
   ouvert au milieu du visage (dents, langue quand on rit) ; ombre douce sur le côté du visage ; taches de rousseur pour
   les roux. Moustache, lunettes, nez rouge et tétine suivent. `justin: false` = l'ancien visage Peppa / Trotro.
+  Têtes : joues pleines, oreille du fond qui dépasse, frange en mèches pointues, épi sur les cheveux courts, cheveux
+  en volume (`chev()` : reflet clair sur le dessus, ombre du côté du dos). Corps : petit cou (tête un peu plus haute),
+  vêtements avec ombre douce côté dos (`corps()`), encolure, mains avec un pouce, baskets à semelle blanche.
 - Pour revenir au style Bluey : `peppa: false, bluey: true` ; pour les décors réalistes en 3D : `decorReel: true`.
 
 ## Style « Bluey » (désactivé, gardé en réserve)
