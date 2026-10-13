@@ -42,7 +42,9 @@ const TRAIT = 0.62;
 // ombrage : un modelé doux de dessin animé sur les formes (un peu plus clair en haut, un peu plus foncé en bas).
 // Le style actuel : « Justin Time » partout — décors peints (relief, lumière, texture de peinture), traits fins et doux,
 // personnages Justin, modelé doux sur les objets. (peppa: true = l'ancien style Peppa Pig, tout plat et cerné.)
-const STYLE_DESSIN = { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true };
+// Décors propres et lumineux façon Peppa Pig (couleurs franches, ciel bleu net, sans brume ni texture), personnages
+// façon Justin Time, léger modelé sur les formes. texture / decorReel : les fonds « peints » (jugés trop sales).
+const STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true, texture: false };
 const RELIEF = { on: !STYLE_DESSIN.plat, fort: 1 };
 function teinte(ctx, fill, x, y, w, h, arrondi = false) { // le remplissage : couleur unie, ou dégradé de lumière
   if (STYLE_DESSIN.ombrage && !RELIEF.on) { // modelé doux de dessin animé (les fonds immenses et les tout petits détails restent unis)
@@ -668,7 +670,7 @@ function dessineDecor(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {
       const v = ctx.createLinearGradient(0, G - 40, 0, H); // le bas de l'image un peu plus sombre : de la profondeur
       if (v && v.addColorStop) { v.addColorStop(0, "rgba(40,50,30,0)"); v.addColorStop(1, dedans ? "rgba(60,40,30,0.10)" : "rgba(40,60,30,0.14)"); ctx.fillStyle = v; ctx.fillRect(0, G - 40, W, H - G + 40); }
     }
-    if (STYLE_DESSIN.justin) texturePeinte(ctx, W, H);
+    if (STYLE_DESSIN.texture) texturePeinte(ctx, W, H);
   } finally { RELIEF.on = avant; }
 }
 function dessineDecorBase(ctx, W, H, nom, scroll, t, nuit = false, G = 450) {

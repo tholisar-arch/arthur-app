@@ -40,9 +40,12 @@ Plus aucune IA ni clé : `api/histoire.py` a été retiré.
 - `nettoieRecit()` : mots étirés (« alooors », « euuuh »), mots de remplissage en début de phrase (alors, donc, bon…),
   même après « et puis » ; `varieLiens()` : « Et puis… Et puis… » → « Ensuite… Puis… Après… ».
 
-## Style « Justin Time » (le style actuel, toute l'appli)
-- `STYLE_DESSIN = { plat: true, peppa: false, bluey: false, decorReel: true, justin: true, ombrage: true }`.
-- Décors peints : `decorReel` (ciel en dégradé, brume, relief des collines et des arbres, bâtiments en 3D façon dessin,
+## Le style actuel : décors Peppa Pig + personnages et interface Justin Time
+- `STYLE_DESSIN = { plat: true, peppa: true, bluey: false, decorReel: false, justin: true, ombrage: true, texture: false }` :
+  décors propres et lumineux façon Peppa (couleurs franches, ciel bleu net, traits de couleur), visages Justin Time,
+  léger modelé (`ombrage`), interface Justin Time (ci-dessous). Les fonds « peints » (decorReel + texture) ont été
+  jugés « pollués / sales » par les parents : ne pas les remettre sans demande.
+- (Ancien essai) Décors peints : `decorReel` (ciel en dégradé, brume, relief des collines et des arbres, bâtiments en 3D façon dessin,
   lumière chaude, bas d'image plus sombre) + `texturePeinte()` (motif 256 px en cache : grandes taches très douces et
   coups de pinceau, sans couture). Traits fins et doux : `bordure` (branche justin : la couleur de la forme en plus
   foncé, 0,6 × l'épaisseur). Personnages : visages Justin (voir plus bas). Objets : `ombrage`.
